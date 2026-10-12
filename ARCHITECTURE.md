@@ -891,29 +891,116 @@ persistence/
 - Profile data persists across sessions
 - Metadata cached in memory
 
-## 13. Extension Points
+## 13. Implementation Status
 
-### 13.1 New Providers
+### Stage 1: Project Foundation (Complete)
 
-- Add provider definition to ProviderDefinitions.cpp
+The following components have been implemented:
+
+#### Core Layer
+- **Application**: ✅ Implemented (QApplication subclass)
+  - Location: src/core/Application.h, Application.cpp
+  - Sets application metadata (name, version, organization)
+  - Creates and shows MainWindow
+
+- **SettingsManager**: ✅ Implemented (QSettings wrapper with INI format)
+  - Location: src/core/SettingsManager.h, SettingsManager.cpp
+  - Singleton pattern
+  - Provides typed access to settings
+  - Signals setting changes
+  - Stores theme, window geometry, window state
+
+#### Provider Layer
+- **Provider**: ✅ Implemented (data structure with id, displayName, url, icon)
+  - Location: src/providers/Provider.h, Provider.cpp
+  - Simple data class
+  - Stores provider metadata
+
+- **ProviderRegistry**: ✅ Implemented (singleton with all 9 providers configured)
+  - Location: src/providers/ProviderRegistry.h, ProviderRegistry.cpp
+  - Singleton pattern
+  - Loads all 9 providers on initialization
+  - Provides provider lookup by ID
+  - No hardcoded UI logic - UI reads from registry
+
+#### UI Layer
+- **MainWindow**: ✅ Implemented (QMainWindow with Libadwaita-inspired design)
+  - Location: src/ui/MainWindow.h, MainWindow.cpp
+  - Menu bar with File and Help menus
+  - Toolbar with New Tab button
+  - Keyboard shortcuts (Ctrl+N, Ctrl+,, Ctrl+Q)
+  - Tooltips on all controls
+  - Window geometry and state persistence
+  - Basic theming (light/dark/system) with CSS stylesheets
+  - Libadwaita-inspired design (rounded corners, clean typography)
+
+- **TabWidget**: ✅ Implemented (QWidget with empty-state view)
+  - Location: src/ui/TabWidget.h, TabWidget.cpp
+  - Note: Inherits from QWidget, not QTabWidget (browser tabs not yet implemented)
+  - Shows empty state when no tabs open
+  - Stacked widget to switch between empty state and tabs
+  - "New Tab" button in empty state
+  - Calls ProviderSelectionDialog
+
+- **ProviderSelectionDialog**: ✅ Implemented (QDialog with provider catalogue)
+  - Location: src/ui/ProviderSelectionDialog.h, ProviderSelectionDialog.cpp
+  - Lists all 9 providers from ProviderRegistry
+  - Search/filter functionality
+  - Double-click to select
+  - Tooltips on list items
+  - Reads from ProviderRegistry (not hardcoded)
+
+#### Tests
+- **test_providerregistry**: ✅ Implemented
+  - Location: tests/test_providerregistry.cpp
+  - Tests singleton instance
+  - Tests provider count (9 providers)
+  - Tests provider lookup by ID
+  - Tests all provider IDs present
+
+- **test_settingsmanager**: ✅ Implemented
+  - Location: tests/test_settingsmanager.cpp
+  - Tests singleton instance
+  - Tests value storage and retrieval
+  - Tests setting reset
+  - Tests theme persistence
+  - Tests window geometry persistence
+
+#### Not Yet Implemented
+- TabManager (Stage 4)
+- LifecycleManager (Stage 5)
+- ProfileManager (Stage 3)
+- BrowserTab (Stage 4)
+- BrowserView (Stage 4)
+- WorkspaceDatabase (future)
+- All browser integration components (Stage 4+)
+- Real tab functionality (QTabWidget with browser views)
+- Profile creation and management
+- Browser lifecycle management
+
+## 14. Extension Points
+
+### 14.1 New Providers
+
+- Add provider definition to ProviderRegistry::initializeProviders()
 - Add icon to resources
 - No code changes required (configuration-driven)
 
-### 13.2 New Lifecycle Policies
+### 14.2 New Lifecycle Policies
 
 - Extend LifecycleManager with new policies
 - Add settings for policy configuration
 - Keep state machine unchanged
 
-### 13.3 New Persistence Backends
+### 14.3 New Persistence Backends
 
 - Abstract WorkspaceDatabase interface
 - Implement new backend (e.g., JSON files)
 - Swap implementation at runtime
 
-## 14. Testing Strategy
+## 15. Testing Strategy
 
-### 14.1 Unit Tests
+### 15.1 Unit Tests
 
 - Test each manager independently
 - Mock Qt WebEngine for browser tests

@@ -56,7 +56,7 @@ AI Workspace is a native Qt 6 application that embeds multiple AI provider websi
   - qt6-qtdeclarative-devel
   - qt6-qtwayland-devel
   - qt6-qttools-devel
-  - qt6-qtwebengine-devel
+  - qt6-qtwebengine-devel (required for browser embedding, not yet needed for skeleton)
 
 ### Optional Dependencies
 
@@ -72,8 +72,10 @@ Install the required development packages:
 
 ```bash
 sudo dnf install cmake gcc-c++ qt6-qtbase-devel qt6-qtdeclarative-devel \
-    qt6-qtwayland-devel qt6-qttools-devel qt6-qtwebengine-devel
+    qt6-qtwayland-devel qt6-qttools-devel
 ```
+
+**Note**: qt6-qtwebengine-devel is required for browser embedding (Stage 4+), but not needed for the current application skeleton (Stage 1).
 
 #### Building
 
@@ -101,6 +103,60 @@ sudo cmake --install build
 # Or if installed
 ai-workspace
 ```
+
+#### Running Tests
+
+```bash
+# Build tests
+cmake --build build
+
+# Run all tests
+ctest --test-dir build --output-on-failure
+
+# Run specific test
+./build/tests/test_providerregistry
+./build/tests/test_settingsmanager
+```
+
+## Current Implementation Status
+
+### Stage 1: Project Foundation (Complete)
+
+The application skeleton has been implemented with the following features:
+
+**Implemented Components**:
+- CMake build system with Qt 6 configuration
+- Application class (QApplication subclass)
+- SettingsManager for configuration persistence (QSettings)
+- ProviderRegistry with all 9 providers configured
+- MainWindow with Libadwaita-inspired design
+- TabWidget with empty-state view
+- ProviderSelectionDialog (provider catalogue)
+- Basic theming (light/dark/system)
+- Keyboard navigation (Ctrl+N for new tab, Ctrl+Q to quit)
+- Tooltips on all interactive controls
+- Window geometry persistence
+
+**Features**:
+- Main window with menu bar and toolbar
+- Empty state view when no tabs are open
+- Provider selection dialog with search/filter
+- All 9 providers loaded from registry (not hardcoded)
+- Settings stored in QSettings (INI format)
+- Window geometry and state persist across restarts
+- Theme switching (light/dark/system)
+
+**Tests**:
+- Unit tests for ProviderRegistry (all 9 providers verified)
+- Unit tests for SettingsManager (configuration persistence verified)
+- All tests passing
+
+**Not Yet Implemented**:
+- Real browser embedding (requires Qt WebEngine, Stage 4)
+- Tab lifecycle management (Stage 5)
+- Profile management (Stage 3)
+- Browser integration (Stage 4)
+- Actual provider website loading (Stage 4)
 
 ### From RPM Package (Future)
 
