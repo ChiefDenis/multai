@@ -9,6 +9,10 @@
 #include "Profile.h"
 #include "TabMetadata.h"
 
+class QLabel;
+class QPushButton;
+class QStackedWidget;
+class QVBoxLayout;
 class LifecycleManager;
 
 class BrowserTab : public QWidget, public LifecycleTarget {
@@ -28,11 +32,23 @@ public:
   QString title() const { return m_metadata.title(); }
   TabMetadata metadata() const { return m_metadata; }
 
+  bool hasError() const { return m_hasError; }
+  QString errorTitle() const { return m_errorTitle; }
+  QString errorMessage() const { return m_errorMessage; }
+  QWidget* errorWidget() const { return m_errorWidget; }
+
   void activate() override;
   void deactivate() override;
   void freeze() override;
   void hibernate() override;
   void closeTab();
+
+public slots:
+  void retry();
+  void onLoadStarted();
+  void onLoadFinished(bool success);
+  void onTitleChanged(const QString& title);
+  void onRenderProcessTerminated(QWebEnginePage::RenderProcessTerminationStatus status, int exitCode);
 
 signals:
   void lifecycleStateChanged(LifecycleState state);
@@ -40,16 +56,18 @@ signals:
   void loadFinished(bool success);
   void titleChanged(const QString& title);
   void renderProcessTerminated(int status, int exitCode);
+  void errorChanged(bool hasError);
+  void closeRequested();
 
 private slots:
   void onQtLifecycleStateChanged(QWebEnginePage::LifecycleState qtState);
   void onRecommendedStateChanged(QWebEnginePage::LifecycleState recommendedState);
-  void onLoadStarted();
-  void onLoadFinished(bool success);
-  void onTitleChanged(const QString& title);
-  void onRenderProcessTerminated(QWebEnginePage::RenderProcessTerminationStatus status, int exitCode);
 
 private:
+  void setupUi();
+  void setupErrorUi();
+  void showError(const QString& title, const QString& message);
+  void hideError();
   void createPage();
   void destroyPage();
   void setQtLifecycleState(QWebEnginePage::LifecycleState state);
@@ -68,4 +86,17 @@ private:
   QWebEnginePage::LifecycleState m_recommendedState;
   bool m_pageCreated;
   bool m_recoveryAttempted;
+
+  QStackedWidget* m_stack;
+  QWidget* m_viewContainer;
+  QVBoxLayout* m_viewLayout;
+  QWidget* m_errorWidget;
+  QLabel* m_errorIconLabel;
+  QLabel* m_errorTitleLabel;
+  QLabel* m_errorMessageLabel;
+  QPushButton* m_retryButton;
+  QPushButton* m_closeButton;
+  bool m_hasError;
+  QString m_errorTitle;
+  QString m_errorMessage;
 };

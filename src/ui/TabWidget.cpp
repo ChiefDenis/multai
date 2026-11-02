@@ -139,13 +139,22 @@ BrowserTab* TabWidget::addBrowserTab(BrowserTab* tab, const QString& title) {
     }
   });
 
-  connect(tab, &BrowserTab::lifecycleStateChanged, this, [this, tab]() {
+  auto updateToolTip = [this, tab]() {
     const int tabIndex = m_tabs.indexOf(tab);
     if (tabIndex >= 0) {
+      QString status = lifecycleStateToString(tab->lifecycleState());
+      if (tab->hasError()) {
+        status += " (Error)";
+      }
       m_tabWidget->setTabToolTip(
-          tabIndex, QString("%1 — %2\n%3").arg(m_tabWidget->tabText(tabIndex), tab->profileId(),
-                                               lifecycleStateToString(tab->lifecycleState())));
+          tabIndex, QString("%1 — %2\n%3").arg(m_tabWidget->tabText(tabIndex), tab->profileId(), status));
     }
+  };
+
+  connect(tab, &BrowserTab::lifecycleStateChanged, this, updateToolTip);
+  connect(tab, &BrowserTab::errorChanged, this, updateToolTip);
+  connect(tab, &BrowserTab::closeRequested, this, [this, tab]() {
+    removeBrowserTab(tab);
   });
 
   return tab;

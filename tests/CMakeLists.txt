@@ -129,3 +129,29 @@ target_link_libraries(test_profilemanager PRIVATE
 target_include_directories(test_profilemanager PRIVATE ${TEST_INCLUDE_DIRS})
 
 add_test(NAME test_profilemanager COMMAND test_profilemanager)
+
+# Error Recovery test
+qt_add_executable(test_recovery
+  test_recovery.cpp
+  ../src/lifecycle/BrowserTab.cpp
+  ../src/lifecycle/BrowserView.cpp
+  ../src/lifecycle/LifecycleManager.cpp
+  ../src/lifecycle/MemoryMonitor.cpp
+  ../src/lifecycle/TabMetadata.cpp
+  ../src/lifecycle/TestClock.cpp
+  ../src/profiles/Profile.cpp
+  ../src/profiles/ProfileManager.cpp
+  ../src/profiles/ProfileStorage.cpp
+  ../src/core/SettingsManager.cpp
+)
+
+target_link_libraries(test_recovery PRIVATE
+  Qt6::Core
+  Qt6::Test
+  Qt6::Widgets
+  Qt6::WebEngineWidgets
+)
+
+target_include_directories(test_recovery PRIVATE ${TEST_INCLUDE_DIRS})
+
+add_test(NAME test_recovery COMMAND test_recovery)

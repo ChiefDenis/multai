@@ -122,11 +122,12 @@ ctest --test-dir build --output-on-failure
 ./build/tests/test_memorymonitor
 ./build/tests/test_tabstore
 ./build/tests/test_profilemanager
+./build/tests/test_recovery
 ```
 
 ## Current Implementation Status
 
-### Stages 1-6 (Complete), Stage 7 (Partial)
+### Stages 1-7 (Complete)
 
 **Implemented components**:
 - CMake build system linking Qt6::Core, Widgets and WebEngineWidgets
@@ -139,6 +140,7 @@ ctest --test-dir build --output-on-failure
 - Lifecycle state machine (Unloaded, Loading, Active, Frozen, Discarded, Closing)
 - LifecycleManager with LRU selection, configurable delays and memory-pressure response
 - MemoryMonitor reading /proc/meminfo (and PSI when available)
+- Error recovery UI inside BrowserTab with bounded crash recovery and explicit manual retry
 - MainWindow, TabWidget, ProviderSelectionDialog, ProfileSelectionDialog,
   ProfileManagementDialog and SettingsDialog
 - Basic theming (light/dark/system) and tooltips on interactive controls
@@ -153,13 +155,13 @@ ctest --test-dir build --output-on-failure
 - The least recently used inactive tab is hibernated when memory runs low
 - Open tabs are restored on startup in the Unloaded state (no page until activated)
 - Window geometry, state and settings persist across restarts
+- Bounded renderer crash recovery and user-friendly error UI card with Retry and Close actions
 
-**Tests** (7 unit test executables, all passing):
+**Tests** (8 unit test executables, all passing):
 - test_providerregistry, test_settingsmanager, test_lifecycle, test_lifecyclemanager,
-  test_memorymonitor, test_tabstore, test_profilemanager
+  test_memorymonitor, test_tabstore, test_profilemanager, test_recovery
 
 **Not Yet Implemented**:
-- Error UI and manual retry for failed loads or crashed renderers (Stage 7 remainder)
 - Full Libadwaita polish pass and explicit Frozen/Discarded status indicators (Stage 8)
 - Integration and performance test suites, and recorded performance measurements (Stage 9)
 - Packaging: RPM spec, desktop file, application icon (Stage 10)
