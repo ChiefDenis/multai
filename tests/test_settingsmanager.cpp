@@ -73,6 +73,7 @@ void TestSettingsManager::testTheme() {
 void TestSettingsManager::testWindowGeometry() {
   SettingsManager* settings = SettingsManager::instance();
 
+  settings->reset("window/geometry");
   QByteArray geometry = settings->windowGeometry();
   QVERIFY(geometry.isEmpty());
 

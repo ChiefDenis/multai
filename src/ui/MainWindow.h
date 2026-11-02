@@ -18,6 +18,7 @@ protected:
 
 private slots:
   void onNewTab();
+  void onProfiles();
   void onSettings();
   void onAbout();
   void onQuit();

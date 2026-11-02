@@ -56,7 +56,7 @@ AI Workspace is a native Qt 6 application that embeds multiple AI provider websi
   - qt6-qtdeclarative-devel
   - qt6-qtwayland-devel
   - qt6-qttools-devel
-  - qt6-qtwebengine-devel (required for browser embedding, not yet needed for skeleton)
+  - qt6-qtwebengine-devel (required for browser embedding; installed as 6.10.3-1.fc43)
 
 ### Optional Dependencies
 
@@ -72,10 +72,11 @@ Install the required development packages:
 
 ```bash
 sudo dnf install cmake gcc-c++ qt6-qtbase-devel qt6-qtdeclarative-devel \
-    qt6-qtwayland-devel qt6-qttools-devel
+    qt6-qtwayland-devel qt6-qttools-devel qt6-qtwebengine-devel
 ```
 
-**Note**: qt6-qtwebengine-devel is required for browser embedding (Stage 4+), but not needed for the current application skeleton (Stage 1).
+**Note**: qt6-qtwebengine-devel is a hard build dependency: the application links
+Qt6::WebEngineWidgets and every test target that touches profiles links it too.
 
 #### Building
 
@@ -116,47 +117,52 @@ ctest --test-dir build --output-on-failure
 # Run specific test
 ./build/tests/test_providerregistry
 ./build/tests/test_settingsmanager
+./build/tests/test_lifecycle
+./build/tests/test_lifecyclemanager
+./build/tests/test_memorymonitor
+./build/tests/test_tabstore
+./build/tests/test_profilemanager
 ```
 
 ## Current Implementation Status
 
-### Stage 1: Project Foundation (Complete)
+### Stages 1-6 (Complete), Stage 7 (Partial)
 
-The application skeleton has been implemented with the following features:
-
-**Implemented Components**:
-- CMake build system with Qt 6 configuration
+**Implemented components**:
+- CMake build system linking Qt6::Core, Widgets and WebEngineWidgets
 - Application class (QApplication subclass)
-- SettingsManager for configuration persistence (QSettings)
-- ProviderRegistry with all 9 providers configured
-- MainWindow with Libadwaita-inspired design
-- TabWidget with empty-state view
-- ProviderSelectionDialog (provider catalogue)
-- Basic theming (light/dark/system)
-- Keyboard navigation (Ctrl+N for new tab, Ctrl+Q to quit)
-- Tooltips on all interactive controls
-- Window geometry persistence
+- SettingsManager for configuration persistence (QSettings, INI format)
+- TabStore for open-tab persistence and restoration
+- ProviderRegistry with all 9 providers, plus runtime-generated provider icons
+- ProfileManager, ProfileStorage and Profile with isolated browser profiles per account
+- BrowserView, BrowserTab and a real QTabWidget with embedded provider websites
+- Lifecycle state machine (Unloaded, Loading, Active, Frozen, Discarded, Closing)
+- LifecycleManager with LRU selection, configurable delays and memory-pressure response
+- MemoryMonitor reading /proc/meminfo (and PSI when available)
+- MainWindow, TabWidget, ProviderSelectionDialog, ProfileSelectionDialog,
+  ProfileManagementDialog and SettingsDialog
+- Basic theming (light/dark/system) and tooltips on interactive controls
 
 **Features**:
-- Main window with menu bar and toolbar
+- Main window with menu bar (New Tab, Profiles, Settings, Quit, About) and toolbar
 - Empty state view when no tabs are open
-- Provider selection dialog with search/filter
-- All 9 providers loaded from registry (not hardcoded)
-- Settings stored in QSettings (INI format)
-- Window geometry and state persist across restarts
-- Theme switching (light/dark/system)
+- Provider selection with search/filter, then account selection per provider
+- Multiple accounts per provider, each with an isolated persistent profile
+- Provider websites load in embedded views; page titles appear in tab labels
+- Inactive tabs freeze after the freeze delay and hibernate after the hibernate delay
+- The least recently used inactive tab is hibernated when memory runs low
+- Open tabs are restored on startup in the Unloaded state (no page until activated)
+- Window geometry, state and settings persist across restarts
 
-**Tests**:
-- Unit tests for ProviderRegistry (all 9 providers verified)
-- Unit tests for SettingsManager (configuration persistence verified)
-- All tests passing
+**Tests** (7 unit test executables, all passing):
+- test_providerregistry, test_settingsmanager, test_lifecycle, test_lifecyclemanager,
+  test_memorymonitor, test_tabstore, test_profilemanager
 
 **Not Yet Implemented**:
-- Real browser embedding (requires Qt WebEngine, Stage 4)
-- Tab lifecycle management (Stage 5)
-- Profile management (Stage 3)
-- Browser integration (Stage 4)
-- Actual provider website loading (Stage 4)
+- Error UI and manual retry for failed loads or crashed renderers (Stage 7 remainder)
+- Full Libadwaita polish pass and explicit Frozen/Discarded status indicators (Stage 8)
+- Integration and performance test suites, and recorded performance measurements (Stage 9)
+- Packaging: RPM spec, desktop file, application icon (Stage 10)
 
 ### From RPM Package (Future)
 
@@ -297,12 +303,15 @@ These are restored when the application is launched.
 
 ### Renderer Crashes
 
-**Problem**: Tab shows "Renderer crashed" error
+**Problem**: A tab becomes blank after its renderer process crashes
+
+**Explanation**: The application detects `renderProcessTerminated` and reloads the page once
+automatically. There is no error UI or manual retry action yet (Stage 7 remainder).
 
 **Solutions**:
-1. Click "Retry" to reload the page
+1. Switch away from the tab and back to reactivate it (this recreates and reloads the page)
 2. If it persists, close and recreate the tab
-3. Check system memory: may be out of memory
+3. Check system memory: the renderer may have been killed under memory pressure
 4. Update Qt WebEngine: `sudo dnf update qt6-qtwebengine`
 
 ## Testing
@@ -495,21 +504,25 @@ For issues, questions, or contributions:
 
 ### 0.1.0 (In Development)
 
-- Initial project structure
-- Documentation complete
-- Awaiting implementation
+- Initial project structure and documentation
+- Stage 1: application skeleton, provider catalogue and settings
+- Stages 2-6: provider icons, multi-account profiles, browser embedding,
+  lifecycle state machine, lifecycle automation and memory-pressure response
+- 7 unit tests passing; build and offscreen runtime smoke test verified
 
 ## Future Plans
 
-- [ ] Stage 1: Project Foundation
-- [ ] Stage 2: Provider System
-- [ ] Stage 3: Profile Management
-- [ ] Stage 4: Basic Browser Integration
-- [ ] Stage 5: Lifecycle State Machine
-- [ ] Stage 6: Lifecycle Automation
-- [ ] Stage 7: Recovery and Error Handling
-- [ ] Stage 8: UI Polish
-- [ ] Stage 9: Testing and Performance
+- [x] Stage 1: Project Foundation
+- [x] Stage 2: Provider System
+- [x] Stage 3: Profile Management
+- [x] Stage 4: Basic Browser Integration
+- [x] Stage 5: Lifecycle State Machine
+- [x] Stage 6: Lifecycle Automation
+- [ ] Stage 7: Recovery and Error Handling (crash detection and bounded reload done;
+      error UI and manual retry outstanding)
+- [ ] Stage 8: UI Polish (themes, icons and tooltips done; full pass outstanding)
+- [ ] Stage 9: Testing and Performance (unit tests done; integration and measurement
+      outstanding)
 - [ ] Stage 10: Documentation and Packaging
 
 See [AI_PROGRESS.md](AI_PROGRESS.md) for detailed implementation status.

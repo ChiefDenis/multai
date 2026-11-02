@@ -4,7 +4,7 @@
 
 - **Purpose**: Track technical decisions and their rationale throughout the project
 - **Status**: Active
-- **Last Updated**: 2026-10-10
+- **Last Updated**: 2026-10-30
 - **Related Documents**: SPEC.md, ARCHITECTURE.md, AGENTS.md
 
 ## Overview
@@ -473,50 +473,237 @@ This document records significant technical decisions made during the developmen
 
 ---
 
-## Pending Decisions
+## Decisions Resolved (Stage 2 Work Phase, 2026-10-30)
 
-Decisions that need to be made during implementation:
+### Decision 014: Memory Pressure Detection via /proc/meminfo with Optional PSI
 
-### [Placeholder] Memory Pressure Detection on Linux
+**Date**: 2026-10-30
+**Status**: Accepted
+**Context**: Hibernation must also be triggered by system memory pressure, not only by elapsed time. Linux exposes several mechanisms and not all are guaranteed to be present or enabled.
 
-**Status**: Proposed
-**Context**: Need to detect system memory pressure to trigger hibernation. Linux has multiple APIs for this.
+**Alternatives Considered**:
+- /proc/meminfo MemAvailable: Always present on Linux; simple text parsing
+- /proc/pressure/memory (PSI): More accurate about stalls, but only present when CONFIG_PSI is enabled
+- systemd resource control notifications: Requires D-Bus integration and a systemd-specific design
+- cgroups v2 memory controller: Requires the application to be placed in a cgroup by the user
 
-**Alternatives to Consider**:
-- /proc/meminfo: Read memory statistics directly
-- systemd's Resource Control: Use systemd notifications
-- cgroups v2 memory controller: Modern approach
-- Low memory notifier (kernel feature): Event-based
+**Decision**: The primary signal is MemAvailable from /proc/meminfo compared against a configurable percentage threshold (default 15%). PSI `some avg10` parsing is implemented and used when readable, but is not required.
 
-**Decision**: Pending implementation investigation
+**Rationale**:
+- /proc/meminfo is universal on the target platform and cheap to read
+- A percentage of total is stable across machines with different RAM sizes
+- PSI parsing is additive, so no hard dependency is created
+- A configurable threshold avoids hardcoding assumptions about workload or machine size
+
+**Consequences**:
+- Positive: Works on any Fedora 43 system without extra privileges
+- Positive: The threshold is user-configurable in the settings dialog
+- Negative: MemAvailable is a coarse signal; it cannot prevent allocation failures, only react
+- Negative: The 15 s polling interval introduces detection latency
+
+**Related Decisions**: Decision 012 (LRU selection)
+**Related Issues**: Stage 6
 
 ---
 
-### [Placeholder] Qt WebEngine Profile Cleanup Strategy
+### Decision 015: Profile Cleanup by Recursive Directory Removal
 
-**Status**: Proposed
-**Context**: Need to determine how to clean up profile data when a profile is deleted. Qt WebEngine may not clean up automatically.
+**Date**: 2026-10-30
+**Status**: Accepted
+**Context**: Deleting an account must remove its persistent cookies, storage and cache without corrupting Qt WebEngine state.
 
-**Alternatives to Consider**:
-- Delete entire profile directory: Simple, but may affect Qt internal state
-- Let Qt handle cleanup: May not work as expected
-- Manual cleanup of specific subdirectories: Complex but controlled
+**Alternatives Considered**:
+- Delete the whole profile directory recursively: Simple and complete
+- Let Qt clean up: Qt does not delete persistent profile directories
+- Delete only cache/storage subdirectories: Selective, but risks orphaned data and is harder to reason about
 
-**Decision**: Pending Qt WebEngine behaviour investigation
+**Decision**: Deleting an account removes the entire profile directory recursively, and deletion is refused while any tab still references the profile (`refCount() > 0`).
+
+**Rationale**:
+- A profile directory contains only that account's isolated data, so wholesale removal is safe and complete
+- The reference-count guard prevents deleting a profile in use by an open tab
+- The profile display name is removed from QSettings at the same time, leaving nothing behind
+
+**Consequences**:
+- Positive: No orphaned profile data after account deletion
+- Positive: No dangling QWebEngineProfile while tabs are open
+- Negative: Deletion is irreversible, so the UI asks for confirmation first
+- Negative: The profile must be closed (refCount 0) before it can be deleted
+
+**Related Decisions**: Decision 008 (profile storage location), Decision 016 (profile ownership)
+**Related Issues**: Stage 3
 
 ---
 
-### [Placeholder] Provider Embedding Compatibility Detection
+### Decision 016: ProfileManager is the Single Owner of Profile Objects
 
-**Status**: Proposed
-**Context**: Need to detect when a provider blocks embedding (X-Frame-Options, CSP, etc.) and inform the user.
+**Date**: 2026-10-30
+**Status**: Accepted
+**Context**: The in-flight implementation had `Profile::deref()` call `deleteLater()` at reference count zero, while `ProfileManager` still held the pointer in its map and also ran `qDeleteAll` in its destructor: a dangling-pointer and double-free hazard.
 
-**Alternatives to Consider**:
-- Monitor for loading errors: Simple, but may not detect all blocks
-- Parse response headers: More accurate, but complex
-- User-reported: Simplest, but requires user action
+**Alternatives Considered**:
+- Shared ownership (QSharedPointer): Correct, but invasive for an object that already has a QObject parent
+- Profile self-deletes at refCount zero: The original design, which leaves the manager with a stale pointer
+- ProfileManager owns exclusively, with refCount only gating operations: simple and explicit
 
-**Decision**: Pending implementation
+**Decision**: ProfileManager owns every Profile exclusively. `Profile::deref()` only decrements the counter and never deletes. Deletion happens only through `ProfileManager::deleteProfile()`, which refuses while the reference count is non-zero.
+
+**Rationale**:
+- A single owner removes all ambiguity about when a Profile is destroyed
+- Children are deleted exactly once, by `deleteProfile` or by the manager destructor
+- Keeping `Profile` alive while unused is desirable: cached Profile objects make reopening an account cheap
+
+**Consequences**:
+- Positive: No dangling pointers or double frees
+- Positive: Profiles stay cached, so account switching is fast
+- Negative: Memory for idle Profile objects is retained until deletion or exit
+- Negative: QWebEngineProfile destruction now happens inside `Profile::~Profile`
+
+**Related Decisions**: Decision 010 (lazy page creation), Decision 015 (profile cleanup)
+**Related Issues**: Fixed defect 1 in AI_PROGRESS.md
+
+---
+
+### Decision 017: Provider Embedding Compatibility Detection
+
+**Date**: 2026-10-30
+**Status**: Proposed (still open)
+**Context**: Some providers may refuse to load inside an embedded view, using X-Frame-Options, Content Security Policy, User-Agent or bot detection. AGENTS.md forbids circumventing these restrictions.
+
+**Alternatives Considered**:
+- Monitor load failures: Simple; `loadFinished(false)` and `renderProcessTerminated` are handled, but a provider returning an error page still reports success
+- Inspect response headers: More accurate, but requires a request interceptor and provider-specific parsing
+- User-reported: Simplest; leaves the user to notice and report
+
+**Decision**: Not yet decided. Current behaviour is deliberately passive: load failures return the tab to Unloaded and nothing is done to work around a provider that blocks embedding. No circumvention is implemented or planned.
+
+**Rationale**:
+- The security constraints in AGENTS.md rule 8 take precedence over making every provider work
+- Any detection heuristic must be documented as a limitation rather than worked around
+
+**Consequences**:
+- Positive: No security circumvention and no identity spoofing
+- Negative: Some providers may be unusable in the application
+- Negative: No built-in user-visible explanation of a blocked provider yet
+
+**Related Decisions**: Decision 020 (recommendedState gate)
+**Related Issues**: Stage 7 remainder; README known limitations
+
+---
+
+### Decision 018: LifecycleTarget Interface Decouples Automation from Qt WebEngine
+
+**Date**: 2026-10-30
+**Status**: Accepted
+**Context**: `LifecycleManager` originally stored `BrowserTab*` keys and called `activate()`, `freeze()` and `hibernate()` directly. That forced any test of the automation policy to link Qt WebEngine and, for a real page, to have a display available.
+
+**Alternatives Considered**:
+- Keep `BrowserTab*` in LifecycleManager: simple, but untestable without WebEngine
+- Template the manager on the tab type: avoids virtual calls, but inflates the header and complicates moc
+- Introduce a small abstract `LifecycleTarget` interface: one vtable per tab, and the manager depends only on the interface
+
+**Decision**: Introduce `LifecycleTarget` (state query, suspendability query, activate, deactivate, freeze, hibernate). `BrowserTab` inherits `QWidget` and `LifecycleTarget`. `LifecycleManager` operates only on `LifecycleTarget*`.
+
+**Rationale**:
+- The automation policy (delays, LRU, memory pressure) is pure logic and should be testable in isolation
+- Dependency inversion means `LifecycleManager` no longer includes Qt WebEngine headers at all
+- Tests can use a fake target, so LRU and pressure behaviour are verified without a browser
+
+**Consequences**:
+- Positive: `test_lifecyclemanager` runs in 0.04 s with no WebEngine dependency
+- Positive: Policy and browser mechanics can evolve independently
+- Negative: One extra indirection per lifecycle call (negligible)
+- Negative: Signals carrying `LifecycleTarget*` are not queued-connection friendly without a registered metatype
+
+**Related Decisions**: Decision 009 (state machine separate from Qt lifecycle state)
+**Related Issues**: Stage 6
+
+---
+
+### Decision 019: Provider Icons Generated at Runtime
+
+**Date**: 2026-10-30
+**Status**: Accepted
+**Context**: SPEC.md requires an icon per provider. Shipping nine binary assets would add a resource pipeline, licensing questions for third-party logos, and `.qrc` maintenance.
+
+**Alternatives Considered**:
+- Bundle official provider logos: best fidelity, but licensing and branding concerns
+- Bundle hand-made SVG icons: cleaner licensing, but still binary assets plus a resource pipeline
+- Generate rounded colour tiles with the provider initial at runtime: no assets, deterministic
+
+**Decision**: Generate icons at runtime with QPainter: a rounded rectangle filled with a per-provider brand colour, overlaid with the provider's initial. Exposed via `providerIcon(providerId)`.
+
+**Rationale**:
+- No third-party logos are redistributed, avoiding branding and licensing issues
+- No `.qrc` or asset pipeline is required, and icons scale to any requested size
+- The visual language (rounded surfaces, restrained colours) matches the Libadwaita direction
+- Colours and initials live in one table, so adding a provider is a one-line change
+
+**Consequences**:
+- Positive: Zero binary assets and no licensing ambiguity
+- Positive: Icons are generated at multiple sizes for tab bars and lists
+- Negative: Icons are generic colour tiles rather than official logos
+- Negative: Icons require a QGuiApplication, so they cannot be created before QApplication exists
+
+**Related Decisions**: Decision 002 (Qt Widgets), Decision 007 (Libadwaita-inspired design)
+**Related Issues**: Stage 2
+
+---
+
+### Decision 020: recommendedState Gate is User-Configurable
+
+**Date**: 2026-10-30
+**Status**: Accepted
+**Context**: AGENTS.md rule 10 requires respecting `QWebEnginePage::recommendedState` by default while allowing user-configurable overrides only when side effects are clearly documented. The exact triggers of Qt's `recommendedState` are provider- and content-dependent and were not exhaustively characterised in this environment.
+
+**Alternatives Considered**:
+- Always respect recommendedState with no override: safest, but a page that never reports a suspendable state can never be frozen
+- Always ignore recommendedState: maximises resource savings, but per Qt documentation risks stopping background audio and discarding unsaved form input
+- Respect it by default with a documented override setting: complies with AGENTS.md and keeps the escape hatch explicit
+
+**Decision**: Add the setting `lifecycle/respectRecommendedState`, default true. When true, a tab may only freeze if `recommendedState != Active`, and may only be discarded if `recommendedState == Discarded`. When false, suspension is allowed regardless, and the settings dialog states the side effects in the control tooltip.
+
+**Rationale**:
+- Default behaviour complies with AGENTS.md rule 10 and with Qt's documented soft limits
+- The override is opt-in, so users must actively accept the documented consequences
+- Structural guarantees still hold regardless of the setting: the visible tab and loading tabs are never suspended
+
+**Consequences**:
+- Positive: Safe by default; no silent loss of form input or background audio
+- Positive: Users can enable aggressive suspension when they accept the trade-off
+- Negative: With the gate enabled, tabs whose pages stay Active will never freeze or hibernate
+- Negative: The interaction between Qt-recommended state and per-provider behaviour remains unverified
+
+**Related Decisions**: Decision 011 (respect recommendedState by default), Decision 017 (embedding detection)
+**Related Issues**: Stage 6
+
+---
+
+### Decision 021: No Separate TabManager Class
+
+**Date**: 2026-10-30
+**Status**: Accepted
+**Context**: ARCHITECTURE.md originally described a TabManager coordinating tab lifecycle, and SPEC.md Stage 4 listed it. During implementation, tab ownership naturally landed in TabWidget (which owns the QTabWidget and the tab widgets) and policy landed in LifecycleManager.
+
+**Alternatives Considered**:
+- Introduce TabManager as a third coordinator: matches the original sketch, but duplicates state already held by TabWidget and LifecycleManager
+- Keep ownership in TabWidget and policy in LifecycleManager: fewer moving parts, one owner per concern
+
+**Decision**: Do not introduce a TabManager. TabWidget owns tab instances, activation, close and persistence; LifecycleManager owns delays, LRU selection and memory-pressure policy.
+
+**Rationale**:
+- Each concern has exactly one owner, so no state has to be synchronised between two managers
+- TabWidget already had to track tab widgets for layout and current-index handling
+- The architecture document's TabManager was a sketch, not a requirement, and the deviation is recorded explicitly
+
+**Consequences**:
+- Positive: Fewer classes and no duplicated tab registry
+- Positive: Policy remains testable through LifecycleTarget without widgets
+- Negative: TabWidget is a larger class than the original sketch implied
+- Negative: ARCHITECTURE.md needed updating to record the deviation
+
+**Related Decisions**: Decision 018 (LifecycleTarget)
+**Related Issues**: Stage 4 deviation recorded in AI_PROGRESS.md
 
 ---
 
@@ -559,6 +746,8 @@ High-level architectural choices:
 - Decision 002: Qt Widgets over Qt Quick
 - Decision 003: CMake Build System
 - Decision 006: Single Process Architecture
+- Decision 018: LifecycleTarget Interface Decouples Automation from Qt WebEngine
+- Decision 021: No Separate TabManager Class
 
 ### Technology Decisions
 
@@ -571,6 +760,7 @@ Technology stack choices:
 UI/UX design choices:
 - Decision 007: Libadwaita-Inspired Design with Qt Widgets
 - Decision 008: Profile Storage in User Config Directory
+- Decision 019: Provider Icons Generated at Runtime
 
 ### Implementation Decisions
 
@@ -580,6 +770,11 @@ Implementation approach choices:
 - Decision 011: Respect Qt's recommendedState by Default
 - Decision 012: LRU Selection for Resource Allocation
 - Decision 013: QSettings INI Format for Portability
+- Decision 014: Memory Pressure Detection via /proc/meminfo with Optional PSI
+- Decision 015: Profile Cleanup by Recursive Directory Removal
+- Decision 016: ProfileManager is the Single Owner of Profile Objects
+- Decision 017: Provider Embedding Compatibility Detection (proposed, still open)
+- Decision 020: recommendedState Gate is User-Configurable
 
 ## Decision Impact Analysis
 

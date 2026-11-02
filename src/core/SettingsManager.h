@@ -22,6 +22,28 @@ public:
   QByteArray windowState() const;
   void setWindowState(const QByteArray& state);
 
+  bool lifecycleAutomationEnabled() const;
+  void setLifecycleAutomationEnabled(bool enabled);
+
+  int freezeDelayMs() const;
+  void setFreezeDelayMs(int msecs);
+
+  int hibernateDelayMs() const;
+  void setHibernateDelayMs(int msecs);
+
+  bool respectRecommendedState() const;
+  void setRespectRecommendedState(bool respect);
+
+  bool memoryPressureEnabled() const;
+  void setMemoryPressureEnabled(bool enabled);
+
+  int memoryPressureThresholdPercent() const;
+  void setMemoryPressureThresholdPercent(int percent);
+
+  QString profileName(const QString& fullId) const;
+  void setProfileName(const QString& fullId, const QString& name);
+  void removeProfileName(const QString& fullId);
+
 signals:
   void settingChanged(const QString& key);
 

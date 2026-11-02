@@ -16,6 +16,9 @@ public:
   explicit ProviderSelectionDialog(QWidget* parent = nullptr);
   ~ProviderSelectionDialog() override = default;
 
+signals:
+  void providerSelected(const QString& providerId);
+
 private slots:
   void onProviderSelected();
   void onFilterChanged(const QString& text);

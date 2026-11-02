@@ -79,6 +79,7 @@ void ProviderSelectionDialog::onProviderSelected() {
   QListWidgetItem* currentItem = m_providerList->currentItem();
   if (currentItem) {
     QString providerId = currentItem->data(Qt::UserRole).toString();
+    emit providerSelected(providerId);
     accept();
   }
 }

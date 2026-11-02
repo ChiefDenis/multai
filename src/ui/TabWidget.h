@@ -1,12 +1,14 @@
 #pragma once
 
+#include <QList>
 #include <QWidget>
-#include <QStackedWidget>
 
-class QWidget;
-class QVBoxLayout;
 class QLabel;
 class QPushButton;
+class QStackedWidget;
+class QTabWidget;
+class QVBoxLayout;
+class BrowserTab;
 class ProviderSelectionDialog;
 
 class TabWidget : public QWidget {
@@ -16,14 +18,26 @@ public:
   ~TabWidget() override = default;
 
   void showProviderSelection();
+  BrowserTab* currentTab() const;
+
+  void restoreTabs();
+  void saveTabs() const;
+
+private slots:
+  void onProviderSelected(const QString& providerId);
 
 private:
   void setupEmptyState();
   void setupTabs();
+  BrowserTab* addBrowserTab(BrowserTab* tab, const QString& title);
+  void removeBrowserTab(BrowserTab* tab);
+  void updateEmptyState();
 
   QStackedWidget* m_stackedWidget;
   QWidget* m_emptyStateWidget;
-  QWidget* m_tabsWidget;
+  QTabWidget* m_tabWidget;
   int m_emptyStateIndex;
   int m_tabsIndex;
+  QList<BrowserTab*> m_tabs;
+  BrowserTab* m_currentTab;
 };

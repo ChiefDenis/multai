@@ -1,11 +1,16 @@
 #include "MainWindow.h"
-#include "TabWidget.h"
+#include "LifecycleManager.h"
+#include "ProfileManagementDialog.h"
+#include "SettingsDialog.h"
 #include "SettingsManager.h"
-#include <QMenuBar>
-#include <QToolBar>
+#include "TabWidget.h"
 #include <QAction>
+#include <QApplication>
 #include <QCloseEvent>
+#include <QMenuBar>
+#include <QMessageBox>
 #include <QStyle>
+#include <QToolBar>
 
 MainWindow::MainWindow(QWidget* parent)
   : QMainWindow(parent)
@@ -24,6 +29,8 @@ MainWindow::MainWindow(QWidget* parent)
   SettingsManager* settings = SettingsManager::instance();
   restoreGeometry(settings->windowGeometry());
   restoreState(settings->windowState());
+
+  m_tabWidget->restoreTabs();
 }
 
 void MainWindow::setupMenuBar() {
@@ -36,6 +43,11 @@ void MainWindow::setupMenuBar() {
   connect(newTabAction, &QAction::triggered, this, &MainWindow::onNewTab);
 
   m_fileMenu->addSeparator();
+
+  QAction* profilesAction = m_fileMenu->addAction("&Profiles...");
+  profilesAction->setStatusTip("Manage provider accounts");
+  profilesAction->setToolTip("Create, rename and delete provider accounts");
+  connect(profilesAction, &QAction::triggered, this, &MainWindow::onProfiles);
 
   QAction* settingsAction = m_fileMenu->addAction("&Settings");
   settingsAction->setShortcut(QKeySequence::Preferences);
@@ -114,6 +126,9 @@ void MainWindow::applyTheme() {
 
 void MainWindow::closeEvent(QCloseEvent* event) {
   SettingsManager* settings = SettingsManager::instance();
+  if (m_tabWidget) {
+    m_tabWidget->saveTabs();
+  }
   settings->setWindowGeometry(saveGeometry());
   settings->setWindowState(saveState());
   QMainWindow::closeEvent(event);
@@ -125,10 +140,25 @@ void MainWindow::onNewTab() {
   }
 }
 
+void MainWindow::onProfiles() {
+  ProfileManagementDialog dialog(this);
+  dialog.exec();
+}
+
 void MainWindow::onSettings() {
+  SettingsDialog dialog(this);
+  if (dialog.exec() == QDialog::Accepted) {
+    applyTheme();
+    LifecycleManager::instance()->applySettings();
+  }
 }
 
 void MainWindow::onAbout() {
+  QMessageBox::about(this, "About AI Workspace",
+                     QString("<b>AI Workspace %1</b><br><br>"
+                             "A resource-conscious, multi-provider AI desktop application.<br>"
+                             "Provider web interfaces are embedded with Qt WebEngine.")
+                         .arg(QApplication::applicationVersion()));
 }
 
 void MainWindow::onQuit() {

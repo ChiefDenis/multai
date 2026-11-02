@@ -5,6 +5,8 @@
 #include <QUrl>
 #include <QIcon>
 
+class Profile;
+
 class Provider : public QObject {
   Q_OBJECT
 public:

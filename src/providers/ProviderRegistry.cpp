@@ -1,5 +1,6 @@
 #include "ProviderRegistry.h"
 #include "Provider.h"
+#include "ProviderIcons.h"
 
 ProviderRegistry::ProviderRegistry(QObject* parent)
   : QObject(parent) {
@@ -27,6 +28,10 @@ void ProviderRegistry::initializeProviders() {
   m_providers["perplexity"] = new Provider("perplexity", "Perplexity", QUrl("https://www.perplexity.ai/"), this);
   m_providers["chatgpt"] = new Provider("chatgpt", "ChatGPT", QUrl("https://chatgpt.com/"), this);
   m_providers["kimi"] = new Provider("kimi", "Kimi", QUrl("https://www.kimi.ai/"), this);
+
+  for (Provider* provider : m_providers) {
+    provider->setIcon(providerIcon(provider->id()));
+  }
 }
 
 QList<Provider*> ProviderRegistry::providers() const {

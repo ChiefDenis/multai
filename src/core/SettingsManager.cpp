@@ -54,3 +54,63 @@ QByteArray SettingsManager::windowState() const {
 void SettingsManager::setWindowState(const QByteArray& state) {
   setValue("window/state", state);
 }
+
+bool SettingsManager::lifecycleAutomationEnabled() const {
+  return value("lifecycle/automationEnabled", true).toBool();
+}
+
+void SettingsManager::setLifecycleAutomationEnabled(bool enabled) {
+  setValue("lifecycle/automationEnabled", enabled);
+}
+
+int SettingsManager::freezeDelayMs() const {
+  return value("lifecycle/freezeDelayMs", 5 * 60 * 1000).toInt();
+}
+
+void SettingsManager::setFreezeDelayMs(int msecs) {
+  setValue("lifecycle/freezeDelayMs", msecs);
+}
+
+int SettingsManager::hibernateDelayMs() const {
+  return value("lifecycle/hibernateDelayMs", 30 * 60 * 1000).toInt();
+}
+
+void SettingsManager::setHibernateDelayMs(int msecs) {
+  setValue("lifecycle/hibernateDelayMs", msecs);
+}
+
+bool SettingsManager::respectRecommendedState() const {
+  return value("lifecycle/respectRecommendedState", true).toBool();
+}
+
+void SettingsManager::setRespectRecommendedState(bool respect) {
+  setValue("lifecycle/respectRecommendedState", respect);
+}
+
+bool SettingsManager::memoryPressureEnabled() const {
+  return value("lifecycle/memoryPressureEnabled", true).toBool();
+}
+
+void SettingsManager::setMemoryPressureEnabled(bool enabled) {
+  setValue("lifecycle/memoryPressureEnabled", enabled);
+}
+
+int SettingsManager::memoryPressureThresholdPercent() const {
+  return value("lifecycle/memoryPressureThresholdPercent", 15).toInt();
+}
+
+void SettingsManager::setMemoryPressureThresholdPercent(int percent) {
+  setValue("lifecycle/memoryPressureThresholdPercent", percent);
+}
+
+QString SettingsManager::profileName(const QString& fullId) const {
+  return value("profiles/" + fullId + "/name").toString();
+}
+
+void SettingsManager::setProfileName(const QString& fullId, const QString& name) {
+  setValue("profiles/" + fullId + "/name", name);
+}
+
+void SettingsManager::removeProfileName(const QString& fullId) {
+  reset("profiles/" + fullId + "/name");
+}

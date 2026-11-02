@@ -4,8 +4,8 @@
 
 - **Purpose**: Authoritative progress ledger for AI Workspace project
 - **Status**: Active
-- **Last Updated**: 2026-10-10
-- **Current Stage**: Initialisation
+- **Last Updated**: 2026-10-30
+- **Current Stage**: Stage 7 (Recovery and Error Handling) - partially complete
 
 ## Progress Summary
 
@@ -13,15 +13,19 @@
 |-------|--------|-----------------|-------|
 | Initialisation | ✅ Complete | 2026-10-10 | Environment inspected, all documentation created |
 | Stage 1: Project Foundation | ✅ Complete | 2026-10-10 | CMake build system, Qt skeleton, UI components |
-| Stage 2: Provider System | ⏳ Not Started | - | Provider definitions, configuration |
-| Stage 3: Profile Management | ⏳ Not Started | - | Profile creation, isolation, persistence |
-| Stage 4: Basic Browser Integration | ⏳ Not Started | - | QWebEngineView, tab management |
-| Stage 5: Lifecycle State Machine | ⏳ Not Started | - | Tab states, transitions, synchronization |
-| Stage 6: Lifecycle Automation | ⏳ Not Started | - | Freezing, hibernation, LRU, memory pressure |
-| Stage 7: Recovery and Error Handling | ⏳ Not Started | - | Renderer crashes, failed reloads |
-| Stage 8: UI Polish | ⏳ Not Started | - | Libadwaita design, themes, layouts |
-| Stage 9: Testing and Performance | ⏳ Not Started | - | Unit tests, integration tests, measurement |
-| Stage 10: Documentation and Packaging | ⏳ Not Started | - | README, installation, packaging |
+| Stage 2: Provider System | ✅ Complete | 2026-10-30 | Provider definitions, icons, selection and account UI |
+| Stage 3: Profile Management | ✅ Complete | 2026-10-30 | Profile creation, isolation, persistence, management UI |
+| Stage 4: Basic Browser Integration | ✅ Complete | 2026-10-30 | WebEngine view/page/profile, tab management |
+| Stage 5: Lifecycle State Machine | ✅ Complete | 2026-10-30 | Tab states, transitions, Qt synchronisation, persistence |
+| Stage 6: Lifecycle Automation | ✅ Complete | 2026-10-30 | Freezing, hibernation, LRU, memory pressure |
+| Stage 7: Recovery and Error Handling | ⚠️ Partial | 2026-10-30 | Crash detection and bounded reload done; error UI pending |
+| Stage 8: UI Polish | ⚠️ Partial | - | Themes, icons, tooltips done; full Libadwaita pass pending |
+| Stage 9: Testing and Performance | ⚠️ Partial | - | 7 unit tests passing; integration/perf measurement pending |
+| Stage 10: Documentation and Packaging | ⏳ Not Started | - | Packaging, installation, user documentation |
+
+Stages 2-6 were delivered together in one work phase because the browser engine,
+profile manager and lifecycle state machine are mutually dependent. That phase is
+documented as a single section below, matching the naming used in MISTAKES.md.
 
 ## Detailed Progress
 
@@ -265,234 +269,209 @@ This stage includes:
 - Window geometry and state persist across restarts using QSettings
 - Settings stored in INI format at ~/.config/ai-workspace/ai-workspace.conf
 
-## Stage 2: Provider System (Not Started)
+## Stage 2: Provider System, Browser Engine, Profiles and Lifecycle (Complete)
 
-**Status**: ⏳ Not Started
-**Start Date**: -
-**End Date**: -
+**Status**: ✅ Complete
+**Date**: 2026-10-14 to 2026-10-30
 
-#### Planned Tasks
+This phase delivered SPEC stages 2-6 together, because the browser engine, profile
+manager and lifecycle state machine are mutually dependent.
 
-1. Define Provider data structure
-2. Implement ProviderRegistry singleton
-3. Create provider definitions for all 9 providers
-4. Add provider icons to resources
-5. Implement ProviderSelectionDialog
-6. Implement provider configuration UI
-7. Test provider loading and selection
+#### Tasks Completed
+
+1. **Provider System (SPEC Stage 2)**
+   - Provider data structure with id, display name, URL and icon ✅
+   - ProviderRegistry with all 9 providers, icons assigned from the registry ✅
+   - Provider icons generated at runtime (rounded brand tiles, no binary assets) ✅
+   - ProviderSelectionDialog with search/filter and per-provider icons ✅
+   - Multi-account selection through ProfileSelectionDialog ✅
+
+2. **Profile Management (SPEC Stage 3)**
+   - Profile, ProfileManager and ProfileStorage ✅
+   - Profile creation, renaming and deletion with uniqueness enforcement ✅
+   - Isolated QWebEngineProfile per account with dedicated persistent storage and cache paths ✅
+   - Owner-only (0700) profile directories ✅
+   - Profile names persisted in QSettings; profiles re-registered from disk on startup ✅
+   - ProfileManagementDialog (create / rename / delete, grouped by provider) ✅
+
+3. **Browser Integration (SPEC Stage 4)**
+   - BrowserView (QWebEngineView subclass) ✅
+   - BrowserTab with lazy page creation (no page until a tab is activated) ✅
+   - TabWidget backed by a real QTabWidget with provider icons and close handling ✅
+   - Provider URL loading; page titles reflected in tab labels ✅
+
+4. **Lifecycle State Machine (SPEC Stage 5)**
+   - Six explicit states: Unloaded, Loading, Active, Frozen, Discarded, Closing ✅
+   - Transition table expressed as a testable free function (canTransition) ✅
+   - Synchronisation with QWebEnginePage lifecycleState ✅
+   - Tab metadata persistence and restoration (TabStore; restored as Unloaded) ✅
+
+5. **Lifecycle Automation (SPEC Stage 6)**
+   - Configurable freeze and hibernate delays via SettingsManager and SettingsDialog ✅
+   - Automatic freezing of inactive tabs after the freeze delay ✅
+   - Automatic hibernation after the hibernate delay ✅
+   - Least-recently-used selection that never selects the visible tab ✅
+   - Linux memory-pressure detection (/proc/meminfo, with optional PSI support) ✅
+   - Memory-pressure-triggered hibernation of the LRU inactive tab (one tab per event) ✅
+
+6. **Recovery (SPEC Stage 7, partial)**
+   - Renderer crash detection via renderProcessTerminated ✅
+   - Single bounded automatic reload after a crash (no reload loops) ✅
+   - Dedicated error UI with manual retry ⏳ not implemented
+
+7. **Correctness fixes applied to the in-flight work**
+   - Removed Profile self-deletion; ProfileManager is now the single owner (fixed double free) ✅
+   - Tab deactivation wired to the tab widget, so freeze timers actually start ✅
+   - Delays read from settings instead of hardcoded values ✅
+   - freeze() respects recommendedState instead of only hibernate() ✅
+   - Renderer crash path recreated the page correctly (previously a no-op) ✅
+   - TestClock wired into LifecycleManager instead of being dead code ✅
 
 #### Acceptance Criteria
 
-- [ ] All 9 providers defined
-- [ ] ProviderRegistry loads all providers
-- [ ] ProviderSelectionDialog displays all providers
-- [ ] Provider icons display correctly
-- [ ] Provider selection works
+- [x] All 9 providers defined with icons
+- [x] ProviderRegistry loads all providers
+- [x] ProviderSelectionDialog displays all providers
+- [x] Provider selection and multi-account selection work
+- [x] Profiles can be created, renamed and deleted
+- [x] Profile data persists across restarts and is isolated per account
+- [x] Tabs load provider websites in an embedded browser view
+- [x] All 6 lifecycle states and their transitions are implemented and tested
+- [x] Tabs freeze and hibernate after configurable delays
+- [x] Memory pressure triggers hibernation of the LRU inactive tab
 
 #### Build/Test Results
 
-**Status**: Not started
+**Build Status**: ✅ Success
+- `cmake -B build -S . -DCMAKE_BUILD_TYPE=Debug` - successful
+- `cmake --build build -j4` - successful
+- Executable: build/ai-workspace
+
+**Test Status**: ✅ 7/7 tests passed (9.00 s total)
+- test_providerregistry: Passed (1.88 s)
+- test_settingsmanager: Passed (1.51 s)
+- test_lifecycle: Passed (0.04 s)
+- test_lifecyclemanager: Passed (0.04 s)
+- test_memorymonitor: Passed (0.05 s)
+- test_tabstore: Passed (1.10 s)
+- test_profilemanager: Passed (4.31 s)
+
+**Runtime**: ✅ Success
+- `QT_QPA_PLATFORM=offscreen ./build/ai-workspace --version` prints "AI Workspace 0.1.0" and exits 0
+- Application remained alive under the offscreen platform for the full 8 s smoke window
 
 #### Blockers
 
-**None known**
+**None**
 
-## Stage 3: Profile Management (Not Started)
+#### Technical Uncertainties Resolved
 
-**Status**: ⏳ Not Started
-**Start Date**: -
-**End Date**: -
+- **Profile ownership**: ProfileManager now owns Profile objects; Profile no longer deletes
+  itself, which removes the previous dangling-pointer/double-free on deref.
+- **Qt lifecycle API**: lifecycleState and recommendedState behave as documented; the
+  recommendedState gate is implemented but its exact triggers remain provider-dependent.
+- **Memory pressure**: /proc/meminfo MemAvailable is a reliable signal; PSI
+  (/proc/pressure/memory) is parsed when available but not required.
 
-#### Planned Tasks
+## Stage 3: Profile Management (Complete)
 
-1. Define Profile data structure
-2. Implement ProfileManager
-3. Implement ProfileStorage (filesystem operations)
-4. Implement profile creation
-5. Implement profile deletion
-6. Implement profile renaming
-7. Implement ProfileManagementDialog
-8. Test profile isolation
-9. Test profile persistence
+**Status**: ✅ Complete
+**Date**: 2026-10-30
 
-#### Acceptance Criteria
+Delivered as part of the Stage 2 work phase above. Profile creation, renaming and deletion
+are implemented and verified; each account gets an isolated QWebEngineProfile with
+owner-only (0700) directory permissions, display names persist in QSettings, and profiles
+are re-registered from disk on startup.
 
-- [ ] Profiles can be created and deleted
-- [ ] Profile data persists across restarts
-- [ ] Profile isolation works (separate cookies, storage)
-- [ ] Profile permissions are correct (user-only)
-- [ ] ProfileManagementDialog works
+**Verification**: tests/test_profilemanager.cpp passed (4.31 s) covering directory creation,
+uniqueness, rename persistence, refusal to delete in-use profiles, and startup scanning.
 
-#### Build/Test Results
+**Uncertainty resolved**: profile ownership. ProfileManager owns Profile objects and Profile
+no longer deletes itself, which removed the previous dangling-pointer/double-free on deref.
 
-**Status**: Not started
+## Stage 4: Basic Browser Integration (Complete)
+
+**Status**: ✅ Complete
+**Date**: 2026-10-30
+
+Delivered as part of the Stage 2 work phase above. BrowserView, BrowserTab and TabWidget are
+implemented; QWebEnginePage and QWebEngineProfile are integrated, provider URLs load in
+embedded views, and page titles are reflected in tab labels.
+
+**Design deviation**: no separate TabManager class was introduced. Tab lifecycle coordination
+is split between TabWidget (tab ownership, activation and close) and LifecycleManager (delay,
+LRU and memory-pressure policy), keeping each type to a single responsibility. This is
+recorded in docs/DECISIONS.md.
+
+**Verification**: build and offscreen runtime smoke test passed. Live provider loading has not
+been verified interactively in this environment.
+
+**Open technical uncertainty**: provider embedding restrictions (X-Frame-Options, CSP) and bot
+detection are provider-specific and have not been exhaustively verified against live sites.
+
+## Stage 5: Lifecycle State Machine (Complete)
+
+**Status**: ✅ Complete
+**Date**: 2026-10-30
+
+Delivered as part of the Stage 2 work phase above. All six states are defined, the transition
+table is implemented as a testable free function (canTransition in TabMetadata.h), and the
+application state is synchronised with QWebEnginePage::lifecycleState. Tab metadata is
+persisted to QSettings (TabStore) on close and restored on startup as Unloaded, so no page is
+created until a tab is activated.
+
+**Verification**: tests/test_lifecycle.cpp passed (0.04 s) covering the enum, every transition
+pair and string round-tripping; tests/test_tabstore.cpp passed (1.10 s) covering persistence,
+restoration, index handling and rejection of malformed entries.
+
+**Uncertainty remaining**: the exact timing and triggers of Qt's own lifecycleState and
+recommendedState changes are provider- and content-dependent and were not exhaustively
+characterised, so the recommendedState gate is user-configurable.
+
+## Stage 6: Lifecycle Automation (Complete)
+
+**Status**: ✅ Complete
+**Date**: 2026-10-30
+
+Delivered as part of the Stage 2 work phase above. Freeze and hibernate delays are configurable
+through SettingsManager and SettingsDialog; inactive tabs freeze after the freeze delay and
+hibernate after the hibernate delay; LifecycleManager selects the least recently used eligible
+tab and never selects the visible tab; Linux memory pressure is detected from /proc/meminfo
+(MemAvailable) with optional PSI parsing, and one LRU tab is hibernated per pressure event.
+
+**Verification**: tests/test_lifecyclemanager.cpp passed (0.04 s) covering delay configuration,
+current-tab tracking, LRU selection, exclusion of visible and non-suspendable tabs, and the
+memory-pressure hibernation path; tests/test_memorymonitor.cpp passed (0.05 s) covering
+/proc/meminfo and PSI parsing.
+
+**Uncertainty remaining**: an appropriate memory-pressure threshold is workload-dependent. The
+default is 15% available memory and it is user-configurable. Qt's recommendedState behaviour in
+practice could not be characterised exhaustively.
+
+## Stage 7: Recovery and Error Handling (Partial)
+
+**Status**: ⚠️ Partial
+**Date**: 2026-10-30
+
+**Implemented**: renderer crash detection via QWebEnginePage::renderProcessTerminated, and a
+single bounded automatic reload per crash (a second crash in the same reload cycle moves the tab
+to Unloaded instead of retrying, so there are no reload loops). Failed loads return the tab to
+the Unloaded state rather than retrying.
+
+**Not implemented**: a dedicated error UI (inline message/banner) and an explicit manual retry
+action. These are the remaining items for this stage.
+
+**Verification**: build and offscreen runtime smoke test passed. Renderer crashes were not
+induced in this environment, so the recovery path is implemented but not yet exercised live.
 
 #### Blockers
 
-**None known**
+**None**
 
 #### Technical Uncertainties
 
-- Profile ownership and cleanup in Qt WebEngine
-- Profile data persistence across application restarts
-
-## Stage 4: Basic Browser Integration (Not Started)
-
-**Status**: ⏳ Not Started
-**Start Date**: -
-**End Date**: -
-
-#### Planned Tasks
-
-1. Implement BrowserView (QWebEngineView wrapper)
-2. Implement BrowserTab (core browser tab)
-3. Implement TabWidget (tab container)
-4. Implement TabManager (tab lifecycle coordination)
-5. Integrate QWebEnginePage
-6. Integrate QWebEngineProfile
-7. Implement basic navigation
-8. Implement provider loading
-9. Test provider websites load correctly
-
-#### Acceptance Criteria
-
-- [ ] BrowserView embeds QWebEngineView
-- [ ] BrowserTab can load provider URLs
-- [ ] TabWidget manages multiple tabs
-- [ ] TabManager coordinates tab lifecycle
-- [ ] All 9 providers can be loaded
-- [ ] Navigation works correctly
-
-#### Build/Test Results
-
-**Status**: Not started
-
-#### Blockers
-
-**None known**
-
-#### Technical Uncertainties
-
-- Provider embedding restrictions (X-Frame-Options, CSP)
-- Provider bot detection
-
-## Stage 5: Lifecycle State Machine (Not Started)
-
-**Status**: ⏳ Not Started
-**Start Date**: -
-**End Date**: -
-
-#### Planned Tasks
-
-1. Define LifecycleState enum
-2. Implement tab state machine
-3. Implement state transition logic
-4. Synchronize with Qt lifecycleState
-5. Implement state persistence
-6. Implement state restoration
-7. Test all state transitions
-8. Test state persistence
-
-#### Acceptance Criteria
-
-- [ ] All 6 states defined (Unloaded, Loading, Active, Frozen, Discarded, Closing)
-- [ ] State transitions work correctly
-- [ ] State synchronized with Qt lifecycleState
-- [ ] States persist across restarts
-- [ ] States restore correctly on startup
-
-#### Build/Test Results
-
-**Status**: Not started
-
-#### Blockers
-
-**None known**
-
-#### Technical Uncertainties
-
-- Exact behaviour of Qt lifecycleState transitions
-- recommendedState triggers and meaning
-
-## Stage 6: Lifecycle Automation (Not Started)
-
-**Status**: ⏳ Not Started
-**Start Date**: -
-**End Date**: -
-
-#### Planned Tasks
-
-1. Implement LifecycleManager
-2. Implement automatic freezing logic
-3. Implement automatic hibernation logic
-4. Implement LRU tracking
-5. Implement memory pressure detection (Linux)
-6. Implement memory pressure response
-7. Add lifecycle settings to SettingsDialog
-8. Test automatic freezing
-9. Test automatic hibernation
-10. Test memory pressure response
-
-#### Acceptance Criteria
-
-- [ ] Tabs freeze after configurable delay
-- [ ] Tabs hibernate after configurable delay
-- [ ] LRU selection works correctly
-- [ ] Memory pressure detected on Linux
-- [ ] Memory pressure triggers hibernation
-- [ ] Settings control delays and thresholds
-
-#### Build/Test Results
-
-**Status**: Not started
-
-#### Blockers
-
-**None known**
-
-#### Technical Uncertainties
-
-- Linux memory pressure detection APIs
-- Appropriate thresholds for memory pressure
-- Qt's recommendedState behaviour in practice
-
-## Stage 7: Recovery and Error Handling (Not Started)
-
-**Status**: ⏳ Not Started
-**Start Date**: -
-**End Date**: -
-
-#### Planned Tasks
-
-1. Implement renderProcessTerminated signal handler
-2. Implement renderer crash detection
-3. Implement automatic reload on crash
-4. Implement failed reload handling
-5. Implement error UI
-6. Implement manual retry option
-7. Test renderer crash recovery
-8. Test failed reload handling
-
-#### Acceptance Criteria
-
-- [ ] Renderer crashes detected
-- [ ] Automatic reload attempted on crash
-- [ ] Failed reloads show error UI
-- [ ] Manual retry works
-- [ ] Application remains stable after crashes
-
-#### Build/Test Results
-
-**Status**: Not started
-
-#### Blockers
-
-**None known**
-
-#### Technical Uncertainties
-
-- Qt renderer crash behaviour
-- Memory leaks after renderer crashes
+- Qt renderer crash behaviour under sustained/repeated crashes (not load-tested)
+- Memory behaviour after repeated renderer crashes (not measured)
 
 ## Stage 8: UI Polish (Not Started)
 
@@ -675,9 +654,76 @@ This stage includes:
 | tests/test_settingsmanager.cpp | Created | 2026-10-10 | Settings manager tests |
 | README.md | Modified | 2026-10-10 | Updated with Stage 1 status and build instructions |
 
+### Stage 2 work phase (Provider System, Browser Engine, Profiles, Lifecycle)
+
+| File | Change Type | Date | Notes |
+|------|-------------|------|-------|
+| CMakeLists.txt | Modified | 2026-10-30 | WebEngineWidgets, new sources, new include dirs |
+| src/core/SettingsManager.h/.cpp | Modified | 2026-10-30 | Lifecycle, profile-name and workspace settings accessors |
+| src/core/TabStore.h/.cpp | Created | 2026-10-30 | Open-tab persistence and restoration |
+| src/providers/ProviderIcons.h/.cpp | Created | 2026-10-30 | Runtime-generated provider icons |
+| src/providers/ProviderRegistry.cpp | Modified | 2026-10-30 | Assigns an icon to every provider |
+| src/profiles/Profile.h/.cpp | Modified | 2026-10-30 | Single-owner profile, lazy QWebEngineProfile, names |
+| src/profiles/ProfileStorage.h/.cpp | Modified | 2026-10-30 | Profile listing, directory permissions |
+| src/profiles/ProfileManager.h/.cpp | Modified | 2026-10-30 | Create/rename/delete, startup scan, ownership fix |
+| src/lifecycle/LifecycleTarget.h | Created | 2026-10-30 | Lifecycle abstraction for automation and tests |
+| src/lifecycle/TabMetadata.h | Modified | 2026-10-30 | canTransition, lifecycleStateFromString |
+| src/lifecycle/BrowserTab.h/.cpp | Modified | 2026-10-30 | LifecycleTarget, configurable delays, recovery |
+| src/lifecycle/LifecycleManager.h/.cpp | Modified | 2026-10-30 | LRU, delays, current tab, memory pressure |
+| src/lifecycle/MemoryMonitor.h/.cpp | Created | 2026-10-30 | /proc/meminfo and PSI memory-pressure detection |
+| src/lifecycle/TestClock.h/.cpp | Modified | 2026-10-30 | Now used as the injectable clock |
+| src/ui/TabWidget.h/.cpp | Modified | 2026-10-30 | Real tabs, accounts, deactivation, persistence |
+| src/ui/MainWindow.h/.cpp | Modified | 2026-10-30 | Profiles/Settings/About actions, tab restore/save |
+| src/ui/ProfileSelectionDialog.h/.cpp | Created | 2026-10-30 | Multi-account selection |
+| src/ui/ProfileManagementDialog.h/.cpp | Created | 2026-10-30 | Account management UI |
+| src/ui/SettingsDialog.h/.cpp | Created | 2026-10-30 | Theme and lifecycle settings UI |
+| tests/CMakeLists.txt | Modified | 2026-10-30 | Six test targets plus shared include dirs |
+| tests/test_lifecycle.cpp | Modified | 2026-10-30 | Transition table and parsing tests |
+| tests/test_lifecyclemanager.cpp | Created | 2026-10-30 | LRU, delays, memory pressure |
+| tests/test_memorymonitor.cpp | Created | 2026-10-30 | meminfo and PSI parsing |
+| tests/test_tabstore.cpp | Created | 2026-10-30 | Tab persistence round-trip |
+| tests/test_profilemanager.cpp | Created | 2026-10-30 | Profile lifecycle and storage |
+| AI_PROGRESS.md | Modified | 2026-10-30 | Stage statuses and results reconciled with code |
+| ARCHITECTURE.md | Modified | 2026-10-30 | Implemented vs not-implemented reconciled |
+| README.md | Modified | 2026-10-30 | Current implementation and future plans reconciled |
+| docs/DECISIONS.md | Modified | 2026-10-30 | New decisions recorded |
+| docs/TESTING.md | Modified | 2026-10-30 | Test layout and actual results reconciled |
+| MISTAKES.md | Modified | 2026-10-30 | New build mistakes recorded |
+
 ## Known Issues
 
-**None**
+### Defects fixed in the Stage 2 work phase (previously unrecorded)
+
+1. **Profile double free**: `Profile::deref()` called `deleteLater()` while `ProfileManager`
+   still owned the object, leaving a dangling pointer in its map. Resolved by making
+   ProfileManager the single owner of Profile objects.
+2. **Freeze timers never started**: `TabWidget::currentChanged` only activated the incoming tab
+   and never called `onTabDeactivated()` for the outgoing one. Resolved by tracking the current
+   tab and deactivating the previous one.
+3. **Hardcoded delays**: freeze/hibernate delays were literals inside `BrowserTab` and ignored
+   `SettingsManager`. Resolved; both delays are now configurable through the settings dialog.
+4. **`freeze()` ignored recommendedState** (only `hibernate()` checked it), contrary to
+   AGENTS.md rule 10. Resolved by applying the recommendedState gate to both.
+5. **Crash recovery was a no-op**: `onRenderProcessTerminated()` called `createPage()`, which
+   returned early because `m_pageCreated` was still true. Resolved; the page is recreated and
+   reloaded once, bounded to prevent reload loops.
+6. **Empty automation hooks**: `LifecycleManager::scheduleFreeze()`/`scheduleHibernate()` had
+   empty bodies and LRU selection was never invoked. Resolved.
+7. **Dead TestClock**: `src/lifecycle/TestClock` was unused. Resolved by wiring it into
+   `LifecycleManager`'s clock so LRU ordering is deterministically testable.
+8. **`LifecycleState` transitions rejected valid changes**: `Loading -> Unloaded` was not
+   permitted, so a failed load could not leave the Loading state. Resolved in `canTransition()`.
+
+### Remaining known limitations
+
+1. **Provider embedding is unverified**: some providers may block embedding via
+   X-Frame-Options, CSP, User-Agent or bot detection. The application does not circumvent
+   these restrictions.
+2. **No error UI**: failed loads and renderer crashes fall back to the Unloaded state with no
+   dedicated user-facing message or manual retry action (Stage 7 remainder).
+3. **Performance unmeasured**: the targets in docs/PERFORMANCE.md have not been measured.
+4. **Stages 8-10 incomplete**: full UI polish, integration/performance testing and packaging
+   are not finished.
 
 ## Risks and Mitigations
 
@@ -722,20 +768,31 @@ This stage includes:
 - Stage 1 completed successfully with full UI skeleton and provider catalogue
 - All tests passing
 - Application builds and launches correctly
+- Stage 2 work phase (SPEC stages 2-6) completed: provider icons, multi-account profiles,
+  browser embedding, lifecycle state machine, automation and memory pressure
+- 7 unit tests passing; build and offscreen runtime smoke test verified (2026-10-30)
+- Documentation (AI_PROGRESS.md, ARCHITECTURE.md, README.md, docs/DECISIONS.md,
+  docs/TESTING.md, MISTAKES.md) reconciled with the actual code state
+- All Stage 2 work phase changes are uncommitted as of 2026-10-30
 
 ## Next Steps
 
-**Awaiting user authorisation to begin Stage 2: Provider System** OR **Stage 3: Profile Management**
+**Next stage**: Stage 7 remainder (error UI and manual retry), then Stage 8 (UI polish),
+Stage 9 (integration and performance testing) and Stage 10 (packaging).
 
-Stage 2 (Provider System) will:
-- Enhance provider configuration with icons
-- Add provider-specific settings
-- Implement provider metadata persistence
+Immediate follow-ups, in priority order:
 
-Stage 3 (Profile Management) will:
-- Implement ProfileManager
-- Implement profile creation, deletion, renaming
-- Implement profile isolation
-- Implement ProfileManagementDialog
+1. **Stage 7 remainder** - add a user-visible error state for failed loads and crashed
+   renderers, with a manual retry action (explicitly required by SPEC.md Stage 7).
+2. **Commit the Stage 2 work phase** - all of the work described above is currently
+   uncommitted; only Stage 1 exists in git history.
+3. **Stage 9 measurement** - measure the memory and timing targets in docs/PERFORMANCE.md
+   (baseline, per-tab, frozen, discarded, startup, tab activation) and record actual values.
+4. **Stage 8 polish** - complete the Libadwaita-inspired pass (spacing, tab bar styling,
+   explicit status indicators for Frozen and Discarded tabs).
+5. **Provider verification** - open each of the 9 providers, record which ones block
+   embedding, then document the results in README.md.
+6. **Stage 10 packaging** - RPM spec, desktop file, application icon, install verification
+   on a clean Fedora 43 system.
 
-**User action required**: Authorise next stage implementation
+**User action required**: Authorise the next stage implementation.

@@ -893,9 +893,9 @@ persistence/
 
 ## 13. Implementation Status
 
-### Stage 1: Project Foundation (Complete)
+### Implemented Components (Stages 1-6, as of 2026-10-30)
 
-The following components have been implemented:
+The following components are implemented in the codebase:
 
 #### Core Layer
 - **Application**: ✅ Implemented (QApplication subclass)
@@ -905,78 +905,90 @@ The following components have been implemented:
 
 - **SettingsManager**: ✅ Implemented (QSettings wrapper with INI format)
   - Location: src/core/SettingsManager.h, SettingsManager.cpp
-  - Singleton pattern
-  - Provides typed access to settings
-  - Signals setting changes
-  - Stores theme, window geometry, window state
+  - Provides typed access to settings and signals setting changes
+  - Stores theme, window geometry/state, lifecycle policy, profile names and open tabs
+
+- **TabStore**: ✅ Implemented (QSettings-backed workspace persistence)
+  - Location: src/core/TabStore.h, TabStore.cpp
+  - Persists open tab metadata (provider, account, URL, title) and the current index
+  - Restores tabs as Unloaded so no page is created until a tab is activated
 
 #### Provider Layer
-- **Provider**: ✅ Implemented (data structure with id, displayName, url, icon)
-  - Location: src/providers/Provider.h, Provider.cpp
-  - Simple data class
-  - Stores provider metadata
+- **Provider**: ✅ Implemented (id, displayName, url, icon)
+- **ProviderRegistry**: ✅ Implemented (singleton with all 9 providers)
+  - Registry-driven; no provider data is hardcoded in the UI
+- **ProviderIcons**: ✅ Implemented (runtime icon generation)
+  - Location: src/providers/ProviderIcons.h, ProviderIcons.cpp
+  - Renders rounded brand tiles per provider, so no binary icon assets are needed
 
-- **ProviderRegistry**: ✅ Implemented (singleton with all 9 providers configured)
-  - Location: src/providers/ProviderRegistry.h, ProviderRegistry.cpp
-  - Singleton pattern
-  - Loads all 9 providers on initialization
-  - Provides provider lookup by ID
-  - No hardcoded UI logic - UI reads from registry
+#### Profile Layer
+- **Profile**: ✅ Implemented
+  - Location: src/profiles/Profile.h, Profile.cpp
+  - Represents one account for one provider; lazily creates its QWebEngineProfile
+- **ProfileManager**: ✅ Implemented (single owner of Profile objects)
+  - Location: src/profiles/ProfileManager.h, ProfileManager.cpp
+  - create/rename/delete, per-provider listing, startup scan of profile directories
+- **ProfileStorage**: ✅ Implemented
+  - Location: src/profiles/ProfileStorage.h, ProfileStorage.cpp
+  - Directory layout, listing and owner-only (0700) permissions
+
+#### Lifecycle Layer
+- **TabMetadata / LifecycleState**: ✅ Implemented
+  - Location: src/lifecycle/TabMetadata.h, TabMetadata.cpp
+  - Six states plus a testable `canTransition(from, to)` transition table
+- **LifecycleTarget**: ✅ Implemented
+  - Location: src/lifecycle/LifecycleTarget.h
+  - Abstract interface the automation layer operates on, which removes the
+    dependency of LifecycleManager on Qt WebEngine and makes it unit-testable
+- **BrowserTab**: ✅ Implemented
+  - Location: src/lifecycle/BrowserTab.h, BrowserTab.cpp
+  - QWidget + LifecycleTarget; lazy page creation, configurable freeze/hibernate
+    timers, recommendedState gate, bounded crash reload
+- **BrowserView**: ✅ Implemented (QWebEngineView subclass)
+- **LifecycleManager**: ✅ Implemented
+  - Location: src/lifecycle/LifecycleManager.h, LifecycleManager.cpp
+  - Delay configuration, current-tab tracking, LRU selection, memory-pressure response
+- **MemoryMonitor**: ✅ Implemented
+  - Location: src/lifecycle/MemoryMonitor.h, MemoryMonitor.cpp
+  - Reads /proc/meminfo (MemAvailable) and parses /proc/pressure/memory when present
+- **TestClock**: ✅ Implemented (injectable clock used by LifecycleManager for deterministic tests)
 
 #### UI Layer
-- **MainWindow**: ✅ Implemented (QMainWindow with Libadwaita-inspired design)
-  - Location: src/ui/MainWindow.h, MainWindow.cpp
-  - Menu bar with File and Help menus
-  - Toolbar with New Tab button
-  - Keyboard shortcuts (Ctrl+N, Ctrl+,, Ctrl+Q)
-  - Tooltips on all controls
-  - Window geometry and state persistence
-  - Basic theming (light/dark/system) with CSS stylesheets
-  - Libadwaita-inspired design (rounded corners, clean typography)
-
-- **TabWidget**: ✅ Implemented (QWidget with empty-state view)
-  - Location: src/ui/TabWidget.h, TabWidget.cpp
-  - Note: Inherits from QWidget, not QTabWidget (browser tabs not yet implemented)
-  - Shows empty state when no tabs open
-  - Stacked widget to switch between empty state and tabs
-  - "New Tab" button in empty state
-  - Calls ProviderSelectionDialog
-
-- **ProviderSelectionDialog**: ✅ Implemented (QDialog with provider catalogue)
-  - Location: src/ui/ProviderSelectionDialog.h, ProviderSelectionDialog.cpp
-  - Lists all 9 providers from ProviderRegistry
-  - Search/filter functionality
-  - Double-click to select
-  - Tooltips on list items
-  - Reads from ProviderRegistry (not hardcoded)
+- **MainWindow**: ✅ Implemented
+  - Menu bar with New Tab, Profiles, Settings and Quit; Help menu with About
+  - Toolbar, keyboard shortcuts, tooltips, geometry/state persistence
+  - Saves open tabs on close and restores them on startup
+- **TabWidget**: ✅ Implemented (QWidget hosting a real QTabWidget)
+  - Empty state when no tabs are open; tab activation/deactivation, close handling,
+    provider icons, state tooltips, open-tab persistence
+- **ProviderSelectionDialog**: ✅ Implemented (provider catalogue with search/filter)
+- **ProfileSelectionDialog**: ✅ Implemented (multi-account selection for a provider)
+- **ProfileManagementDialog**: ✅ Implemented (create/rename/delete accounts)
+- **SettingsDialog**: ✅ Implemented (theme, lifecycle delays, recommendedState gate,
+  memory-pressure toggle and threshold)
 
 #### Tests
-- **test_providerregistry**: ✅ Implemented
-  - Location: tests/test_providerregistry.cpp
-  - Tests singleton instance
-  - Tests provider count (9 providers)
-  - Tests provider lookup by ID
-  - Tests all provider IDs present
+- **test_providerregistry**: provider count, lookup, IDs
+- **test_settingsmanager**: values, reset, theme, geometry
+- **test_lifecycle**: state enum, transition table, string round-tripping
+- **test_lifecyclemanager**: LRU, current-tab tracking, delays, memory pressure
+- **test_memorymonitor**: /proc/meminfo and PSI parsing, threshold clamping
+- **test_tabstore**: persistence round-trip, index handling, malformed entries
+- **test_profilemanager**: profile lifecycle, uniqueness, rename persistence, storage
 
-- **test_settingsmanager**: ✅ Implemented
-  - Location: tests/test_settingsmanager.cpp
-  - Tests singleton instance
-  - Tests value storage and retrieval
-  - Tests setting reset
-  - Tests theme persistence
-  - Tests window geometry persistence
+All 7 test executables pass (`ctest --test-dir build --output-on-failure`).
 
 #### Not Yet Implemented
-- TabManager (Stage 4)
-- LifecycleManager (Stage 5)
-- ProfileManager (Stage 3)
-- BrowserTab (Stage 4)
-- BrowserView (Stage 4)
-- WorkspaceDatabase (future)
-- All browser integration components (Stage 4+)
-- Real tab functionality (QTabWidget with browser views)
-- Profile creation and management
-- Browser lifecycle management
+- Error UI and manual retry for failed loads / crashed renderers (Stage 7 remainder)
+- Full Libadwaita polish pass and explicit Frozen/Discarded status indicators (Stage 8)
+- Integration and performance test suites and recorded measurements (Stage 9)
+- WorkspaceDatabase (SQLite) - QSettings is sufficient so far, so not introduced
+- Packaging: RPM spec, desktop file, application icon (Stage 10)
+
+#### Deliberate design deviations from the original architecture draft
+- **No TabManager class**: tab ownership lives in TabWidget and lifecycle policy in
+  LifecycleManager, so no third coordinating class was introduced.
+- **No SQLite WorkspaceDatabase yet**: tab metadata fits comfortably in QSettings.
 
 ## 14. Extension Points
 
