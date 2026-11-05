@@ -155,3 +155,84 @@ target_link_libraries(test_recovery PRIVATE
 target_include_directories(test_recovery PRIVATE ${TEST_INCLUDE_DIRS})
 
 add_test(NAME test_recovery COMMAND test_recovery)
+
+# UI Polish & Theming test
+qt_add_executable(test_ui_polish
+  test_ui_polish.cpp
+  ../src/ui/Theme.cpp
+  ../src/providers/ProviderIcons.cpp
+)
+
+target_link_libraries(test_ui_polish PRIVATE
+  Qt6::Core
+  Qt6::Test
+  Qt6::Widgets
+)
+
+target_include_directories(test_ui_polish PRIVATE ${TEST_INCLUDE_DIRS})
+
+add_test(NAME test_ui_polish COMMAND test_ui_polish)
+
+# Sidebar test
+qt_add_executable(test_sidebar
+  test_sidebar.cpp
+  ../src/ui/Sidebar.cpp
+  ../src/providers/Provider.cpp
+  ../src/providers/ProviderRegistry.cpp
+  ../src/providers/ProviderIcons.cpp
+)
+
+target_link_libraries(test_sidebar PRIVATE
+  Qt6::Core
+  Qt6::Test
+  Qt6::Widgets
+  Qt6::WebEngineWidgets
+)
+
+target_include_directories(test_sidebar PRIVATE ${TEST_INCLUDE_DIRS})
+
+add_test(NAME test_sidebar COMMAND test_sidebar)
+
+# BrowserWorkspace test
+qt_add_executable(test_browserworkspace
+  test_browserworkspace.cpp
+  ../src/ui/BrowserWorkspace.cpp
+  ../src/lifecycle/BrowserTab.cpp
+  ../src/lifecycle/BrowserView.cpp
+  ../src/lifecycle/LifecycleManager.cpp
+  ../src/lifecycle/MemoryMonitor.cpp
+  ../src/lifecycle/TabMetadata.cpp
+  ../src/lifecycle/TestClock.cpp
+  ../src/profiles/Profile.cpp
+  ../src/profiles/ProfileManager.cpp
+  ../src/profiles/ProfileStorage.cpp
+  ../src/core/SettingsManager.cpp
+)
+
+target_link_libraries(test_browserworkspace PRIVATE
+  Qt6::Core
+  Qt6::Test
+  Qt6::Widgets
+  Qt6::WebEngineWidgets
+)
+
+target_include_directories(test_browserworkspace PRIVATE ${TEST_INCLUDE_DIRS})
+
+add_test(NAME test_browserworkspace COMMAND test_browserworkspace)
+
+# SettingsDialog test
+qt_add_executable(test_settingsdialog
+  test_settingsdialog.cpp
+  ../src/ui/SettingsDialog.cpp
+  ../src/core/SettingsManager.cpp
+)
+
+target_link_libraries(test_settingsdialog PRIVATE
+  Qt6::Core
+  Qt6::Test
+  Qt6::Widgets
+)
+
+target_include_directories(test_settingsdialog PRIVATE ${TEST_INCLUDE_DIRS})
+
+add_test(NAME test_settingsdialog COMMAND test_settingsdialog)

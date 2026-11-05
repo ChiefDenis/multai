@@ -103,6 +103,14 @@ void SettingsManager::setMemoryPressureThresholdPercent(int percent) {
   setValue("lifecycle/memoryPressureThresholdPercent", percent);
 }
 
+int SettingsManager::memoryPressureRecoveryThresholdPercent() const {
+  return value("lifecycle/memoryPressureRecoveryThresholdPercent", 20).toInt();
+}
+
+void SettingsManager::setMemoryPressureRecoveryThresholdPercent(int percent) {
+  setValue("lifecycle/memoryPressureRecoveryThresholdPercent", percent);
+}
+
 QString SettingsManager::profileName(const QString& fullId) const {
   return value("profiles/" + fullId + "/name").toString();
 }

@@ -19,6 +19,7 @@ class BrowserTab : public QWidget, public LifecycleTarget {
   Q_OBJECT
 public:
   BrowserTab(const QString& providerId, const QString& profileId, const QUrl& url,
+             LifecycleState initialState = LifecycleState::Unloaded,
              QWidget* parent = nullptr);
   ~BrowserTab() override;
 

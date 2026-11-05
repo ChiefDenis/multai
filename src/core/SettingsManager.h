@@ -40,6 +40,9 @@ public:
   int memoryPressureThresholdPercent() const;
   void setMemoryPressureThresholdPercent(int percent);
 
+  int memoryPressureRecoveryThresholdPercent() const;
+  void setMemoryPressureRecoveryThresholdPercent(int percent);
+
   QString profileName(const QString& fullId) const;
   void setProfileName(const QString& fullId, const QString& name);
   void removeProfileName(const QString& fullId);

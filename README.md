@@ -123,6 +123,8 @@ ctest --test-dir build --output-on-failure
 ./build/tests/test_tabstore
 ./build/tests/test_profilemanager
 ./build/tests/test_recovery
+./build/tests/test_ui_polish
+./build/tests/test_settingsdialog
 ```
 
 ## Current Implementation Status
@@ -136,33 +138,34 @@ ctest --test-dir build --output-on-failure
 - TabStore for open-tab persistence and restoration
 - ProviderRegistry with all 9 providers, plus runtime-generated provider icons
 - ProfileManager, ProfileStorage and Profile with isolated browser profiles per account
-- BrowserView, BrowserTab and a real QTabWidget with embedded provider websites
+- BrowserView, BrowserTab and embedded provider websites in a sidebar-first layout
 - Lifecycle state machine (Unloaded, Loading, Active, Frozen, Discarded, Closing)
 - LifecycleManager with LRU selection, configurable delays and memory-pressure response
 - MemoryMonitor reading /proc/meminfo (and PSI when available)
 - Error recovery UI inside BrowserTab with bounded crash recovery and explicit manual retry
-- MainWindow, TabWidget, ProviderSelectionDialog, ProfileSelectionDialog,
+- MainWindow, Sidebar, BrowserWorkspace, ProviderSelectionDialog, ProfileSelectionDialog,
   ProfileManagementDialog and SettingsDialog
 - Basic theming (light/dark/system) and tooltips on interactive controls
 
 **Features**:
-- Main window with menu bar (New Tab, Profiles, Settings, Quit, About) and toolbar
+- Main window with sidebar-first layout: left navigation panel (providers + open tabs) and main browser workspace
+- Menu bar (New Tab, Profiles, Settings, Quit, About) and compact toolbar
 - Empty state view when no tabs are open
-- Provider selection with search/filter, then account selection per provider
+- Provider selection from sidebar with searchable list, then account selection per provider
 - Multiple accounts per provider, each with an isolated persistent profile
-- Provider websites load in embedded views; page titles appear in tab labels
+- Provider websites load in embedded views; page titles appear in sidebar tab rows
 - Inactive tabs freeze after the freeze delay and hibernate after the hibernate delay
 - The least recently used inactive tab is hibernated when memory runs low
 - Open tabs are restored on startup in the Unloaded state (no page until activated)
 - Window geometry, state and settings persist across restarts
 - Bounded renderer crash recovery and user-friendly error UI card with Retry and Close actions
 
-**Tests** (8 unit test executables, all passing):
+**Tests** (12 unit test executables, all passing):
 - test_providerregistry, test_settingsmanager, test_lifecycle, test_lifecyclemanager,
-  test_memorymonitor, test_tabstore, test_profilemanager, test_recovery
+  test_memorymonitor, test_tabstore, test_profilemanager, test_recovery, test_ui_polish,
+  test_settingsdialog, test_sidebar, test_browserworkspace
 
 **Not Yet Implemented**:
-- Full Libadwaita polish pass and explicit Frozen/Discarded status indicators (Stage 8)
 - Integration and performance test suites, and recorded performance measurements (Stage 9)
 - Packaging: RPM spec, desktop file, application icon (Stage 10)
 

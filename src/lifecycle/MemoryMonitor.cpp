@@ -9,7 +9,12 @@ MemoryMonitor::MemoryMonitor(QObject* parent)
   , m_timer(new QTimer(this))
   , m_intervalMs(15000)
   , m_thresholdPercent(15)
-  , m_lastAvailablePercent(-1) {
+  , m_recoveryThresholdPercent(20)
+  , m_lastAvailablePercent(-1)
+  , m_inPressureState(false)
+  , m_memoryOverrideEnabled(false)
+  , m_overrideTotalBytes(0)
+  , m_overrideAvailableBytes(0) {
   m_timer->setInterval(m_intervalMs);
   m_timer->setSingleShot(false);
   connect(m_timer, &QTimer::timeout, this, &MemoryMonitor::check);
@@ -99,6 +104,13 @@ void MemoryMonitor::start(int intervalMs) {
     m_intervalMs = intervalMs;
   }
   m_thresholdPercent = qBound(1, settings->memoryPressureThresholdPercent(), 90);
+  m_recoveryThresholdPercent = qBound(1, settings->memoryPressureRecoveryThresholdPercent(), 90);
+  if (m_recoveryThresholdPercent <= m_thresholdPercent) {
+    m_recoveryThresholdPercent = m_thresholdPercent + 1;
+    if (m_recoveryThresholdPercent > 90) {
+      m_recoveryThresholdPercent = 90;
+    }
+  }
   m_timer->setInterval(m_intervalMs);
 
   if (!settings->memoryPressureEnabled()) {
@@ -112,6 +124,7 @@ void MemoryMonitor::start(int intervalMs) {
 
 void MemoryMonitor::stop() {
   m_timer->stop();
+  m_inPressureState = false;
 }
 
 bool MemoryMonitor::isRunning() const {
@@ -126,23 +139,62 @@ void MemoryMonitor::setPressureThresholdPercent(int percent) {
   m_thresholdPercent = qBound(1, percent, 90);
 }
 
+int MemoryMonitor::recoveryThresholdPercent() const {
+  return m_recoveryThresholdPercent;
+}
+
+void MemoryMonitor::setRecoveryThresholdPercent(int percent) {
+  m_recoveryThresholdPercent = qBound(1, percent, 90);
+  if (m_recoveryThresholdPercent <= m_thresholdPercent) {
+    m_recoveryThresholdPercent = m_thresholdPercent + 1;
+    if (m_recoveryThresholdPercent > 90) {
+      m_recoveryThresholdPercent = 90;
+    }
+  }
+}
+
 int MemoryMonitor::availablePercent() const {
   return m_lastAvailablePercent;
+}
+
+bool MemoryMonitor::isInPressureState() const {
+  return m_inPressureState;
+}
+
+void MemoryMonitor::setMemoryOverride(quint64 totalBytes, quint64 availableBytes) {
+  m_memoryOverrideEnabled = true;
+  m_overrideTotalBytes = totalBytes;
+  m_overrideAvailableBytes = availableBytes;
+}
+
+void MemoryMonitor::clearMemoryOverride() {
+  m_memoryOverrideEnabled = false;
 }
 
 void MemoryMonitor::check() {
   quint64 total = 0;
   quint64 available = 0;
-  if (!readMemoryInfo(&total, &available) || total == 0) {
+  if (m_memoryOverrideEnabled) {
+    total = m_overrideTotalBytes;
+    available = m_overrideAvailableBytes;
+  } else if (!readMemoryInfo(&total, &available) || total == 0) {
     return;
   }
 
   const int percent = static_cast<int>((available * 100) / total);
   m_lastAvailablePercent = percent;
 
-  if (percent <= m_thresholdPercent) {
-    emit memoryPressureDetected(percent);
+  if (m_inPressureState) {
+    // Currently in pressure; check for recovery
+    if (percent > m_recoveryThresholdPercent) {
+      m_inPressureState = false;
+      emit memoryAvailable(percent);
+    }
   } else {
-    emit memoryAvailable(percent);
+    // Currently normal; check for pressure entry
+    if (percent <= m_thresholdPercent) {
+      m_inPressureState = true;
+      emit memoryPressureDetected(percent);
+    }
   }
 }

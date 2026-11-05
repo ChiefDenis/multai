@@ -5,7 +5,7 @@ Application::Application(int& argc, char** argv)
   : QApplication(argc, argv)
   , m_mainWindow(nullptr) {
   setApplicationName("AI Workspace");
-  setApplicationVersion("0.1.0");
+  setApplicationVersion("0.2.2");
   setOrganizationName("ai-workspace");
   setOrganizationDomain("ai-workspace.local");
 

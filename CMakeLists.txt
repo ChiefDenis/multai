@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.31)
-project(ai-workspace VERSION 0.1.0 LANGUAGES CXX)
+project(ai-workspace VERSION 0.2.2 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -20,11 +20,13 @@ set(PROJECT_SOURCES
     src/providers/ProviderRegistry.cpp
     src/providers/ProviderIcons.cpp
     src/ui/MainWindow.cpp
-    src/ui/TabWidget.cpp
+    src/ui/Sidebar.cpp
+    src/ui/BrowserWorkspace.cpp
     src/ui/ProviderSelectionDialog.cpp
     src/ui/ProfileSelectionDialog.cpp
     src/ui/ProfileManagementDialog.cpp
     src/ui/SettingsDialog.cpp
+    src/ui/Theme.cpp
     src/profiles/ProfileManager.cpp
     src/profiles/ProfileStorage.cpp
     src/profiles/Profile.cpp
@@ -44,11 +46,13 @@ set(PROJECT_HEADERS
     src/providers/ProviderRegistry.h
     src/providers/ProviderIcons.h
     src/ui/MainWindow.h
-    src/ui/TabWidget.h
+    src/ui/Sidebar.h
+    src/ui/BrowserWorkspace.h
     src/ui/ProviderSelectionDialog.h
     src/ui/ProfileSelectionDialog.h
     src/ui/ProfileManagementDialog.h
     src/ui/SettingsDialog.h
+    src/ui/Theme.h
     src/profiles/ProfileManager.h
     src/profiles/ProfileStorage.h
     src/profiles/Profile.h

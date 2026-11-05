@@ -25,4 +25,5 @@ private:
   QCheckBox* m_respectRecommendedCheck;
   QCheckBox* m_memoryPressureCheck;
   QSpinBox* m_memoryThresholdSpin;
+  QSpinBox* m_memoryRecoveryThresholdSpin;
 };

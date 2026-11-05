@@ -44,31 +44,35 @@ void TabWidget::setupEmptyState() {
 
   QVBoxLayout* layout = new QVBoxLayout(m_emptyStateWidget);
   layout->setAlignment(Qt::AlignCenter);
+  layout->setSpacing(16);
 
   QLabel* iconLabel = new QLabel(m_emptyStateWidget);
-  iconLabel->setPixmap(style()->standardIcon(QStyle::SP_FileIcon).pixmap(64, 64));
+  iconLabel->setPixmap(style()->standardIcon(QStyle::SP_FileDialogNewFolder).pixmap(64, 64));
   iconLabel->setAlignment(Qt::AlignCenter);
   layout->addWidget(iconLabel);
 
-  QLabel* titleLabel = new QLabel("No tabs open", m_emptyStateWidget);
+  QLabel* titleLabel = new QLabel("No Tabs Open", m_emptyStateWidget);
   titleLabel->setAlignment(Qt::AlignCenter);
   QFont titleFont = titleLabel->font();
-  titleFont.setPointSize(16);
+  titleFont.setPointSize(18);
   titleFont.setBold(true);
   titleLabel->setFont(titleFont);
   layout->addWidget(titleLabel);
 
-  QLabel* subtitleLabel = new QLabel("Create a new tab to get started", m_emptyStateWidget);
+  QLabel* subtitleLabel =
+      new QLabel("Select an AI provider to open your first workspace tab.", m_emptyStateWidget);
   subtitleLabel->setAlignment(Qt::AlignCenter);
+  QFont subFont = subtitleLabel->font();
+  subFont.setPointSize(11);
+  subtitleLabel->setFont(subFont);
   layout->addWidget(subtitleLabel);
 
   QPushButton* newTabButton = new QPushButton("New Tab", m_emptyStateWidget);
-  newTabButton->setMinimumWidth(200);
-  newTabButton->setToolTip("Create a new tab");
+  newTabButton->setMinimumWidth(180);
+  newTabButton->setToolTip("Create a new tab (Ctrl+N)");
+  newTabButton->setProperty("default", true);
   connect(newTabButton, &QPushButton::clicked, this, &TabWidget::showProviderSelection);
-  layout->addWidget(newTabButton);
-
-  layout->addStretch();
+  layout->addWidget(newTabButton, 0, Qt::AlignCenter);
 }
 
 void TabWidget::setupTabs() {
@@ -91,6 +95,7 @@ void TabWidget::setupTabs() {
     if (newTab) {
       LifecycleManager::instance()->onTabActivated(newTab);
     }
+    emit currentTabChanged(newTab);
   });
 }
 
@@ -115,7 +120,8 @@ void TabWidget::onProviderSelected(const QString& providerId) {
     return;
   }
 
-  BrowserTab* tab = new BrowserTab(providerId, dialog.selectedAccountId(), provider->url(), this);
+  BrowserTab* tab = new BrowserTab(providerId, dialog.selectedAccountId(), provider->url(),
+                                   LifecycleState::Unloaded, this);
   addBrowserTab(tab, provider->displayName());
 
   LifecycleManager::instance()->registerTab(tab);
@@ -127,37 +133,47 @@ BrowserTab* TabWidget::addBrowserTab(BrowserTab* tab, const QString& title) {
   m_tabs.append(tab);
 
   const QString tabTitle = title.isEmpty() ? tab->providerId() : title;
-  const int index = m_tabWidget->addTab(tab, providerIcon(tab->providerId()), tabTitle);
-  m_tabWidget->setTabToolTip(
-      index, QString("%1 — %2\n%3").arg(tabTitle, tab->profileId(),
-                                       lifecycleStateToString(tab->lifecycleState())));
+  m_tabWidget->addTab(
+      tab, providerIcon(tab->providerId(), tab->lifecycleState(), tab->hasError()), tabTitle);
 
   connect(tab, &BrowserTab::titleChanged, this, [this, tab](const QString& newTitle) {
     const int tabIndex = m_tabs.indexOf(tab);
     if (tabIndex >= 0 && !newTitle.isEmpty()) {
       m_tabWidget->setTabText(tabIndex, newTitle);
+      updateTab(tab);
     }
   });
 
-  auto updateToolTip = [this, tab]() {
-    const int tabIndex = m_tabs.indexOf(tab);
-    if (tabIndex >= 0) {
-      QString status = lifecycleStateToString(tab->lifecycleState());
-      if (tab->hasError()) {
-        status += " (Error)";
-      }
-      m_tabWidget->setTabToolTip(
-          tabIndex, QString("%1 — %2\n%3").arg(m_tabWidget->tabText(tabIndex), tab->profileId(), status));
-    }
-  };
-
-  connect(tab, &BrowserTab::lifecycleStateChanged, this, updateToolTip);
-  connect(tab, &BrowserTab::errorChanged, this, updateToolTip);
+  connect(tab, &BrowserTab::lifecycleStateChanged, this, [this, tab]() { updateTab(tab); });
+  connect(tab, &BrowserTab::errorChanged, this, [this, tab]() { updateTab(tab); });
   connect(tab, &BrowserTab::closeRequested, this, [this, tab]() {
     removeBrowserTab(tab);
   });
 
+  updateTab(tab);
   return tab;
+}
+
+void TabWidget::updateTab(BrowserTab* tab) {
+  const int tabIndex = m_tabs.indexOf(tab);
+  if (tabIndex < 0) {
+    return;
+  }
+
+  m_tabWidget->setTabIcon(
+      tabIndex, providerIcon(tab->providerId(), tab->lifecycleState(), tab->hasError()));
+
+  QString status = lifecycleStateToString(tab->lifecycleState());
+  if (tab->hasError()) {
+    status += " (Error)";
+  }
+  m_tabWidget->setTabToolTip(
+      tabIndex,
+      QString("%1 — %2\nStatus: %3").arg(m_tabWidget->tabText(tabIndex), tab->profileId(), status));
+
+  if (m_currentTab == tab) {
+    emit currentTabChanged(tab);
+  }
 }
 
 void TabWidget::removeBrowserTab(BrowserTab* tab) {
@@ -168,6 +184,7 @@ void TabWidget::removeBrowserTab(BrowserTab* tab) {
 
   if (m_currentTab == tab) {
     m_currentTab = nullptr;
+    emit currentTabChanged(nullptr);
   }
 
   LifecycleManager::instance()->unregisterTab(tab);
@@ -201,7 +218,8 @@ void TabWidget::restoreTabs() {
       }
 
       BrowserTab* tab =
-          new BrowserTab(metadata.providerId(), metadata.profileId(), metadata.url(), this);
+          new BrowserTab(metadata.providerId(), metadata.profileId(), metadata.url(),
+                         metadata.lifecycleState(), this);
       addBrowserTab(tab, metadata.title().isEmpty() ? provider->displayName() : metadata.title());
       LifecycleManager::instance()->registerTab(tab);
     }

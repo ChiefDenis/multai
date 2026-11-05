@@ -3,6 +3,7 @@
 #include "profiles/ProfileManager.h"
 #include "providers/Provider.h"
 #include "providers/ProviderRegistry.h"
+#include "providers/ProviderIcons.h"
 
 #include <QComboBox>
 #include <QDialogButtonBox>
@@ -37,7 +38,7 @@ ProfileManagementDialog::ProfileManagementDialog(QWidget* parent)
   QFormLayout* formLayout = new QFormLayout();
   m_providerCombo = new QComboBox(this);
   for (Provider* provider : ProviderRegistry::instance()->providers()) {
-    m_providerCombo->addItem(provider->displayName(), provider->id());
+    m_providerCombo->addItem(providerIcon(provider->id()), provider->displayName(), provider->id());
   }
   formLayout->addRow("Provider:", m_providerCombo);
   mainLayout->addLayout(formLayout);

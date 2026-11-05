@@ -16,6 +16,11 @@ private slots:
   void testRepeatedCrashShowsErrorUi();
   void testRetryFromRepeatedCrash();
   void testCloseRequestedSignal();
+  void testHibernateUnloadedTabIsNoop();
+  void testHibernateActiveTabWithOverride();
+  void testActivateDiscardedTabRecreatesPage();
+  void testActivateFrozenTabWithPageNoReload();
+  void testIsSuspendableStates();
 };
 
 void TestRecovery::initTestCase() {
@@ -125,6 +130,81 @@ void TestRecovery::testCloseRequestedSignal() {
   QSignalSpy closeSpy(&tab, &BrowserTab::closeRequested);
   emit tab.closeRequested();
   QCOMPARE(closeSpy.count(), 1);
+}
+
+void TestRecovery::testHibernateUnloadedTabIsNoop() {
+  BrowserTab tab("deepseek", "default", QUrl("https://www.deepseek.com/"));
+  QCOMPARE(tab.lifecycleState(), LifecycleState::Unloaded);
+
+  tab.hibernate();
+  QCOMPARE(tab.lifecycleState(), LifecycleState::Unloaded);
+}
+
+void TestRecovery::testHibernateActiveTabWithOverride() {
+  BrowserTab tab("deepseek", "default", QUrl("https://www.deepseek.com/"));
+  tab.activate();
+  tab.onLoadFinished(true);
+  QCOMPARE(tab.lifecycleState(), LifecycleState::Active);
+
+  SettingsManager::instance()->setRespectRecommendedState(false);
+  tab.hibernate();
+  QCOMPARE(tab.lifecycleState(), LifecycleState::Discarded);
+  QVERIFY(tab.isSuspended());
+
+  SettingsManager::instance()->setRespectRecommendedState(true);
+}
+
+void TestRecovery::testActivateDiscardedTabRecreatesPage() {
+  BrowserTab tab("deepseek", "default", QUrl("https://www.deepseek.com/"));
+  tab.activate();
+  tab.onLoadFinished(true);
+  QCOMPARE(tab.lifecycleState(), LifecycleState::Active);
+
+  SettingsManager::instance()->setRespectRecommendedState(false);
+  tab.hibernate();
+  QCOMPARE(tab.lifecycleState(), LifecycleState::Discarded);
+
+  tab.activate();
+  QCOMPARE(tab.lifecycleState(), LifecycleState::Loading);
+
+  SettingsManager::instance()->setRespectRecommendedState(true);
+}
+
+void TestRecovery::testActivateFrozenTabWithPageNoReload() {
+  BrowserTab tab("deepseek", "default", QUrl("https://www.deepseek.com/"));
+  tab.activate();
+  tab.onLoadFinished(true);
+  QCOMPARE(tab.lifecycleState(), LifecycleState::Active);
+
+  SettingsManager::instance()->setRespectRecommendedState(false);
+  tab.freeze();
+  QCOMPARE(tab.lifecycleState(), LifecycleState::Frozen);
+
+  tab.activate();
+  QCOMPARE(tab.lifecycleState(), LifecycleState::Active);
+
+  SettingsManager::instance()->setRespectRecommendedState(true);
+}
+
+void TestRecovery::testIsSuspendableStates() {
+  BrowserTab tab("deepseek", "default", QUrl("https://www.deepseek.com/"));
+
+  // Unloaded: not suspendable
+  QCOMPARE(tab.lifecycleState(), LifecycleState::Unloaded);
+  QVERIFY(!tab.isSuspendable());
+
+  // Activate to Active
+  tab.activate();
+  tab.onLoadFinished(true);
+  QCOMPARE(tab.lifecycleState(), LifecycleState::Active);
+  QVERIFY(tab.isSuspendable());
+
+  // After hibernate (Discarded): not suspendable
+  SettingsManager::instance()->setRespectRecommendedState(false);
+  tab.hibernate();
+  QCOMPARE(tab.lifecycleState(), LifecycleState::Discarded);
+  QVERIFY(!tab.isSuspendable());
+  SettingsManager::instance()->setRespectRecommendedState(true);
 }
 
 QTEST_MAIN(TestRecovery)

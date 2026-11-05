@@ -23,6 +23,9 @@ public:
   void restoreTabs();
   void saveTabs() const;
 
+signals:
+  void currentTabChanged(BrowserTab* tab);
+
 private slots:
   void onProviderSelected(const QString& providerId);
 
@@ -31,6 +34,7 @@ private:
   void setupTabs();
   BrowserTab* addBrowserTab(BrowserTab* tab, const QString& title);
   void removeBrowserTab(BrowserTab* tab);
+  void updateTab(BrowserTab* tab);
   void updateEmptyState();
 
   QStackedWidget* m_stackedWidget;

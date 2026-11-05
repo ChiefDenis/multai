@@ -11,7 +11,7 @@
 #include <QWebEngineProfile>
 
 BrowserTab::BrowserTab(const QString& providerId, const QString& profileId, const QUrl& url,
-                       QWidget* parent)
+                       LifecycleState initialState, QWidget* parent)
   : QWidget(parent)
   , m_metadata(providerId, profileId, url)
   , m_profile(nullptr)
@@ -33,6 +33,7 @@ BrowserTab::BrowserTab(const QString& providerId, const QString& profileId, cons
   , m_retryButton(nullptr)
   , m_closeButton(nullptr)
   , m_hasError(false) {
+  m_metadata.setLifecycleState(initialState);
   setupUi();
 
   m_freezeTimer = new QTimer(this);
@@ -215,7 +216,7 @@ void BrowserTab::activate() {
 
   const LifecycleState state = m_metadata.lifecycleState();
 
-  if (state == LifecycleState::Frozen) {
+  if (state == LifecycleState::Frozen && m_page) {
     setQtLifecycleState(QWebEnginePage::LifecycleState::Active);
     setLifecycleState(LifecycleState::Active);
     return;
@@ -321,7 +322,7 @@ bool BrowserTab::maySuspendTo(QWebEnginePage::LifecycleState target) const {
   }
 
   if (target == QWebEnginePage::LifecycleState::Discarded) {
-    return m_recommendedState == QWebEnginePage::LifecycleState::Discarded;
+    return m_recommendedState != QWebEnginePage::LifecycleState::Active;
   }
 
   return true;

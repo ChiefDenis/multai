@@ -1,6 +1,7 @@
 #include "ProviderSelectionDialog.h"
 #include "providers/ProviderRegistry.h"
 #include "providers/Provider.h"
+#include "providers/ProviderIcons.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -67,10 +68,13 @@ void ProviderSelectionDialog::loadProviders() {
   ProviderRegistry* registry = ProviderRegistry::instance();
   QList<Provider*> providers = registry->providers();
 
+  m_providerList->setIconSize(QSize(28, 28));
   for (Provider* provider : providers) {
     QListWidgetItem* item = new QListWidgetItem(m_providerList);
+    item->setIcon(providerIcon(provider->id()));
     item->setText(provider->displayName());
     item->setData(Qt::UserRole, provider->id());
+    item->setSizeHint(QSize(0, 40));
     item->setToolTip(QString("Open %1").arg(provider->displayName()));
   }
 }

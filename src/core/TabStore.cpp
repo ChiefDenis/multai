@@ -26,7 +26,8 @@ QList<TabMetadata> TabStore::load() {
 
     TabMetadata metadata(providerId, map.value("profileId").toString(), url);
     metadata.setTitle(map.value("title").toString());
-    metadata.setLifecycleState(LifecycleState::Unloaded);
+    const QString stateStr = map.value("lifecycleState").toString();
+    metadata.setLifecycleState(lifecycleStateFromString(stateStr));
     tabs.append(metadata);
   }
 
@@ -41,6 +42,7 @@ void TabStore::save(const QList<TabMetadata>& tabs, int currentIndex) {
     map["profileId"] = metadata.profileId();
     map["url"] = metadata.url().toString();
     map["title"] = metadata.title();
+    map["lifecycleState"] = lifecycleStateToString(metadata.lifecycleState());
     stored.append(map);
   }
 

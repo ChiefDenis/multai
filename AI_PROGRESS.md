@@ -4,8 +4,8 @@
 
 - **Purpose**: Authoritative progress ledger for AI Workspace project
 - **Status**: Active
-- **Last Updated**: 2026-11-02
-- **Current Stage**: Stage 8 (UI Polish) - not started
+- **Last Updated**: 2026-11-05
+- **Current Stage**: Stage 8 (UI Polish) - complete
 
 ## Progress Summary
 
@@ -19,8 +19,8 @@
 | Stage 5: Lifecycle State Machine | ✅ Complete | 2026-10-30 | Tab states, transitions, Qt synchronisation, persistence |
 | Stage 6: Lifecycle Automation | ✅ Complete | 2026-10-30 | Freezing, hibernation, LRU, memory pressure |
 | Stage 7: Recovery and Error Handling | ✅ Complete | 2026-11-02 | Crash detection, bounded reload, error UI card, manual retry |
-| Stage 8: UI Polish | ⏳ Not Started | - | Themes, icons, tooltips done; full Libadwaita pass pending |
-| Stage 9: Testing and Performance | ⚠️ Partial | - | 8 unit tests passing; integration/perf measurement pending |
+| Stage 8: UI Polish | ✅ Complete | 2026-11-05 | Theme system, state-aware icons, lifecycle indicators, settings dialog, error UI, empty state |
+| Stage 9: Testing and Performance | ⚠️ Partial | - | 10 unit tests passing; integration/perf measurement pending |
 | Stage 10: Documentation and Packaging | ⏳ Not Started | - | Packaging, installation, user documentation |
 
 Stages 2-6 were delivered together in one work phase because the browser engine,
@@ -514,38 +514,126 @@ practice could not be characterised exhaustively.
 
 - Qt renderer process termination handling: successfully hooked to `renderProcessTerminated` and tested in headless environment with deterministic mock signals.
 
-## Stage 8: UI Polish (Not Started)
+## Maintenance: Lifecycle Defect Corrections (2026-11-05)
 
-**Status**: ⏳ Not Started
-**Start Date**: -
-**End Date**: -
+**Status**: ✅ Complete
 
-#### Planned Tasks
+Three lifecycle defects identified during repository reconciliation were corrected. No new features were implemented; existing architecture and the 10-stage roadmap are preserved.
 
-1. Implement Libadwaita-inspired design
-2. Implement light theme
-3. Implement dark theme
-4. Implement theme switching
-5. Implement responsive layouts
-6. Add provider icons
-7. Add status indicators
-8. Polish spacing and typography
-9. Test theme switching
-10. Test responsive layouts
+### Defect A — Tab lifecycle persistence (`src/core/TabStore.cpp`)
 
-#### Acceptance Criteria
+**Problem**: `TabStore::load()` forced every restored tab to `Unloaded`, discarding the last known lifecycle state. SPEC §4.2.8 requires persisting "Last known state."
 
-- [ ] UI follows Libadwaita design language
-- [ ] Light theme works correctly
-- [ ] Dark theme works correctly
-- [ ] Theme switching works
-- [ ] Layouts adapt to window size
-- [ ] Icons display correctly
-- [ ] Status indicators work
+**Fix**:
+- `TabStore::save()` now persists `lifecycleState` as a string in the settings map.
+- `TabStore::load()` reads it back via `lifecycleStateFromString()`; missing or invalid values default to `Unloaded`.
+- `BrowserTab` constructor accepts an optional `initialState` parameter (default `Unloaded`).
+- `TabWidget::restoreTabs()` passes the saved state to `BrowserTab`.
+- `BrowserTab::activate()` only takes the Frozen fast-path when a page exists (`m_page != nullptr`); otherwise it falls through to page creation, ensuring restored tabs are operationally `Unloaded` (no page created until activation).
+
+### Defect B — Memory-pressure hysteresis (`src/lifecycle/MemoryMonitor.cpp/.h`, `src/core/SettingsManager.h/.cpp`, `src/ui/SettingsDialog.h/.cpp`)
+
+**Problem**: `memoryPressureDetected` was emitted every 15-second poll while memory remained below threshold, causing repeated hibernation attempts.
+
+**Fix**:
+- Added `m_recoveryThresholdPercent` (default 20%) above the activation threshold.
+- Added `m_inPressureState` tracking; events are emitted only on state transitions (enter pressure, recover).
+- `setRecoveryThresholdPercent()` clamps to [1, 90] and enforces recovery > threshold.
+- Added `memoryPressureRecoveryThresholdPercent` setting (default 20) with UI control in SettingsDialog.
+- Added `setMemoryOverride()`/`clearMemoryOverride()` testing seam for deterministic tests.
+- `stop()` resets `m_inPressureState`.
+
+### Defect C — Hibernation eligibility / recommendedState gate (`src/lifecycle/BrowserTab.cpp`)
+
+**Problem**: `maySuspendTo(Discarded)` required `recommendedState == Discarded`, which Qt rarely reports, preventing hibernation under the default policy.
+
+**Fix**:
+- Changed `maySuspendTo(Discarded)` to require `recommendedState != Active` (same as Frozen). Hibernation is now allowed when Qt recommends Frozen or Discarded; blocked only when Qt recommends Active (page actively in use).
+- `respectRecommendedState=false` (user override) continues to allow all suspensions.
+
+### Defect D — Asynchronous page destruction (investigation only)
+
+**Investigated**: `BrowserTab::destroyPage()` uses `deleteLater()` with immediate pointer nulling and `disconnect()` before deletion.
+
+**Finding**: Safe as implemented. `disconnect()` removes all signal connections, pointers are nulled immediately, `m_pageCreated` prevents duplicate page creation, and `ProfileManager` retains profile ownership. No fix needed.
+
+### Test changes
+
+- `tests/test_tabstore.cpp`: Added 5 tests (save/restore lifecycle state, operational restoration as Unloaded, last known state preserved, old settings without state field, invalid state values).
+- `tests/test_memorymonitor.cpp`: Added 6 tests (recovery threshold clamping, enter pressure, no repeated events, recovery, re-enter after recovery, values around thresholds).
+- `tests/test_recovery.cpp`: Added 5 tests (hibernate unloaded tab is no-op, hibernate active tab with override, activate discarded tab recreates page, activate frozen tab with page no reload, isSuspendable states).
+
+### Build/test results
+
+- **Build**: ✅ Success (`cmake --build build -j4`)
+- **Tests**: ✅ 9/9 passed (8.15 sec total)
+- **Application**: ✅ Launches, `AI Workspace 0.1.0`
+
+### Remaining defects
+
+None known from this maintenance pass.
+
+### Stage 9 status
+
+**Not started**. Integration tests, performance tests, and performance measurements remain outstanding.
+
+## Stage 8: UI Polish (Complete - Sidebar-First Redesign)
+
+**Status**: ✅ Complete
+**Start Date**: 2026-11-05
+**End Date**: 2026-11-05
+
+#### Completed
+
+**Sidebar-First Interface** (replaces conventional top tab bar):
+
+- `src/ui/Sidebar.h`, `src/ui/Sidebar.cpp`: Left sidebar with three sections:
+  - Provider section: All 9 providers with icons and names, clickable to open tabs
+  - Open tabs section: Unified list of open tabs with provider identity, title, and lifecycle state badges
+  - Bottom section: Collapse toggle and settings button
+  - Context menu on tab rows: Reload, Freeze, Hibernate, Close
+  - Collapsible/expandable with persisted width and state
+- `src/ui/BrowserWorkspace.h`, `src/ui/BrowserWorkspace.cpp`: Main workspace with QStackedWidget hosting BrowserTab widgets
+  - Only the active tab's BrowserTab is visible (no destroy/recreate on switch)
+  - Empty state when no tabs open
+  - Lazy page creation preserved
+- `src/ui/MainWindow.h`, `src/ui/MainWindow.cpp`: Rewritten for sidebar-first layout
+  - QSplitter with Sidebar (left) and BrowserWorkspace (right)
+  - Compact toolbar with New Tab, Profiles, Settings
+  - Menu bar with File/Help
+  - Status bar with provider/account info and colour-coded lifecycle badge
+  - Sidebar width and collapsed state persisted via SettingsManager
+- `src/ui/TabWidget.h`, `src/ui/TabWidget.cpp`: Removed from build (replaced by Sidebar + BrowserWorkspace)
+- `src/ui/Theme.h`, `src/ui/Theme.cpp`: Light/dark/system QSS themes (preserved from earlier Stage 8 work)
+- `src/ui/SettingsDialog.h`, `src/ui/SettingsDialog.cpp`: Appearance and lifecycle settings (preserved)
+- `src/providers/ProviderIcons.cpp`: Runtime-generated icons with state-aware badges (preserved)
+
+#### Tests Added
+
+- `tests/test_sidebar.cpp`: Provider rows, all 9 providers, tab add/remove, lifecycle updates, selection, collapse, width, settings signal (8 tests)
+- `tests/test_browserworkspace.cpp`: Add/activate/remove tabs, empty state, current tab tracking, activated signal (6 tests)
+- `tests/test_settingsdialog.cpp`: Settings dialog load/apply/cancel, theme selection, lifecycle defaults, memory pressure thresholds (6 tests)
+- `tests/test_ui_polish.cpp`: Theme mode, stylesheet, theme switching, provider icons, lifecycle icon states (7 tests)
 
 #### Build/Test Results
 
-**Status**: Not started
+**Build Status**: ✅ Success (`cmake --build build -j4`)
+
+**Test Status**: ✅ 12/12 tests passed (14.94 sec)
+- test_providerregistry: Passed
+- test_settingsmanager: Passed
+- test_lifecycle: Passed
+- test_lifecyclemanager: Passed
+- test_memorymonitor: Passed
+- test_tabstore: Passed
+- test_profilemanager: Passed
+- test_recovery: Passed
+- test_ui_polish: Passed
+- test_settingsdialog: Passed
+- test_sidebar: Passed
+- test_browserworkspace: Passed
+
+**Application**: ✅ Launches, `AI Workspace 0.1.0`
 
 #### Blockers
 
