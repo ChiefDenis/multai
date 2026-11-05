@@ -653,7 +653,7 @@ For each of the 9 providers:
 
 ```bash
 # Build tests
-cmake --build build --target test
+cmake --build build
 
 # Run all tests with CTest
 ctest --test-dir build --output-on-failure
@@ -661,8 +661,7 @@ ctest --test-dir build --output-on-failure
 # Run with verbose output
 ctest --test-dir build --verbose
 
-# Run specific test suite
-ctest --test-dir build -R unit
+# Run specific test suite by label
 ctest --test-dir build -R integration
 ctest --test-dir build -R performance
 ```
@@ -671,11 +670,48 @@ ctest --test-dir build -R performance
 
 ```bash
 # Run specific test executable
-./build/tests/unit/test_tabmanager
-./build/tests/unit/test_lifecyclemanager
-./build/tests/integration/test_lifecycle_integration
-./build/tests/performance/test_memory_usage
+./build/tests/test_providerregistry
+./build/tests/test_settingsmanager
+./build/tests/test_lifecycle
+./build/tests/test_lifecyclemanager
+./build/tests/test_memorymonitor
+./build/tests/test_tabstore
+./build/tests/test_profilemanager
+./build/tests/test_recovery
+./build/tests/test_ui_polish
+./build/tests/test_settingsdialog
+./build/tests/test_sidebar
+./build/tests/test_browserworkspace
+./build/tests/test_lifecycle_integration
+./build/tests/test_profile_isolation
+./build/tests/test_persistence
+./build/tests/test_browser_integration
+./build/tests/test_memory_usage
+./build/tests/test_tab_timings
+./build/tests/test_profile_growth
 ```
+
+### Current Test Results (2026-11-05)
+
+| Category | Tests | Status |
+|----------|-------|--------|
+| Unit | 12 | ✅ All passing |
+| Integration | 4 | ✅ All passing |
+| Performance | 3 | ✅ All passing |
+| **Total** | **19** | ✅ **All passing** |
+
+Total test time: ~25 seconds
+
+Test labels: `integration` and `performance` CTest labels applied for selective execution.
+
+### Performance Measurement Script
+
+For real-world measurements in a graphical session:
+
+```bash
+./tests/measure_performance.sh [output-file.json]
+```
+
 
 ### Continuous Integration
 

@@ -236,3 +236,174 @@ target_link_libraries(test_settingsdialog PRIVATE
 target_include_directories(test_settingsdialog PRIVATE ${TEST_INCLUDE_DIRS})
 
 add_test(NAME test_settingsdialog COMMAND test_settingsdialog)
+
+# Lifecycle Integration test
+qt_add_executable(test_lifecycle_integration
+  test_lifecycle_integration.cpp
+  ../src/lifecycle/BrowserTab.cpp
+  ../src/lifecycle/BrowserView.cpp
+  ../src/lifecycle/LifecycleManager.cpp
+  ../src/lifecycle/MemoryMonitor.cpp
+  ../src/lifecycle/TabMetadata.cpp
+  ../src/lifecycle/TestClock.cpp
+  ../src/profiles/Profile.cpp
+  ../src/profiles/ProfileManager.cpp
+  ../src/profiles/ProfileStorage.cpp
+  ../src/core/SettingsManager.cpp
+)
+
+target_link_libraries(test_lifecycle_integration PRIVATE
+  Qt6::Core
+  Qt6::Test
+  Qt6::Widgets
+  Qt6::WebEngineWidgets
+)
+
+target_include_directories(test_lifecycle_integration PRIVATE ${TEST_INCLUDE_DIRS})
+
+add_test(NAME test_lifecycle_integration COMMAND test_lifecycle_integration)
+set_property(TEST test_lifecycle_integration PROPERTY LABELS "integration")
+
+# Profile Isolation test
+qt_add_executable(test_profile_isolation
+  test_profile_isolation.cpp
+  ../src/profiles/Profile.cpp
+  ../src/profiles/ProfileManager.cpp
+  ../src/profiles/ProfileStorage.cpp
+  ../src/core/SettingsManager.cpp
+)
+
+target_link_libraries(test_profile_isolation PRIVATE
+  Qt6::Core
+  Qt6::Test
+  Qt6::Widgets
+  Qt6::WebEngineWidgets
+)
+
+target_include_directories(test_profile_isolation PRIVATE ${TEST_INCLUDE_DIRS})
+
+add_test(NAME test_profile_isolation COMMAND test_profile_isolation)
+set_property(TEST test_profile_isolation PROPERTY LABELS "integration")
+
+# Persistence test
+qt_add_executable(test_persistence
+  test_persistence.cpp
+  ../src/core/TabStore.cpp
+  ../src/core/SettingsManager.cpp
+  ../src/lifecycle/TabMetadata.cpp
+)
+
+target_link_libraries(test_persistence PRIVATE
+  Qt6::Core
+  Qt6::Test
+)
+
+target_include_directories(test_persistence PRIVATE ${TEST_INCLUDE_DIRS})
+
+add_test(NAME test_persistence COMMAND test_persistence)
+set_property(TEST test_persistence PROPERTY LABELS "integration")
+
+# Browser Integration test
+qt_add_executable(test_browser_integration
+  test_browser_integration.cpp
+  ../src/lifecycle/BrowserTab.cpp
+  ../src/lifecycle/BrowserView.cpp
+  ../src/lifecycle/LifecycleManager.cpp
+  ../src/lifecycle/MemoryMonitor.cpp
+  ../src/lifecycle/TabMetadata.cpp
+  ../src/lifecycle/TestClock.cpp
+  ../src/profiles/Profile.cpp
+  ../src/profiles/ProfileManager.cpp
+  ../src/profiles/ProfileStorage.cpp
+  ../src/core/SettingsManager.cpp
+  ../src/providers/Provider.cpp
+  ../src/providers/ProviderRegistry.cpp
+  ../src/providers/ProviderIcons.cpp
+)
+
+target_link_libraries(test_browser_integration PRIVATE
+  Qt6::Core
+  Qt6::Test
+  Qt6::Widgets
+  Qt6::WebEngineWidgets
+)
+
+target_include_directories(test_browser_integration PRIVATE ${TEST_INCLUDE_DIRS})
+
+add_test(NAME test_browser_integration COMMAND test_browser_integration)
+set_property(TEST test_browser_integration PROPERTY LABELS "integration")
+
+# Memory Usage Performance test
+qt_add_executable(test_memory_usage
+  test_memory_usage.cpp
+  ../src/lifecycle/BrowserTab.cpp
+  ../src/lifecycle/BrowserView.cpp
+  ../src/lifecycle/LifecycleManager.cpp
+  ../src/lifecycle/MemoryMonitor.cpp
+  ../src/lifecycle/TabMetadata.cpp
+  ../src/lifecycle/TestClock.cpp
+  ../src/profiles/Profile.cpp
+  ../src/profiles/ProfileManager.cpp
+  ../src/profiles/ProfileStorage.cpp
+  ../src/core/SettingsManager.cpp
+)
+
+target_link_libraries(test_memory_usage PRIVATE
+  Qt6::Core
+  Qt6::Test
+  Qt6::Widgets
+  Qt6::WebEngineWidgets
+)
+
+target_include_directories(test_memory_usage PRIVATE ${TEST_INCLUDE_DIRS})
+
+add_test(NAME test_memory_usage COMMAND test_memory_usage)
+set_property(TEST test_memory_usage PROPERTY LABELS "performance")
+
+# Tab Timings Performance test
+qt_add_executable(test_tab_timings
+  test_tab_timings.cpp
+  ../src/lifecycle/BrowserTab.cpp
+  ../src/lifecycle/BrowserView.cpp
+  ../src/lifecycle/LifecycleManager.cpp
+  ../src/lifecycle/MemoryMonitor.cpp
+  ../src/lifecycle/TabMetadata.cpp
+  ../src/lifecycle/TestClock.cpp
+  ../src/profiles/Profile.cpp
+  ../src/profiles/ProfileManager.cpp
+  ../src/profiles/ProfileStorage.cpp
+  ../src/core/SettingsManager.cpp
+)
+
+target_link_libraries(test_tab_timings PRIVATE
+  Qt6::Core
+  Qt6::Test
+  Qt6::Widgets
+  Qt6::WebEngineWidgets
+)
+
+target_include_directories(test_tab_timings PRIVATE ${TEST_INCLUDE_DIRS})
+
+add_test(NAME test_tab_timings COMMAND test_tab_timings)
+set_property(TEST test_tab_timings PROPERTY LABELS "performance")
+
+# Profile Growth Performance test
+qt_add_executable(test_profile_growth
+  test_profile_growth.cpp
+  ../src/profiles/Profile.cpp
+  ../src/profiles/ProfileManager.cpp
+  ../src/profiles/ProfileStorage.cpp
+  ../src/core/SettingsManager.cpp
+)
+
+target_link_libraries(test_profile_growth PRIVATE
+  Qt6::Core
+  Qt6::Test
+  Qt6::Widgets
+  Qt6::WebEngineWidgets
+)
+
+target_include_directories(test_profile_growth PRIVATE ${TEST_INCLUDE_DIRS})
+
+add_test(NAME test_profile_growth COMMAND test_profile_growth)
+set_property(TEST test_profile_growth PROPERTY LABELS "performance")

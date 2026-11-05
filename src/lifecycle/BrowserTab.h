@@ -38,6 +38,12 @@ public:
   QString errorMessage() const { return m_errorMessage; }
   QWidget* errorWidget() const { return m_errorWidget; }
 
+  // Test accessors
+  bool pageCreated() const { return m_pageCreated; }
+  QWebEnginePage* page() const { return m_page; }
+  BrowserView* view() const { return m_view; }
+  Profile* profile() const { return m_profile; }
+
   void activate() override;
   void deactivate() override;
   void freeze() override;
