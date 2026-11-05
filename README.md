@@ -160,16 +160,22 @@ ctest --test-dir build --output-on-failure
 - Window geometry, state and settings persist across restarts
 - Bounded renderer crash recovery and user-friendly error UI card with Retry and Close actions
 
-**Tests** (12 unit test executables, all passing):
-- test_providerregistry, test_settingsmanager, test_lifecycle, test_lifecyclemanager,
-  test_memorymonitor, test_tabstore, test_profilemanager, test_recovery, test_ui_polish,
-  test_settingsdialog, test_sidebar, test_browserworkspace
+**Tests** (19 test executables, all passing):
+- Unit (12): test_providerregistry, test_settingsmanager, test_lifecycle,
+  test_lifecyclemanager, test_memorymonitor, test_tabstore, test_profilemanager,
+  test_recovery, test_ui_polish, test_settingsdialog, test_sidebar,
+  test_browserworkspace
+- Integration (4): test_lifecycle_integration, test_profile_isolation,
+  test_persistence, test_browser_integration
+- Performance (3): test_memory_usage, test_tab_timings, test_profile_growth
 
-**Not Yet Implemented**:
-- Integration and performance test suites, and recorded performance measurements (Stage 9)
-- Packaging: RPM spec, desktop file, application icon (Stage 10)
+### Stages 1-10 (Complete)
 
-### From RPM Package (Future)
+**Packaging**:
+- RPM spec: `ai-workspace.spec` (Fedora)
+- Desktop entry: `ai-workspace.desktop`
+- Application icon: `icons/hicolor/*/apps/ai-workspace.png`
+
 
 Once packaged, installation will be:
 

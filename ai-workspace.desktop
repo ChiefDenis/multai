@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=AI Workspace
+GenericName=AI Desktop Application
+Comment=Multi-provider AI desktop application with browser lifecycle management
+Exec=ai-workspace
+Icon=ai-workspace
+Terminal=false
+Type=Application
+Categories=Network;WebBrowser;Office;
+StartupNotify=true
+Keywords=ai;chat;llm;deepseek;qwen;gemini;claude;copilot;perplexity;kimi;
