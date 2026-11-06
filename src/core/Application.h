@@ -11,6 +11,7 @@ public:
   ~Application() override = default;
 
   MainWindow* mainWindow() const { return m_mainWindow; }
+  void setMainWindow(MainWindow* mainWindow) { m_mainWindow = mainWindow; }
 
 private:
   MainWindow* m_mainWindow;

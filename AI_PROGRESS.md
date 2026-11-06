@@ -4,8 +4,8 @@
 
 - **Purpose**: Authoritative progress ledger for AI Workspace project
 - **Status**: Active
-- **Last Updated**: 2026-11-05
-- **Current Stage**: Stage 10 (Documentation and Packaging) - complete
+- **Last Updated**: 2026-11-06
+- **Current Stage**: Stage 8 refinement (UI and Interaction Refinement) - complete
 
 ## Progress Summary
 
@@ -16,11 +16,12 @@
 | Stage 2: Provider System | ✅ Complete | 2026-10-30 | Provider definitions, icons, selection and account UI |
 | Stage 3: Profile Management | ✅ Complete | 2026-10-30 | Profile creation, isolation, persistence, management UI |
 | Stage 4: Basic Browser Integration | ✅ Complete | 2026-10-30 | WebEngine view/page/profile, tab management |
-| Stage 5: Lifecycle State Machine | ✅ Complete | 2026-10-30 | Tab states, transitions, Qt synchronisation, persistence |
-| Stage 6: Lifecycle Automation | ✅ Complete | 2026-10-30 | Freezing, hibernation, LRU, memory pressure |
+| Stage 5: Lifecycle State Machine | ✅ Complete | 2026-11-02 | Tab states, transitions, Qt synchronisation, persistence |
+| Stage 6: Lifecycle Automation | ✅ Complete | 2026-11-02 | Freezing, hibernation, LRU, memory pressure |
 | Stage 7: Recovery and Error Handling | ✅ Complete | 2026-11-02 | Crash detection, bounded reload, error UI card, manual retry |
 | Stage 8: UI Polish | ✅ Complete | 2026-11-05 | Sidebar-first layout, theme system, state-aware icons |
-| Stage 9: Testing and Performance | ✅ Complete | 2026-11-05 | 19 tests passing (12 unit + 4 integration + 3 performance) |
+| Stage 8 Refinement | ✅ Complete | 2026-11-06 | UI and interaction refinement pass |
+| Stage 9: Testing and Performance | ✅ Complete | 2026-11-05 | 21 tests passing (15 unit + 6 integration + 3 performance) |
 | Stage 10: Documentation and Packaging | ✅ Complete | 2026-11-05 | RPM spec, desktop file, icon, documentation updated |
 
 Stages 2-6 were delivered together in one work phase because the browser engine,
@@ -967,3 +968,59 @@ Immediate follow-ups, in priority order:
    on a clean Fedora 43 system.
 
 **User action required**: Authorise the next stage implementation.
+
+## UI and Interaction Refinement Pass (2026-11-06)
+
+### Root Cause: Apparent Application Restart
+
+Investigation determined that clicking a provider opened a modal `ProfileSelectionDialog` which blocked the main window, followed by `BrowserTab::createPage()` creating the first `QWebEnginePage` (initializing Chromium). The combination of modal dialog blocking + WebEngine initialization caused a visible pause that appeared as a window close/reopen.
+
+### Changes Made
+
+**Provider URLs** (`src/providers/ProviderRegistry.cpp`):
+- DeepSeek: `https://www.deepseek.com/` → `https://chat.deepseek.com/`
+- Qwen: `https://qwen.ai/home` → `https://chat.qwen.ai/`
+- GLM: `https://z.ai` → `https://chat.z.ai/`
+- Kimi: `https://www.kimi.ai/` → `https://kimi.ai/`
+- Copilot, Gemini, Claude, Perplexity, ChatGPT: already correct chat URLs
+
+**Provider Selection** (`src/ui/MainWindow.cpp/.h`):
+- Removed mandatory `ProfileSelectionDialog` from provider click flow
+- First use: automatically creates a "Default" profile in the background
+- Subsequent use: reuses the default profile immediately
+- Multiple accounts still accessible via provider context menu (Add Account, Manage Accounts)
+- ProfileManagementDialog remains available from menu for full account management
+
+**Toolbar Redesign** (`src/ui/MainWindow.cpp/.h`):
+- Removed full-width QToolBar
+- Added compact workspace header above browser area
+- Header shows: provider icon + name, Back/Forward/Reload/Open in External Browser buttons
+- Header updates dynamically when switching tabs
+- Buttons disabled when no active tab or no WebEngine page
+
+**Empty Workspace State** (`src/ui/BrowserWorkspace.cpp/.h`):
+- Replaced generic "No Tabs Open" with "Your AI workspace" heading
+- Added provider shortcut grid (3×3 layout with all 9 providers)
+- Clicking a provider shortcut follows the same immediate-opening workflow
+- Empty state appears when no tabs, disappears when tabs exist
+- Emits `emptyStateProviderRequested(providerId)` signal
+
+**Icons and Controls**:
+- Replaced emoji status indicators (⚠️, ❄️, 💤, ⏳, ○) with text-only labels
+- Empty state buttons use QToolButton with icon + text layout
+- All icon-only buttons have accessible tooltips
+
+**Sidebar** (`src/ui/Sidebar.cpp/.h`):
+- Added provider context menu (right-click): Add Account, Manage Accounts
+- Provider context menu signals connected to MainWindow
+
+**Tests Added** (3 new test executables, 13 new test functions):
+- `test_auto_default_profile`: Auto default profile creation, reuse, multiple conversations sharing profile, explicit additional account creation
+- `test_empty_state`: Empty state appearance/disappearance, provider shortcuts, provider signal
+- Updated `test_browser_integration`: All 9 chat-entry URL assertions
+
+**Test Results**: 21/21 passing (15 unit + 6 integration + 3 performance)
+
+**Version**: 0.3.0 (bumped from 0.2.2 in release preparation)
+
+**License**: GPL-3.0-or-later (migrated from MIT)

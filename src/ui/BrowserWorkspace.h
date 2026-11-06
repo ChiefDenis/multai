@@ -8,6 +8,8 @@ class BrowserTab;
 class QLabel;
 class QPushButton;
 class QVBoxLayout;
+class QGridLayout;
+class QFrame;
 
 class BrowserWorkspace : public QStackedWidget {
   Q_OBJECT
@@ -31,6 +33,7 @@ signals:
   void tabActivated(BrowserTab* tab, const QString& tabId);
   void tabAdded(BrowserTab* tab, const QString& tabId);
   void tabRemoved(const QString& tabId);
+  void emptyStateProviderRequested(const QString& providerId);
 
 private:
   void setupEmptyState();

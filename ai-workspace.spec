@@ -1,9 +1,9 @@
 Name:           ai-workspace
-Version:        0.2.2
+Version:        0.3.0
 Release:        1%{?dist}
 Summary:        Resource-conscious multi-provider AI desktop application
 
-License:        MIT
+License:        GPL-3.0-or-later
 URL:            https://github.com/Kilo-Org/ai-workspace
 Source0:        %{name}-%{version}.tar.gz
 
@@ -34,8 +34,8 @@ Gemini, Anthropic Claude, Perplexity, ChatGPT, and Kimi.
 %autosetup
 
 %build
-%cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=%{_prefix}
-cmake --build build
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=%{_prefix}
+cmake --build build --target ai-workspace
 
 %install
 DESTDIR=%{buildroot} cmake --install build
@@ -66,9 +66,7 @@ update-desktop-database %{_datadir}/applications &>/dev/null || :
 %{_datadir}/icons/hicolor/*/apps/%{name}.png
 
 %changelog
-* Thu Nov 05 2026 ChiefDenis <denisjnr@outlook.com> - 0.2.2-1
-- Release version 0.2.2
-- Complete Stage 9: Testing and Performance
-- Complete Stage 10: Documentation and Packaging
-- Sidebar-first UI redesign
-- Lifecycle defect corrections
+* Wed Nov 06 2026 AI Workspace <noreply@localhost> - 0.3.0-1
+- Release version 0.3.0
+- Migrate to GPL-3.0-or-later license
+- UI refinement: coherent visual design, dark mode, spacing

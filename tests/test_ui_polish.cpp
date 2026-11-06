@@ -39,24 +39,39 @@ void TestUiPolish::testLightStyleSheet() {
   const QString sheet = Theme::styleSheetForMode(Theme::Mode::Light);
   QVERIFY(!sheet.isEmpty());
   QVERIFY(sheet.contains("QMainWindow"));
-  QVERIFY(sheet.contains("QTabBar::tab"));
+  QVERIFY(sheet.contains("#sidebar"));
   QVERIFY(sheet.contains("QPushButton"));
-  QVERIFY(sheet.contains("#f6f6f6"));
+  QVERIFY(sheet.contains("#f8f9fa"));
+  QVERIFY(sheet.contains("#3584e4"));
 }
 
 void TestUiPolish::testDarkStyleSheet() {
   const QString sheet = Theme::styleSheetForMode(Theme::Mode::Dark);
   QVERIFY(!sheet.isEmpty());
   QVERIFY(sheet.contains("QMainWindow"));
-  QVERIFY(sheet.contains("QTabBar::tab"));
+  QVERIFY(sheet.contains("#sidebar"));
   QVERIFY(sheet.contains("QPushButton"));
-  QVERIFY(sheet.contains("#242424"));
+  QVERIFY(sheet.contains("#161616"));
+  QVERIFY(sheet.contains("#78aeed"));
 }
 
 void TestUiPolish::testSystemStyleSheet() {
   const QString sheet = Theme::styleSheetForMode(Theme::Mode::System);
   QVERIFY(!sheet.isEmpty());
   QVERIFY(sheet.contains("QMainWindow"));
+}
+
+void TestUiPolish::testThemeSwitchingAppliesStylesheet() {
+  const QString lightSheet = Theme::styleSheetForMode(Theme::Mode::Light);
+  const QString darkSheet = Theme::styleSheetForMode(Theme::Mode::Dark);
+  QVERIFY(!lightSheet.isEmpty());
+  QVERIFY(!darkSheet.isEmpty());
+  QVERIFY(lightSheet != darkSheet);
+
+  QVERIFY(lightSheet.contains("#f8f9fa"));
+  QVERIFY(darkSheet.contains("#161616"));
+  QVERIFY(lightSheet.contains("#sidebar"));
+  QVERIFY(darkSheet.contains("#sidebar"));
 }
 
 void TestUiPolish::testProviderIconsWithLifecycleStates() {
@@ -82,20 +97,6 @@ void TestUiPolish::testProviderIconWithErrorBadge() {
   QCOMPARE(pixmap.isNull(), false);
   QCOMPARE(pixmap.width(), 32);
   QCOMPARE(pixmap.height(), 32);
-}
-
-void TestUiPolish::testThemeSwitchingAppliesStylesheet() {
-  const QString lightSheet = Theme::styleSheetForMode(Theme::Mode::Light);
-  const QString darkSheet = Theme::styleSheetForMode(Theme::Mode::Dark);
-  QVERIFY(!lightSheet.isEmpty());
-  QVERIFY(!darkSheet.isEmpty());
-  QVERIFY(lightSheet != darkSheet);
-
-  // Verify theme-specific colours are present
-  QVERIFY(lightSheet.contains("#f6f6f6"));
-  QVERIFY(darkSheet.contains("#242424"));
-  QVERIFY(lightSheet.contains("QTabBar::tab"));
-  QVERIFY(darkSheet.contains("QTabBar::tab"));
 }
 
 void TestUiPolish::testAllNineProvidersHaveIcons() {

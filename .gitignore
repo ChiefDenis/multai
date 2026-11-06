@@ -76,3 +76,7 @@ Thumbs.db
 # Qt WebEngine profile data (user data should be in separate directory)
 profiles/
 cache/
+
+# Release artifacts
+dist/
+*.rpm

@@ -144,6 +144,10 @@ void Sidebar::setupProviderSection() {
             }
           });
 
+  m_providerList->setContextMenuPolicy(Qt::CustomContextMenu);
+  connect(m_providerList, &QListWidget::customContextMenuRequested, this,
+          &Sidebar::showProviderContextMenu);
+
   sectionLayout->addWidget(m_providerList);
 
   // Add all providers
@@ -450,6 +454,27 @@ void Sidebar::showTabContextMenu(const QPoint& pos) {
   menu.addSeparator();
   menu.addAction("Close Tab", this, [this, tabId]() { emit tabClosed(tabId); });
   menu.exec(m_tabList->viewport()->mapToGlobal(pos));
+}
+
+void Sidebar::showProviderContextMenu(const QPoint& pos) {
+  QListWidgetItem* item = m_providerList->itemAt(pos);
+  if (!item) {
+    return;
+  }
+  QString type = item->data(Qt::UserRole + 1).toString();
+  if (type != "provider") {
+    return;
+  }
+  QString providerId = item->data(Qt::UserRole).toString();
+
+  QMenu menu(this);
+  menu.addAction("Add Account", this, [this, providerId]() {
+    emit providerAddAccountRequested(providerId);
+  });
+  menu.addAction("Manage Accounts", this, [this, providerId]() {
+    emit providerManageAccountsRequested(providerId);
+  });
+  menu.exec(m_providerList->viewport()->mapToGlobal(pos));
 }
 
 void Sidebar::executeTabAction(const QString& tabId, const QString& action) {

@@ -19,15 +19,15 @@ AI Workspace is a native Qt 6 application that embeds multiple AI provider websi
 
 | Provider | URL | Multi-Account Support |
 |----------|-----|----------------------|
-| DeepSeek | https://www.deepseek.com/ | ✅ |
-| Qwen | https://qwen.ai/home | ✅ |
-| GLM | https://z.ai | ✅ |
+| DeepSeek | https://chat.deepseek.com/ | ✅ |
+| Qwen | https://chat.qwen.ai/ | ✅ |
+| GLM | https://chat.z.ai/ | ✅ |
 | Microsoft Copilot | https://copilot.microsoft.com/ | ✅ |
 | Google Gemini | https://gemini.google.com/ | ✅ |
 | Anthropic Claude | https://claude.ai/ | ✅ |
 | Perplexity | https://www.perplexity.ai/ | ✅ |
 | ChatGPT | https://chatgpt.com/ | ✅ |
-| Kimi | https://www.kimi.ai/ | ✅ |
+| Kimi | https://kimi.ai/ | ✅ |
 
 ## System Requirements
 
@@ -149,27 +149,40 @@ ctest --test-dir build --output-on-failure
 
 **Features**:
 - Main window with sidebar-first layout: left navigation panel (providers + open tabs) and main browser workspace
-- Menu bar (New Tab, Profiles, Settings, Quit, About) and compact toolbar
-- Empty state view when no tabs are open
-- Provider selection from sidebar with searchable list, then account selection per provider
+- Menu bar (New Tab, Profiles, Settings, Quit, About) and compact workspace header
+- Empty state view with provider shortcuts when no tabs are open
+- Provider selection from sidebar opens chat interface immediately; default profile created automatically on first use
 - Multiple accounts per provider, each with an isolated persistent profile
-- Provider websites load in embedded views; page titles appear in sidebar tab rows
+- Provider context menu (right-click) for adding and managing accounts
+- Provider websites load in embedded views at their actual chat URLs; page titles appear in sidebar tab rows
 - Inactive tabs freeze after the freeze delay and hibernate after the hibernate delay
 - The least recently used inactive tab is hibernated when memory runs low
 - Open tabs are restored on startup in the Unloaded state (no page until activated)
 - Window geometry, state and settings persist across restarts
 - Bounded renderer crash recovery and user-friendly error UI card with Retry and Close actions
 
-**Tests** (19 test executables, all passing):
+**Provider Chat URLs**:
+- DeepSeek: https://chat.deepseek.com/
+- Qwen: https://chat.qwen.ai/
+- GLM (Zhipu): https://chat.z.ai/
+- Microsoft Copilot: https://copilot.microsoft.com/
+- Google Gemini: https://gemini.google.com/
+- Anthropic Claude: https://claude.ai/
+- Perplexity: https://www.perplexity.ai/
+- ChatGPT: https://chatgpt.com/
+- Kimi: https://kimi.ai/
+
+**Tests** (21 test executables, all passing):
 - Unit (12): test_providerregistry, test_settingsmanager, test_lifecycle,
   test_lifecyclemanager, test_memorymonitor, test_tabstore, test_profilemanager,
   test_recovery, test_ui_polish, test_settingsdialog, test_sidebar,
   test_browserworkspace
-- Integration (4): test_lifecycle_integration, test_profile_isolation,
-  test_persistence, test_browser_integration
+- Integration (6): test_lifecycle_integration, test_profile_isolation,
+  test_persistence, test_browser_integration, test_auto_default_profile,
+  test_empty_state
 - Performance (3): test_memory_usage, test_tab_timings, test_profile_growth
 
-### Stages 1-10 (Complete)
+**Version**: 0.3.0
 
 **Packaging**:
 - RPM spec: `ai-workspace.spec` (Fedora)
@@ -493,7 +506,8 @@ This is currently a solo project. Contributions are not accepted at this time.
 
 ## License
 
-[To be determined]
+This project is licensed under the GNU General Public License v3.0 or later
+(GPL-3.0-or-later). See the `LICENSE` file for details.
 
 ## Acknowledgments
 

@@ -47,9 +47,9 @@ void TestBrowserIntegration::testProviderURLsValid() {
   ProviderRegistry* registry = ProviderRegistry::instance();
 
   QCOMPARE(registry->providerById("deepseek")->url(),
-           QUrl("https://www.deepseek.com/"));
-  QCOMPARE(registry->providerById("qwen")->url(), QUrl("https://qwen.ai/home"));
-  QCOMPARE(registry->providerById("glm")->url(), QUrl("https://z.ai"));
+           QUrl("https://chat.deepseek.com/"));
+  QCOMPARE(registry->providerById("qwen")->url(), QUrl("https://chat.qwen.ai/"));
+  QCOMPARE(registry->providerById("glm")->url(), QUrl("https://chat.z.ai/"));
   QCOMPARE(registry->providerById("copilot")->url(),
            QUrl("https://copilot.microsoft.com/"));
   QCOMPARE(registry->providerById("gemini")->url(),
@@ -58,7 +58,7 @@ void TestBrowserIntegration::testProviderURLsValid() {
   QCOMPARE(registry->providerById("perplexity")->url(),
            QUrl("https://www.perplexity.ai/"));
   QCOMPARE(registry->providerById("chatgpt")->url(), QUrl("https://chatgpt.com/"));
-  QCOMPARE(registry->providerById("kimi")->url(), QUrl("https://www.kimi.ai/"));
+  QCOMPARE(registry->providerById("kimi")->url(), QUrl("https://kimi.ai/"));
 }
 
 void TestBrowserIntegration::testBrowserTabPageCreation() {

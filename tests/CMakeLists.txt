@@ -207,6 +207,9 @@ qt_add_executable(test_browserworkspace
   ../src/profiles/ProfileManager.cpp
   ../src/profiles/ProfileStorage.cpp
   ../src/core/SettingsManager.cpp
+  ../src/providers/Provider.cpp
+  ../src/providers/ProviderRegistry.cpp
+  ../src/providers/ProviderIcons.cpp
 )
 
 target_link_libraries(test_browserworkspace PRIVATE
@@ -407,3 +410,61 @@ target_include_directories(test_profile_growth PRIVATE ${TEST_INCLUDE_DIRS})
 
 add_test(NAME test_profile_growth COMMAND test_profile_growth)
 set_property(TEST test_profile_growth PROPERTY LABELS "performance")
+
+# Auto Default Profile test
+qt_add_executable(test_auto_default_profile
+  test_auto_default_profile.cpp
+  ../src/profiles/Profile.cpp
+  ../src/profiles/ProfileManager.cpp
+  ../src/profiles/ProfileStorage.cpp
+  ../src/core/SettingsManager.cpp
+  ../src/lifecycle/BrowserTab.cpp
+  ../src/lifecycle/BrowserView.cpp
+  ../src/lifecycle/LifecycleManager.cpp
+  ../src/lifecycle/MemoryMonitor.cpp
+  ../src/lifecycle/TabMetadata.cpp
+  ../src/lifecycle/TestClock.cpp
+)
+
+target_link_libraries(test_auto_default_profile PRIVATE
+  Qt6::Core
+  Qt6::Test
+  Qt6::Widgets
+  Qt6::WebEngineWidgets
+)
+
+target_include_directories(test_auto_default_profile PRIVATE ${TEST_INCLUDE_DIRS})
+
+add_test(NAME test_auto_default_profile COMMAND test_auto_default_profile)
+set_property(TEST test_auto_default_profile PROPERTY LABELS "integration")
+
+# Empty State test
+qt_add_executable(test_empty_state
+  test_empty_state.cpp
+  ../src/ui/BrowserWorkspace.cpp
+  ../src/lifecycle/BrowserTab.cpp
+  ../src/lifecycle/BrowserView.cpp
+  ../src/lifecycle/LifecycleManager.cpp
+  ../src/lifecycle/MemoryMonitor.cpp
+  ../src/lifecycle/TabMetadata.cpp
+  ../src/lifecycle/TestClock.cpp
+  ../src/profiles/Profile.cpp
+  ../src/profiles/ProfileManager.cpp
+  ../src/profiles/ProfileStorage.cpp
+  ../src/core/SettingsManager.cpp
+  ../src/providers/Provider.cpp
+  ../src/providers/ProviderRegistry.cpp
+  ../src/providers/ProviderIcons.cpp
+)
+
+target_link_libraries(test_empty_state PRIVATE
+  Qt6::Core
+  Qt6::Test
+  Qt6::Widgets
+  Qt6::WebEngineWidgets
+)
+
+target_include_directories(test_empty_state PRIVATE ${TEST_INCLUDE_DIRS})
+
+add_test(NAME test_empty_state COMMAND test_empty_state)
+set_property(TEST test_empty_state PROPERTY LABELS "integration")

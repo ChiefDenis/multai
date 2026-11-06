@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QMainWindow>
+#include <QToolButton>
 
 #include "lifecycle/TabMetadata.h"
 
@@ -10,6 +11,7 @@ class QSplitter;
 class QToolBar;
 class QMenu;
 class QLabel;
+class QHBoxLayout;
 
 class Sidebar;
 
@@ -30,6 +32,8 @@ private slots:
   void onQuit();
 
   void onProviderSelected(const QString& providerId);
+  void onProviderAddAccount(const QString& providerId);
+  void onProviderManageAccounts(const QString& providerId);
   void onTabSelected(const QString& tabId);
   void onTabClosed(const QString& tabId);
   void onTabActionRequested(const QString& tabId, const QString& action);
@@ -41,10 +45,14 @@ private slots:
   void onTabAdded(BrowserTab* tab, const QString& tabId);
   void onTabRemoved(const QString& tabId);
 
+  void onWorkspaceReload();
+  void onWorkspaceOpenExternal();
+
 private:
   void setupMenuBar();
-  void setupToolBar();
   void setupCentralWidget();
+  void setupWorkspaceHeader();
+  void updateWorkspaceHeader(BrowserTab* tab);
   void setupStatusBar();
   void applyTheme();
   void restoreSidebarState();
@@ -60,6 +68,13 @@ private:
 
   Sidebar* m_sidebar;
   BrowserWorkspace* m_workspace;
+  QWidget* m_workspaceHeader;
+  QHBoxLayout* m_workspaceHeaderLayout;
+  QLabel* m_providerLabel;
+  QToolButton* m_backButton;
+  QToolButton* m_forwardButton;
+  QToolButton* m_reloadButton;
+  QToolButton* m_openExternalButton;
   QSplitter* m_splitter;
   QToolBar* m_toolBar;
   QMenu* m_fileMenu;

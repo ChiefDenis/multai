@@ -1,12 +1,13 @@
 #include "MainWindow.h"
 
 #include "LifecycleManager.h"
+#include "Profile.h"
+#include "ProfileManager.h"
 #include "ProfileManagementDialog.h"
 #include "ProfileSelectionDialog.h"
 #include "SettingsDialog.h"
 #include "SettingsManager.h"
 #include "Sidebar.h"
-#include "TabStore.h"
 #include "Theme.h"
 #include "BrowserWorkspace.h"
 #include "lifecycle/BrowserTab.h"
@@ -14,6 +15,8 @@
 #include "providers/Provider.h"
 #include "providers/ProviderIcons.h"
 #include "providers/ProviderRegistry.h"
+#include "lifecycle/LifecycleManager.h"
+#include "core/TabStore.h"
 
 #include <QAction>
 #include <QApplication>
@@ -26,11 +29,20 @@
 #include <QStyle>
 #include <QToolBar>
 #include <QVBoxLayout>
+#include <QDesktopServices>
+#include <QToolButton>
 
 MainWindow::MainWindow(QWidget* parent)
   : QMainWindow(parent)
   , m_sidebar(nullptr)
   , m_workspace(nullptr)
+  , m_workspaceHeader(nullptr)
+  , m_workspaceHeaderLayout(nullptr)
+  , m_providerLabel(nullptr)
+  , m_backButton(nullptr)
+  , m_forwardButton(nullptr)
+  , m_reloadButton(nullptr)
+  , m_openExternalButton(nullptr)
   , m_splitter(nullptr)
   , m_toolBar(nullptr)
   , m_fileMenu(nullptr)
@@ -43,8 +55,8 @@ MainWindow::MainWindow(QWidget* parent)
   resize(1200, 800);
 
   setupMenuBar();
-  setupToolBar();
   setupCentralWidget();
+  setupWorkspaceHeader();
   setupStatusBar();
   applyTheme();
 
@@ -98,34 +110,114 @@ void MainWindow::setupMenuBar() {
   connect(aboutAction, &QAction::triggered, this, &MainWindow::onAbout);
 }
 
-void MainWindow::setupToolBar() {
-  m_toolBar = addToolBar("Main");
-  m_toolBar->setMovable(false);
-  m_toolBar->setFloatable(false);
-  m_toolBar->setIconSize(QSize(20, 20));
+void MainWindow::setupWorkspaceHeader() {
+  m_workspaceHeader = new QWidget(this);
+  m_workspaceHeader->setObjectName("workspaceHeader");
+  m_workspaceHeader->setFixedHeight(44);
+  m_workspaceHeaderLayout = new QHBoxLayout(m_workspaceHeader);
+  m_workspaceHeaderLayout->setContentsMargins(12, 0, 12, 0);
+  m_workspaceHeaderLayout->setSpacing(8);
 
-  QAction* newTabAction =
-      m_toolBar->addAction(style()->standardIcon(QStyle::SP_FileIcon), "New Tab");
-  newTabAction->setShortcut(QKeySequence::New);
-  newTabAction->setStatusTip("Create a new tab");
-  newTabAction->setToolTip("Create a new tab (Ctrl+N)");
-  connect(newTabAction, &QAction::triggered, this, &MainWindow::onNewTab);
+  // Provider icon + name
+  QLabel* providerIconLabel = new QLabel(m_workspaceHeader);
+  providerIconLabel->setFixedSize(20, 20);
+  providerIconLabel->setScaledContents(true);
+  providerIconLabel->setObjectName("workspaceProviderIcon");
+  m_workspaceHeaderLayout->addWidget(providerIconLabel);
 
-  m_toolBar->addSeparator();
+  m_providerLabel = new QLabel("No provider selected", m_workspaceHeader);
+  QFont providerFont = m_providerLabel->font();
+  providerFont.setPointSize(11);
+  providerFont.setBold(true);
+  m_providerLabel->setFont(providerFont);
+  m_providerLabel->setObjectName("workspaceProviderLabel");
+  m_workspaceHeaderLayout->addWidget(m_providerLabel);
 
-  QAction* profilesAction =
-      m_toolBar->addAction(style()->standardIcon(QStyle::SP_FileDialogListView), "Profiles");
-  profilesAction->setStatusTip("Manage accounts");
-  profilesAction->setToolTip("Manage provider accounts");
-  connect(profilesAction, &QAction::triggered, this, &MainWindow::onProfiles);
+  m_workspaceHeaderLayout->addStretch();
 
-  m_toolBar->addSeparator();
+  // Back / Forward / Reload / Open in external browser
+  m_backButton = new QToolButton(m_workspaceHeader);
+  m_backButton->setObjectName("workspaceBackButton");
+  m_backButton->setIcon(style()->standardIcon(QStyle::SP_ArrowBack));
+  m_backButton->setIconSize(QSize(16, 16));
+  m_backButton->setFixedSize(28, 28);
+  m_backButton->setToolButtonStyle(Qt::ToolButtonIconOnly);
+  m_backButton->setEnabled(false);
+  m_backButton->setToolTip("Back");
+  m_workspaceHeaderLayout->addWidget(m_backButton);
 
-  QAction* settingsAction =
-      m_toolBar->addAction(style()->standardIcon(QStyle::SP_FileDialogDetailedView), "Settings");
-  settingsAction->setStatusTip("Preferences");
-  settingsAction->setToolTip("Open preferences (Ctrl+,)");
-  connect(settingsAction, &QAction::triggered, this, &MainWindow::onSettings);
+  m_forwardButton = new QToolButton(m_workspaceHeader);
+  m_forwardButton->setObjectName("workspaceForwardButton");
+  m_forwardButton->setIcon(style()->standardIcon(QStyle::SP_ArrowForward));
+  m_forwardButton->setIconSize(QSize(16, 16));
+  m_forwardButton->setFixedSize(28, 28);
+  m_forwardButton->setToolButtonStyle(Qt::ToolButtonIconOnly);
+  m_forwardButton->setEnabled(false);
+  m_forwardButton->setToolTip("Forward");
+  m_workspaceHeaderLayout->addWidget(m_forwardButton);
+
+  m_reloadButton = new QToolButton(m_workspaceHeader);
+  m_reloadButton->setObjectName("workspaceReloadButton");
+  m_reloadButton->setIcon(style()->standardIcon(QStyle::SP_BrowserReload));
+  m_reloadButton->setIconSize(QSize(16, 16));
+  m_reloadButton->setFixedSize(28, 28);
+  m_reloadButton->setToolButtonStyle(Qt::ToolButtonIconOnly);
+  m_reloadButton->setEnabled(false);
+  m_reloadButton->setToolTip("Reload");
+  connect(m_reloadButton, &QToolButton::clicked, this, &MainWindow::onWorkspaceReload);
+  m_workspaceHeaderLayout->addWidget(m_reloadButton);
+
+  m_openExternalButton = new QToolButton(m_workspaceHeader);
+  m_openExternalButton->setObjectName("workspaceOpenExternalButton");
+  m_openExternalButton->setIcon(style()->standardIcon(QStyle::SP_DesktopIcon));
+  m_openExternalButton->setIconSize(QSize(16, 16));
+  m_openExternalButton->setFixedSize(28, 28);
+  m_openExternalButton->setToolButtonStyle(Qt::ToolButtonIconOnly);
+  m_openExternalButton->setEnabled(false);
+  m_openExternalButton->setToolTip("Open in external browser");
+  connect(m_openExternalButton, &QToolButton::clicked, this,
+          &MainWindow::onWorkspaceOpenExternal);
+  m_workspaceHeaderLayout->addWidget(m_openExternalButton);
+}
+
+void MainWindow::updateWorkspaceHeader(BrowserTab* tab) {
+  if (!tab) {
+    m_providerLabel->setText("No provider selected");
+    m_providerLabel->setPixmap(QPixmap());
+    m_backButton->setEnabled(false);
+    m_forwardButton->setEnabled(false);
+    m_reloadButton->setEnabled(false);
+    m_openExternalButton->setEnabled(false);
+    return;
+  }
+
+  Provider* provider = ProviderRegistry::instance()->providerById(tab->providerId());
+  if (provider) {
+    m_providerLabel->setText(provider->displayName());
+    QPixmap pixmap = provider->icon().pixmap(20, 20);
+    m_providerLabel->setPixmap(pixmap);
+  }
+
+  bool hasPage = tab->page() != nullptr;
+  m_backButton->setEnabled(hasPage);
+  m_forwardButton->setEnabled(hasPage);
+  m_reloadButton->setEnabled(hasPage);
+  m_openExternalButton->setEnabled(hasPage);
+}
+
+void MainWindow::onWorkspaceReload() {
+  BrowserTab* tab = m_workspace->currentTab();
+  if (tab) {
+    tab->retry();
+  }
+}
+
+void MainWindow::onWorkspaceOpenExternal() {
+  BrowserTab* tab = m_workspace->currentTab();
+  if (!tab) {
+    return;
+  }
+  QDesktopServices::openUrl(tab->url());
 }
 
 void MainWindow::setupCentralWidget() {
@@ -142,6 +234,8 @@ void MainWindow::setupCentralWidget() {
   workspaceLayout->setContentsMargins(0, 0, 0, 0);
   workspaceLayout->setSpacing(0);
 
+  workspaceLayout->addWidget(m_workspaceHeader);
+
   m_workspace = new BrowserWorkspace(workspaceContainer);
   workspaceLayout->addWidget(m_workspace);
 
@@ -153,6 +247,10 @@ void MainWindow::setupCentralWidget() {
 
   // Connect sidebar signals
   connect(m_sidebar, &Sidebar::providerSelected, this, &MainWindow::onProviderSelected);
+  connect(m_sidebar, &Sidebar::providerAddAccountRequested, this,
+          &MainWindow::onProviderAddAccount);
+  connect(m_sidebar, &Sidebar::providerManageAccountsRequested, this,
+          &MainWindow::onProviderManageAccounts);
   connect(m_sidebar, &Sidebar::tabSelected, this, &MainWindow::onTabSelected);
   connect(m_sidebar, &Sidebar::tabClosed, this, &MainWindow::onTabClosed);
   connect(m_sidebar, &Sidebar::tabActionRequested, this,
@@ -168,6 +266,8 @@ void MainWindow::setupCentralWidget() {
           &MainWindow::onTabActivated);
   connect(m_workspace, &BrowserWorkspace::tabAdded, this, &MainWindow::onTabAdded);
   connect(m_workspace, &BrowserWorkspace::tabRemoved, this, &MainWindow::onTabRemoved);
+  connect(m_workspace, &BrowserWorkspace::emptyStateProviderRequested, this,
+          &MainWindow::onProviderSelected);
 }
 
 void MainWindow::setupStatusBar() {
@@ -356,38 +456,38 @@ void MainWindow::updateStatusDisplay(BrowserTab* tab) {
       QString("%1 — Account: %2").arg(providerName, tab->profileId()));
 
   if (tab->hasError()) {
-    m_statusBadgeLabel->setText("⚠️ Error");
+    m_statusBadgeLabel->setText("Error");
     m_statusBadgeLabel->setStyleSheet(
         "background-color: #E01B24; color: #FFFFFF; padding: 2px 8px; border-radius: 4px; "
         "font-weight: bold; font-size: 10pt;");
   } else {
     switch (tab->lifecycleState()) {
       case LifecycleState::Active:
-        m_statusBadgeLabel->setText("● Active");
+        m_statusBadgeLabel->setText("Active");
         m_statusBadgeLabel->setStyleSheet(
             "background-color: #26A269; color: #FFFFFF; padding: 2px 8px; border-radius: 4px; "
             "font-weight: bold; font-size: 10pt;");
         break;
       case LifecycleState::Frozen:
-        m_statusBadgeLabel->setText("❄️ Frozen");
+        m_statusBadgeLabel->setText("Frozen");
         m_statusBadgeLabel->setStyleSheet(
             "background-color: #1A5FB4; color: #FFFFFF; padding: 2px 8px; border-radius: 4px; "
             "font-weight: bold; font-size: 10pt;");
         break;
       case LifecycleState::Discarded:
-        m_statusBadgeLabel->setText("💤 Hibernated");
+        m_statusBadgeLabel->setText("Hibernated");
         m_statusBadgeLabel->setStyleSheet(
             "background-color: #5E5C64; color: #FFFFFF; padding: 2px 8px; border-radius: 4px; "
             "font-weight: bold; font-size: 10pt;");
         break;
       case LifecycleState::Loading:
-        m_statusBadgeLabel->setText("⏳ Loading...");
+        m_statusBadgeLabel->setText("Loading...");
         m_statusBadgeLabel->setStyleSheet(
             "background-color: #3584E4; color: #FFFFFF; padding: 2px 8px; border-radius: 4px; "
             "font-weight: bold; font-size: 10pt;");
         break;
       case LifecycleState::Unloaded:
-        m_statusBadgeLabel->setText("○ Unloaded");
+        m_statusBadgeLabel->setText("Unloaded");
         m_statusBadgeLabel->setStyleSheet(
             "background-color: #77767B; color: #FFFFFF; padding: 2px 8px; border-radius: 4px; "
             "font-weight: bold; font-size: 10pt;");
@@ -408,19 +508,61 @@ void MainWindow::onProviderSelected(const QString& providerId) {
     return;
   }
 
-  ProfileSelectionDialog dialog(providerId, provider->displayName(), this);
-  if (dialog.exec() != QDialog::Accepted) {
-    return;
+  ProfileManager* profileManager = ProfileManager::instance();
+
+  // Check if the provider already has any profiles
+  QList<Profile*> existingProfiles = profileManager->profilesForProvider(providerId);
+
+  QString accountId;
+  if (existingProfiles.isEmpty()) {
+    // First use: automatically create a "Default" profile in the background
+    Profile* defaultProfile = profileManager->createProfile(providerId, "Default");
+    if (!defaultProfile) {
+      return;
+    }
+    accountId = defaultProfile->accountId();
+  } else {
+    // Subsequent use: reuse the first (default) profile
+    accountId = existingProfiles.first()->accountId();
   }
 
   BrowserTab* tab =
-      createBrowserTab(providerId, dialog.selectedAccountId(), provider->url(),
-                       provider->displayName());
+      createBrowserTab(providerId, accountId, provider->url(), provider->displayName());
 
   m_workspace->activateTab(tab->property("tabId").toString());
   m_currentTab = tab;
   LifecycleManager::instance()->onTabActivated(tab);
   updateStatusDisplay(tab);
+}
+
+void MainWindow::onProviderAddAccount(const QString& providerId) {
+  Provider* provider = ProviderRegistry::instance()->providerById(providerId);
+  if (!provider) {
+    return;
+  }
+
+  ProfileSelectionDialog dialog(providerId, provider->displayName(), this);
+  if (dialog.exec() != QDialog::Accepted) {
+    return;
+  }
+
+  const QString accountId = dialog.selectedAccountId();
+  if (accountId.isEmpty()) {
+    return;
+  }
+
+  BrowserTab* tab =
+      createBrowserTab(providerId, accountId, provider->url(), provider->displayName());
+
+  m_workspace->activateTab(tab->property("tabId").toString());
+  m_currentTab = tab;
+  LifecycleManager::instance()->onTabActivated(tab);
+  updateStatusDisplay(tab);
+}
+
+void MainWindow::onProviderManageAccounts(const QString& providerId) {
+  ProfileManagementDialog dialog(this);
+  dialog.exec();
 }
 
 void MainWindow::onTabSelected(const QString& tabId) {
@@ -456,6 +598,7 @@ void MainWindow::onTabClosed(const QString& tabId) {
 
   BrowserTab* nextTab = m_workspace->currentTab();
   updateStatusDisplay(nextTab);
+  updateWorkspaceHeader(nextTab);
   if (nextTab) {
     LifecycleManager::instance()->onTabActivated(nextTab);
   }
@@ -493,10 +636,11 @@ void MainWindow::onSidebarCollapsedChanged(bool collapsed) {
 }
 
 void MainWindow::onTabActivated(BrowserTab* tab, const QString& tabId) {
-  Q_UNUSED(tab)
   Q_UNUSED(tabId)
   m_currentTab = tab;
+  LifecycleManager::instance()->onTabActivated(tab);
   updateStatusDisplay(tab);
+  updateWorkspaceHeader(tab);
   m_sidebar->selectTabRow(tabId);
 }
 

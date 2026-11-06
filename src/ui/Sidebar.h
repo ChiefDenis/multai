@@ -37,6 +37,8 @@ public:
 
 signals:
   void providerSelected(const QString& providerId);
+  void providerAddAccountRequested(const QString& providerId);
+  void providerManageAccountsRequested(const QString& providerId);
   void tabSelected(const QString& tabId);
   void tabClosed(const QString& tabId);
   void tabActionRequested(const QString& tabId, const QString& action);
@@ -58,6 +60,7 @@ private:
                            LifecycleState state, bool hasError);
   void onItemClicked(QListWidgetItem* item);
   void showTabContextMenu(const QPoint& pos);
+  void showProviderContextMenu(const QPoint& pos);
   void executeTabAction(const QString& tabId, const QString& action);
 
   QListWidget* m_providerList;
