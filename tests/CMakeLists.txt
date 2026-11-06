@@ -468,3 +468,6 @@ target_include_directories(test_empty_state PRIVATE ${TEST_INCLUDE_DIRS})
 
 add_test(NAME test_empty_state COMMAND test_empty_state)
 set_property(TEST test_empty_state PROPERTY LABELS "integration")
+
+# Visual QA harness - not registered as ctest test (manual QA tool)
+add_subdirectory(visual-qa)

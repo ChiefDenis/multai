@@ -80,3 +80,6 @@ cache/
 # Release artifacts
 dist/
 *.rpm
+
+# Visual QA screenshots
+artifacts/

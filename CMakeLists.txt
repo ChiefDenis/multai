@@ -11,8 +11,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets WebEngineWidgets)
 
-set(PROJECT_SOURCES
-    src/core/main.cpp
+set(LIB_SOURCES
     src/core/Application.cpp
     src/core/SettingsManager.cpp
     src/core/TabStore.cpp
@@ -65,14 +64,28 @@ set(PROJECT_HEADERS
     src/lifecycle/TestClock.h
 )
 
-qt_add_executable(ai-workspace
-    ${PROJECT_SOURCES}
+qt_add_library(ai-workspace-lib STATIC
+    ${LIB_SOURCES}
     ${PROJECT_HEADERS}
 )
 
-qt_add_resources(ai-workspace "resources"
-    PREFIX "/"
-    FILES
+target_include_directories(ai-workspace-lib PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/core
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ui
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/providers
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/profiles
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/lifecycle
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+
+target_link_libraries(ai-workspace-lib PRIVATE
+    Qt6::Core
+    Qt6::Widgets
+    Qt6::WebEngineWidgets
+)
+
+qt_add_executable(ai-workspace
+    src/core/main.cpp
 )
 
 target_include_directories(ai-workspace PRIVATE
@@ -85,9 +98,8 @@ target_include_directories(ai-workspace PRIVATE
 )
 
 target_link_libraries(ai-workspace PRIVATE
-    Qt6::Core
+    ai-workspace-lib
     Qt6::Widgets
-    Qt6::WebEngineWidgets
 )
 
 set_target_properties(ai-workspace PROPERTIES

@@ -4,6 +4,8 @@
 #include <QToolButton>
 
 #include "lifecycle/TabMetadata.h"
+#include "core/SettingsManager.h"
+#include "ui/Sidebar.h"
 
 class BrowserTab;
 class BrowserWorkspace;
@@ -83,4 +85,13 @@ private:
   QLabel* m_statusBadgeLabel;
   int m_tabCounter;
   BrowserTab* m_currentTab;
+
+public:
+  // Visual QA test hooks
+  Sidebar* sidebarForTest() const { return m_sidebar; }
+  BrowserWorkspace* workspaceForTest() const { return m_workspace; }
+  void collapseSidebarForTest() { m_sidebar->setCollapsed(true); }
+  void expandSidebarForTest() { m_sidebar->setCollapsed(false); }
+  void setThemeForTest(const QString& theme) { SettingsManager::instance()->setTheme(theme); applyTheme(); }
+  void openProviderForTest(const QString& providerId) { onProviderSelected(providerId); }
 };
