@@ -55,8 +55,8 @@ MainWindow::MainWindow(QWidget* parent)
   resize(1200, 800);
 
   setupMenuBar();
-  setupCentralWidget();
   setupWorkspaceHeader();
+  setupCentralWidget();
   setupStatusBar();
   applyTheme();
 
@@ -628,7 +628,13 @@ void MainWindow::onSettingsRequested() {
 }
 
 void MainWindow::onSidebarWidthChanged(int width) {
-  Q_UNUSED(width)
+  QList<int> sizes = m_splitter->sizes();
+  if (sizes.size() >= 2) {
+    int total = sizes[0] + sizes[1];
+    sizes[0] = width;
+    sizes[1] = total - width;
+    m_splitter->setSizes(sizes);
+  }
 }
 
 void MainWindow::onSidebarCollapsedChanged(bool collapsed) {

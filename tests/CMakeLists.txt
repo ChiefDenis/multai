@@ -469,5 +469,41 @@ target_include_directories(test_empty_state PRIVATE ${TEST_INCLUDE_DIRS})
 add_test(NAME test_empty_state COMMAND test_empty_state)
 set_property(TEST test_empty_state PROPERTY LABELS "integration")
 
+# Sidebar resize regression test
+qt_add_executable(test_sidebar_resize
+  test_sidebar_resize.cpp
+)
+
+target_link_libraries(test_sidebar_resize PRIVATE
+  ai-workspace-lib
+  Qt6::Core
+  Qt6::Test
+  Qt6::Widgets
+  Qt6::WebEngineWidgets
+)
+
+target_include_directories(test_sidebar_resize PRIVATE ${TEST_INCLUDE_DIRS})
+
+add_test(NAME test_sidebar_resize COMMAND test_sidebar_resize)
+set_property(TEST test_sidebar_resize PROPERTY LABELS "integration")
+
+# Empty state UI regression test
+qt_add_executable(test_empty_state_ui
+  test_empty_state_ui.cpp
+)
+
+target_link_libraries(test_empty_state_ui PRIVATE
+  ai-workspace-lib
+  Qt6::Core
+  Qt6::Test
+  Qt6::Widgets
+  Qt6::WebEngineWidgets
+)
+
+target_include_directories(test_empty_state_ui PRIVATE ${TEST_INCLUDE_DIRS})
+
+add_test(NAME test_empty_state_ui COMMAND test_empty_state_ui)
+set_property(TEST test_empty_state_ui PROPERTY LABELS "integration")
+
 # Visual QA harness - not registered as ctest test (manual QA tool)
 add_subdirectory(visual-qa)

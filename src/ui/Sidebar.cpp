@@ -487,7 +487,13 @@ int Sidebar::sidebarWidth() const {
 
 void Sidebar::setSidebarWidth(int width) {
   m_sidebarWidth = qBound(kCollapsedSidebarWidth, width, 400);
-  setFixedWidth(m_collapsed ? kCollapsedSidebarWidth : m_sidebarWidth);
+  if (m_collapsed) {
+    setMinimumWidth(kCollapsedSidebarWidth);
+    setMaximumWidth(kCollapsedSidebarWidth);
+  } else {
+    setMinimumWidth(m_sidebarWidth);
+    setMaximumWidth(m_sidebarWidth);
+  }
   emit sidebarWidthChanged(m_sidebarWidth);
 }
 
@@ -500,7 +506,13 @@ void Sidebar::setCollapsed(bool collapsed) {
     return;
   }
   m_collapsed = collapsed;
-  setFixedWidth(collapsed ? kCollapsedSidebarWidth : m_sidebarWidth);
+  if (collapsed) {
+    setMinimumWidth(kCollapsedSidebarWidth);
+    setMaximumWidth(kCollapsedSidebarWidth);
+  } else {
+    setMinimumWidth(kDefaultSidebarWidth);
+    setMaximumWidth(kDefaultSidebarWidth);
+  }
   m_collapseButton->setIcon(
       style()->standardIcon(collapsed ? QStyle::SP_ArrowRight : QStyle::SP_ArrowLeft));
   m_collapseButton->setToolTip(
@@ -515,6 +527,7 @@ void Sidebar::setCollapsed(bool collapsed) {
   }
 
   emit sidebarCollapsedChanged(collapsed);
+  emit sidebarWidthChanged(collapsed ? kCollapsedSidebarWidth : kDefaultSidebarWidth);
 }
 
 #include "Sidebar.moc"

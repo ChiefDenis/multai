@@ -198,23 +198,26 @@ const char* kLightStyleSheet = R"(
     font-size: 11pt;
   }
   #emptyStateProviderFrame {
-    background: transparent;
-    border: none;
-  }
-  #emptyStateProviderButton {
     background-color: #ffffff;
     border: 1px solid #dee2e6;
     border-radius: 10px;
-    padding: 12px;
-    text-align: center;
+  }
+  #emptyStateProviderButton {
+    background-color: #ffffff;
     color: #212529;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 10px;
+    text-align: center;
   }
   #emptyStateProviderButton:hover {
     background-color: #e9ecef;
     border-color: #adb5bd;
+    color: #212529;
   }
   #emptyStateProviderButton:pressed {
     background-color: #dee2e6;
+    border-color: #adb5bd;
   }
   #emptyStateProviderButton:focus {
     border: 2px solid #3584e4;
@@ -572,20 +575,27 @@ const char* kDarkStyleSheet = R"(
     background: transparent;
     border: none;
   }
-  #emptyStateProviderButton {
+  #emptyStateProviderFrame {
     background-color: #242424;
     border: 1px solid #333333;
     border-radius: 10px;
-    padding: 12px;
-    text-align: center;
+  }
+  #emptyStateProviderButton {
+    background-color: #2a2a2a;
     color: #e0e0e0;
+    border: 1px solid #333333;
+    border-radius: 8px;
+    padding: 10px;
+    text-align: center;
   }
   #emptyStateProviderButton:hover {
-    background-color: #2a2a2a;
+    background-color: #333333;
     border-color: #4a4a4a;
+    color: #ffffff;
   }
   #emptyStateProviderButton:pressed {
-    background-color: #333333;
+    background-color: #3d3d3d;
+    border-color: #4a4a4a;
   }
   #emptyStateProviderButton:focus {
     border: 2px solid #78aeed;

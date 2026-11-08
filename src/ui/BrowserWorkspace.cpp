@@ -58,6 +58,7 @@ void BrowserWorkspace::setupEmptyState() {
   // Provider shortcut grid
   QFrame* providerFrame = new QFrame(m_emptyStateWidget);
   providerFrame->setObjectName("emptyStateProviderFrame");
+  providerFrame->setMinimumSize(420, 360);
   QGridLayout* gridLayout = new QGridLayout(providerFrame);
   gridLayout->setSpacing(12);
   gridLayout->setContentsMargins(20, 20, 20, 20);

@@ -90,6 +90,7 @@ public:
   // Visual QA test hooks
   Sidebar* sidebarForTest() const { return m_sidebar; }
   BrowserWorkspace* workspaceForTest() const { return m_workspace; }
+  QWidget* workspaceHeaderForTest() const { return m_workspaceHeader; }
   void collapseSidebarForTest() { m_sidebar->setCollapsed(true); }
   void expandSidebarForTest() { m_sidebar->setCollapsed(false); }
   void setThemeForTest(const QString& theme) { SettingsManager::instance()->setTheme(theme); applyTheme(); }
