@@ -505,5 +505,23 @@ target_include_directories(test_empty_state_ui PRIVATE ${TEST_INCLUDE_DIRS})
 add_test(NAME test_empty_state_ui COMMAND test_empty_state_ui)
 set_property(TEST test_empty_state_ui PROPERTY LABELS "integration")
 
+# UI Regression test - dark theme, sidebar, empty state, header icons
+qt_add_executable(test_ui_regression
+  test_ui_regression.cpp
+)
+
+target_link_libraries(test_ui_regression PRIVATE
+  ai-workspace-lib
+  Qt6::Core
+  Qt6::Test
+  Qt6::Widgets
+  Qt6::WebEngineWidgets
+)
+
+target_include_directories(test_ui_regression PRIVATE ${TEST_INCLUDE_DIRS})
+
+add_test(NAME test_ui_regression COMMAND test_ui_regression)
+set_property(TEST test_ui_regression PROPERTY LABELS "integration")
+
 # Visual QA harness - not registered as ctest test (manual QA tool)
 add_subdirectory(visual-qa)

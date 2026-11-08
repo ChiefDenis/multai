@@ -65,8 +65,9 @@ Sidebar::Sidebar(QWidget* parent)
   , m_sidebarWidth(kDefaultSidebarWidth)
   , m_collapsed(false) {
   setObjectName("sidebar");
+  setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
   setMinimumWidth(kCollapsedSidebarWidth);
-  setFixedWidth(kDefaultSidebarWidth);
+  setMaximumWidth(kDefaultSidebarWidth);
 
   setupUi();
 }
@@ -502,9 +503,6 @@ bool Sidebar::isCollapsed() const {
 }
 
 void Sidebar::setCollapsed(bool collapsed) {
-  if (m_collapsed == collapsed) {
-    return;
-  }
   m_collapsed = collapsed;
   if (collapsed) {
     setMinimumWidth(kCollapsedSidebarWidth);

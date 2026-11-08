@@ -26,6 +26,11 @@ const char* kLightStyleSheet = R"(
     background-color: #f8f9fa;
     border: none;
   }
+  /* Browser workspace (QStackedWidget) */
+  #browserWorkspace {
+    background-color: #f8f9fa;
+    border: none;
+  }
   /* Menu bar */
   QMenuBar {
     background-color: #ffffff;
@@ -400,6 +405,11 @@ const char* kDarkStyleSheet = R"(
     background-color: #161616;
     border: none;
   }
+  /* Browser workspace (QStackedWidget) */
+  #browserWorkspace {
+    background-color: #161616;
+    border: none;
+  }
   /* Menu bar */
   QMenuBar {
     background-color: #1e1e1e;
@@ -570,10 +580,6 @@ const char* kDarkStyleSheet = R"(
   #emptyStateSubtitle {
     color: #a0a0a0;
     font-size: 11pt;
-  }
-  #emptyStateProviderFrame {
-    background: transparent;
-    border: none;
   }
   #emptyStateProviderFrame {
     background-color: #242424;

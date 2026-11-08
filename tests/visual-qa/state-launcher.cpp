@@ -4,15 +4,23 @@
 #include "ProfileManagementDialog.h"
 #include <QApplication>
 #include <QTimer>
+#include <QScreen>
+#include <QPixmap>
+#include <QDebug>
+#include <QDir>
+#include <QGuiApplication>
+#include <QWindow>
 #include <iostream>
 
 static int g_state = 0;
 static bool g_dark = false;
+static bool g_capture_only = false;
 
 int main(int argc, char* argv[]) {
   QApplication app(argc, argv);
   if (argc > 1) g_state = std::stoi(argv[1]);
   if (argc > 2) g_dark = (std::string(argv[2]) == "dark");
+  if (argc > 3) g_capture_only = (std::string(argv[3]) == "capture");
 
   SettingsManager::instance()->setTheme(g_dark ? "dark" : "light");
   Theme::applyTheme(g_dark ? "dark" : "light");
@@ -32,7 +40,7 @@ int main(int argc, char* argv[]) {
         window.openProviderForTest("deepseek");
         QTimer::singleShot(300, [&]() { window.openProviderForTest("qwen"); });
         break;
-      case 3: // Collapsed sidebar (with one tab)
+      case 3: // Collapsed sidebar
         window.openProviderForTest("deepseek");
         QTimer::singleShot(300, [&]() { window.collapseSidebarForTest(); });
         break;
@@ -51,6 +59,23 @@ int main(int argc, char* argv[]) {
     }
   });
 
-  // Stay alive - capture script will kill us after capturing
+  if (g_capture_only) {
+    // Capture immediately and exit
+    QTimer::singleShot(1500, [&]() {
+      QScreen* screen = window.windowHandle()->screen();
+      if (!screen) {
+        screen = QGuiApplication::primaryScreen();
+      }
+      QPixmap pixmap = screen->grabWindow(window.winId());
+      QString outputPath = QString("/tmp/qa-capture/%1-%2.png")
+          .arg(QString::number(g_state), g_dark ? "dark" : "light");
+      QDir dir("/tmp/qa-capture");
+      dir.mkpath(".");
+      pixmap.save(outputPath, "PNG");
+      std::cout << "Captured: " << outputPath.toStdString() << std::endl;
+      app.quit();
+    });
+  }
+
   return app.exec();
 }

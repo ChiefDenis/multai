@@ -120,7 +120,7 @@ void MainWindow::setupWorkspaceHeader() {
 
   // Provider icon + name
   QLabel* providerIconLabel = new QLabel(m_workspaceHeader);
-  providerIconLabel->setFixedSize(20, 20);
+  providerIconLabel->setFixedSize(24, 24);
   providerIconLabel->setScaledContents(true);
   providerIconLabel->setObjectName("workspaceProviderIcon");
   m_workspaceHeaderLayout->addWidget(providerIconLabel);
@@ -178,10 +178,14 @@ void MainWindow::setupWorkspaceHeader() {
   connect(m_openExternalButton, &QToolButton::clicked, this,
           &MainWindow::onWorkspaceOpenExternal);
   m_workspaceHeaderLayout->addWidget(m_openExternalButton);
+
+  // Hide header when no tab is active
+  m_workspaceHeader->setVisible(false);
 }
 
 void MainWindow::updateWorkspaceHeader(BrowserTab* tab) {
   if (!tab) {
+    m_workspaceHeader->setVisible(false);
     m_providerLabel->setText("No provider selected");
     m_providerLabel->setPixmap(QPixmap());
     m_backButton->setEnabled(false);
@@ -191,10 +195,12 @@ void MainWindow::updateWorkspaceHeader(BrowserTab* tab) {
     return;
   }
 
+  m_workspaceHeader->setVisible(true);
+
   Provider* provider = ProviderRegistry::instance()->providerById(tab->providerId());
   if (provider) {
     m_providerLabel->setText(provider->displayName());
-    QPixmap pixmap = provider->icon().pixmap(20, 20);
+    QPixmap pixmap = provider->icon().pixmap(24, 24);
     m_providerLabel->setPixmap(pixmap);
   }
 

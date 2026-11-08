@@ -27,7 +27,7 @@ void BrowserWorkspace::setupEmptyState() {
   m_emptyStateWidget->setObjectName("emptyState");
 
   QVBoxLayout* layout = new QVBoxLayout(m_emptyStateWidget);
-  layout->setAlignment(Qt::AlignCenter | Qt::AlignTop);
+  layout->setAlignment(Qt::AlignCenter);
   layout->setSpacing(24);
   layout->setContentsMargins(40, 40, 40, 40);
 
@@ -60,7 +60,7 @@ void BrowserWorkspace::setupEmptyState() {
   providerFrame->setObjectName("emptyStateProviderFrame");
   providerFrame->setMinimumSize(420, 360);
   QGridLayout* gridLayout = new QGridLayout(providerFrame);
-  gridLayout->setSpacing(12);
+  gridLayout->setSpacing(16);
   gridLayout->setContentsMargins(20, 20, 20, 20);
 
   ProviderRegistry* registry = ProviderRegistry::instance();
@@ -73,16 +73,17 @@ void BrowserWorkspace::setupEmptyState() {
   for (Provider* provider : providers) {
     QToolButton* btn = new QToolButton(providerFrame);
     btn->setObjectName("emptyStateProviderButton");
-    btn->setFixedSize(120, 110);
+    btn->setFixedSize(120, 120);
     btn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
     btn->setIcon(provider->icon());
-    btn->setIconSize(QSize(32, 32));
+    btn->setIconSize(QSize(40, 40));
     btn->setText(provider->displayName());
     btn->setToolTip(QString("Open %1").arg(provider->displayName()));
     btn->setProperty("providerId", provider->id());
 
     QFont btnFont = btn->font();
-    btnFont.setPointSize(9);
+    btnFont.setPointSize(10);
+    btnFont.setBold(true);
     btn->setFont(btnFont);
 
     connect(btn, &QToolButton::clicked, this, [this, provider]() {
