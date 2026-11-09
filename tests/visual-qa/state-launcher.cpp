@@ -10,6 +10,7 @@
 #include <QDir>
 #include <QGuiApplication>
 #include <QWindow>
+#include <QFile>
 #include <iostream>
 
 static int g_state = 0;
@@ -60,19 +61,23 @@ int main(int argc, char* argv[]) {
   });
 
   if (g_capture_only) {
-    // Capture immediately and exit
     QTimer::singleShot(1500, [&]() {
       QScreen* screen = window.windowHandle()->screen();
       if (!screen) {
         screen = QGuiApplication::primaryScreen();
       }
-      QPixmap pixmap = screen->grabWindow(window.winId());
-      QString outputPath = QString("/tmp/qa-capture/%1-%2.png")
+      QPixmap pixmap(window.size());
+      window.render(&pixmap);
+      std::cout << "Pixmap: " << pixmap.width() << "x" << pixmap.height()
+                << " null=" << pixmap.isNull() << std::endl;
+
+      QString outputPath = QString("./capture-%1-%2.png")
           .arg(QString::number(g_state), g_dark ? "dark" : "light");
-      QDir dir("/tmp/qa-capture");
-      dir.mkpath(".");
-      pixmap.save(outputPath, "PNG");
-      std::cout << "Captured: " << outputPath.toStdString() << std::endl;
+      bool saveResult = pixmap.save(outputPath, "PNG");
+      std::cout << "Save to " << outputPath.toStdString()
+                << " result=" << saveResult << std::endl;
+      QFile f(outputPath);
+      std::cout << "File exists: " << f.exists() << " size=" << f.size() << std::endl;
       app.quit();
     });
   }

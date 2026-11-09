@@ -2,7 +2,10 @@
 #include <QStandardPaths>
 #include <QToolButton>
 #include <QListWidget>
+#include <QListWidgetItem>
 #include <QSplitter>
+#include <QWidget>
+#include <Qt>
 
 #include "MainWindow.h"
 #include "BrowserWorkspace.h"
@@ -22,6 +25,9 @@ private slots:
   void testWorkspaceHeaderHasIcons();
   void testEmptyStateHasProviderShortcuts();
   void testThemeSwitchingUpdatesTheme();
+  void testDarkThemeSidebarBackground();
+  void testProviderListHasScrollbar();
+  void testProviderNamesNotEmpty();
 };
 
 void TestUIRegression::initTestCase() {
@@ -117,6 +123,40 @@ void TestUIRegression::testThemeSwitchingUpdatesTheme() {
 
   sheet = Theme::styleSheetForMode(Theme::Mode::Light);
   QVERIFY(sheet.contains("#f8f9fa"));
+}
+
+void TestUIRegression::testDarkThemeSidebarBackground() {
+  Theme::applyTheme("dark");
+  QApplication::processEvents();
+
+  QString sheet = Theme::styleSheetForMode(Theme::Mode::Dark);
+  QVERIFY(sheet.contains("background-color: #1e1e1e"));
+  QVERIFY(sheet.contains("#sidebarBottomSection"));
+  QVERIFY(sheet.contains("background-color: #242424"));
+}
+
+void TestUIRegression::testProviderListHasScrollbar() {
+  Sidebar sidebar;
+  QListWidget* providerList = sidebar.findChild<QListWidget*>("providerList");
+  QVERIFY(providerList != nullptr);
+  QCOMPARE(providerList->verticalScrollBarPolicy(),
+           static_cast<int>(Qt::ScrollBarAsNeeded));
+}
+
+void TestUIRegression::testProviderNamesNotEmpty() {
+  Sidebar sidebar;
+  QListWidget* providerList = sidebar.findChild<QListWidget*>("providerList");
+  QVERIFY(providerList != nullptr);
+  QCOMPARE(providerList->count(), 9);
+
+  for (int i = 0; i < providerList->count(); ++i) {
+    QListWidgetItem* item = providerList->item(i);
+    QVERIFY(item != nullptr);
+    QWidget* widget = providerList->itemWidget(item);
+    QVERIFY(widget != nullptr);
+    // Widget should have children (icon label + name label)
+    QVERIFY(widget->children().size() >= 2);
+  }
 }
 
 QTEST_MAIN(TestUIRegression)

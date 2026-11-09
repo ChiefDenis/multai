@@ -134,7 +134,7 @@ void Sidebar::setupProviderSection() {
   m_providerList->setSelectionMode(QListWidget::NoSelection);
   m_providerList->setFocusPolicy(Qt::NoFocus);
   m_providerList->setFrameShape(QListWidget::NoFrame);
-  m_providerList->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+  m_providerList->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
   m_providerList->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
   connect(m_providerList, &QListWidget::itemClicked, this,
@@ -205,6 +205,7 @@ void Sidebar::setupBottomSection() {
   m_collapseButton->setObjectName("sidebarCollapseButton");
   m_collapseButton->setToolTip("Collapse sidebar");
   m_collapseButton->setIcon(style()->standardIcon(QStyle::SP_ArrowLeft));
+  m_collapseButton->setIconSize(QSize(16, 16));
   m_collapseButton->setFixedSize(28, 28);
   m_collapseButton->setToolButtonStyle(Qt::ToolButtonIconOnly);
   connect(m_collapseButton, &QToolButton::clicked, this, [this]() {
@@ -219,6 +220,7 @@ void Sidebar::setupBottomSection() {
   m_settingsButton->setObjectName("sidebarSettingsButton");
   m_settingsButton->setToolTip("Settings");
   m_settingsButton->setIcon(style()->standardIcon(QStyle::SP_FileDialogDetailedView));
+  m_settingsButton->setIconSize(QSize(16, 16));
   m_settingsButton->setFixedSize(28, 28);
   m_settingsButton->setToolButtonStyle(Qt::ToolButtonIconOnly);
   connect(m_settingsButton, &QToolButton::clicked, this, &Sidebar::settingsRequested);
@@ -250,6 +252,9 @@ void Sidebar::addProviderRow(const QString& providerId, const QString& displayNa
   nameFont.setPointSize(11);
   nameLabel->setFont(nameFont);
   nameLabel->setObjectName("providerNameLabel");
+  nameLabel->setWordWrap(true);
+  nameLabel->setMinimumWidth(80);
+  nameLabel->setMaximumWidth(160);
   layout->addWidget(nameLabel);
 
   layout->addStretch();

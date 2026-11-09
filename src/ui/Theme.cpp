@@ -72,11 +72,11 @@ const char* kLightStyleSheet = R"(
   }
   /* Sidebar */
   #sidebar {
-    background-color: #ffffff;
+    background-color: #f8f9fa;
     border-right: 1px solid #dee2e6;
   }
   #sidebarHeader {
-    background-color: #ffffff;
+    background-color: #f8f9fa;
     border-bottom: 1px solid #dee2e6;
   }
   #sidebarHeader QLabel {
@@ -90,7 +90,7 @@ const char* kLightStyleSheet = R"(
     border: none;
   }
   #providerList, #tabList {
-    background-color: #ffffff;
+    background-color: #f8f9fa;
     border: none;
     border-radius: 0;
     outline: none;
@@ -115,7 +115,7 @@ const char* kLightStyleSheet = R"(
     border: none;
   }
   #tabRowWidget {
-    background-color: #f8f9fa;
+    background-color: #ffffff;
     border: 1px solid #dee2e6;
     border-radius: 8px;
   }
@@ -163,6 +163,7 @@ const char* kLightStyleSheet = R"(
     border: none;
     border-radius: 6px;
     padding: 6px;
+    color: #212529;
   }
   #sidebarCollapseButton:hover, #sidebarSettingsButton:hover {
     background-color: #e9ecef;
@@ -534,7 +535,7 @@ const char* kDarkStyleSheet = R"(
     background-color: #c4121a;
   }
   #sidebarBottomSection {
-    background-color: #1e1e1e;
+    background-color: #242424;
     border-top: 1px solid #333333;
   }
   #sidebarCollapseButton, #sidebarSettingsButton {
@@ -542,6 +543,7 @@ const char* kDarkStyleSheet = R"(
     border: none;
     border-radius: 6px;
     padding: 6px;
+    color: #e0e0e0;
   }
   #sidebarCollapseButton:hover, #sidebarSettingsButton:hover {
     background-color: #2a2a2a;
