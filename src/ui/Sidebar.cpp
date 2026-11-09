@@ -15,6 +15,8 @@
 #include <QLabel>
 #include <QListWidget>
 #include <QMenu>
+#include <QPainter>
+#include <QPixmap>
 #include <QPoint>
 #include <QToolButton>
 #include <QVBoxLayout>
@@ -25,6 +27,20 @@ constexpr int kDefaultSidebarWidth = 260;
 constexpr int kCollapsedSidebarWidth = 60;
 constexpr int kTabRowHeight = 48;
 constexpr int kProviderRowHeight = 44;
+
+// Create a light-colored version of a standard icon for use on dark backgrounds.
+QIcon makeLightIcon(const QIcon& icon, int size = 16) {
+  QPixmap source = icon.pixmap(size, size);
+  QPixmap result(size, size);
+  result.fill(Qt::transparent);
+  QPainter painter(&result);
+  painter.setCompositionMode(QPainter::CompositionMode_Source);
+  painter.drawPixmap(0, 0, source);
+  painter.setCompositionMode(QPainter::CompositionMode_SourceIn);
+  painter.fillRect(result.rect(), Qt::white);
+  painter.end();
+  return QIcon(result);
+}
 
 }  // namespace
 
@@ -204,7 +220,7 @@ void Sidebar::setupBottomSection() {
   m_collapseButton = new QToolButton(this);
   m_collapseButton->setObjectName("sidebarCollapseButton");
   m_collapseButton->setToolTip("Collapse sidebar");
-  m_collapseButton->setIcon(style()->standardIcon(QStyle::SP_ArrowLeft));
+  m_collapseButton->setIcon(makeLightIcon(style()->standardIcon(QStyle::SP_ArrowLeft)));
   m_collapseButton->setIconSize(QSize(16, 16));
   m_collapseButton->setFixedSize(28, 28);
   m_collapseButton->setToolButtonStyle(Qt::ToolButtonIconOnly);
@@ -219,7 +235,7 @@ void Sidebar::setupBottomSection() {
   m_settingsButton = new QToolButton(this);
   m_settingsButton->setObjectName("sidebarSettingsButton");
   m_settingsButton->setToolTip("Settings");
-  m_settingsButton->setIcon(style()->standardIcon(QStyle::SP_FileDialogDetailedView));
+  m_settingsButton->setIcon(makeLightIcon(style()->standardIcon(QStyle::SP_FileDialogDetailedView)));
   m_settingsButton->setIconSize(QSize(16, 16));
   m_settingsButton->setFixedSize(28, 28);
   m_settingsButton->setToolButtonStyle(Qt::ToolButtonIconOnly);
@@ -249,12 +265,12 @@ void Sidebar::addProviderRow(const QString& providerId, const QString& displayNa
 
   QLabel* nameLabel = new QLabel(displayName, widget);
   QFont nameFont = nameLabel->font();
-  nameFont.setPointSize(11);
+  nameFont.setPointSize(10);
   nameLabel->setFont(nameFont);
   nameLabel->setObjectName("providerNameLabel");
   nameLabel->setWordWrap(true);
-  nameLabel->setMinimumWidth(80);
-  nameLabel->setMaximumWidth(160);
+  nameLabel->setMinimumWidth(70);
+  nameLabel->setMaximumWidth(170);
   layout->addWidget(nameLabel);
 
   layout->addStretch();

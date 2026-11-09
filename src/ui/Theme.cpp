@@ -105,6 +105,9 @@ const char* kLightStyleSheet = R"(
   #providerList QWidget, #tabList QWidget {
     background: transparent;
   }
+  #providerList::viewport, #tabList::viewport {
+    background: transparent;
+  }
   #providerNameLabel {
     color: #212529;
     background: transparent;
@@ -483,6 +486,9 @@ const char* kDarkStyleSheet = R"(
     background: transparent;
   }
   #providerList QWidget, #tabList QWidget {
+    background: transparent;
+  }
+  #providerList::viewport, #tabList::viewport {
     background: transparent;
   }
   #providerNameLabel {

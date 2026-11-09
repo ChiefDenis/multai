@@ -73,7 +73,7 @@ void BrowserWorkspace::setupEmptyState() {
   for (Provider* provider : providers) {
     QToolButton* btn = new QToolButton(providerFrame);
     btn->setObjectName("emptyStateProviderButton");
-    btn->setFixedSize(120, 128);
+    btn->setFixedSize(130, 136);
     btn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
     btn->setIcon(provider->icon());
     btn->setIconSize(QSize(40, 40));
@@ -82,10 +82,10 @@ void BrowserWorkspace::setupEmptyState() {
     btn->setProperty("providerId", provider->id());
 
     QFont btnFont = btn->font();
-    btnFont.setPointSize(10);
+    btnFont.setPointSize(9);
     btnFont.setBold(true);
     btn->setFont(btnFont);
-    btn->setMinimumWidth(110);
+    btn->setMinimumWidth(140);
 
     connect(btn, &QToolButton::clicked, this, [this, provider]() {
       emit emptyStateProviderRequested(provider->id());

@@ -179,6 +179,17 @@ void BrowserTab::createPage() {
 
   m_viewLayout->addWidget(m_view);
   m_pageCreated = true;
+
+  // Set dark background for WebEngineView when dark theme is active
+  if (SettingsManager::instance()->theme() == "dark") {
+    QPalette pal = m_view->palette();
+    pal.setColor(QPalette::Window, QColor("#161616"));
+    m_view->setPalette(pal);
+    m_view->setAutoFillBackground(true);
+    m_page->runJavaScript(
+        "document.documentElement.style.backgroundColor = '#161616'; "
+        "document.body.style.backgroundColor = '#161616';");
+  }
 }
 
 void BrowserTab::destroyPage() {

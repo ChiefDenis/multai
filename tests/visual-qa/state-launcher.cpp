@@ -1,4 +1,5 @@
 #include "MainWindow.h"
+#include "BrowserWorkspace.h"
 #include "SettingsManager.h"
 #include "Theme.h"
 #include "ProfileManagementDialog.h"
@@ -30,28 +31,37 @@ int main(int argc, char* argv[]) {
   window.resize(1366, 768);
   window.show();
 
-  QTimer::singleShot(500, [&]() {
+  // Process initial events to show the window
+  app.processEvents();
+
+  QTimer::singleShot(800, [&]() {
+    // Set up the requested UI state
     switch (g_state) {
-      case 0: // Initial, no tabs
+      case 0: // Initial, no tabs (empty workspace)
         break;
-      case 1: // One tab (DeepSeek)
+      case 1: { // One tab (DeepSeek) - active provider
         window.openProviderForTest("deepseek");
         break;
-      case 2: // Two tabs (DeepSeek + Qwen)
+      }
+      case 2: { // Multiple tabs (DeepSeek + Qwen + Gemini)
         window.openProviderForTest("deepseek");
-        QTimer::singleShot(300, [&]() { window.openProviderForTest("qwen"); });
+        QTimer::singleShot(400, [&]() { window.openProviderForTest("qwen"); });
+        QTimer::singleShot(800, [&]() { window.openProviderForTest("gemini"); });
         break;
-      case 3: // Collapsed sidebar
+      }
+      case 3: { // Collapsed sidebar with a tab
         window.openProviderForTest("deepseek");
-        QTimer::singleShot(300, [&]() { window.collapseSidebarForTest(); });
+        QTimer::singleShot(400, [&]() { window.collapseSidebarForTest(); });
         break;
-      case 4: // Empty workspace (no tabs)
+      }
+      case 4: // Empty workspace (no tabs) - same visual as state 0
         break;
-      case 5: // Account management dialog
-      {
+      case 5: { // Account management dialog
         auto* dialog = new ProfileManagementDialog(&window);
         dialog->setAttribute(Qt::WA_DeleteOnClose);
         dialog->show();
+        dialog->raise();
+        dialog->activateWindow();
         break;
       }
     }
@@ -60,27 +70,18 @@ int main(int argc, char* argv[]) {
     }
   });
 
-  if (g_capture_only) {
-    QTimer::singleShot(1500, [&]() {
-      QScreen* screen = window.windowHandle()->screen();
-      if (!screen) {
-        screen = QGuiApplication::primaryScreen();
-      }
-      QPixmap pixmap(window.size());
-      window.render(&pixmap);
-      std::cout << "Pixmap: " << pixmap.width() << "x" << pixmap.height()
-                << " null=" << pixmap.isNull() << std::endl;
-
-      QString outputPath = QString("./capture-%1-%2.png")
-          .arg(QString::number(g_state), g_dark ? "dark" : "light");
-      bool saveResult = pixmap.save(outputPath, "PNG");
-      std::cout << "Save to " << outputPath.toStdString()
-                << " result=" << saveResult << std::endl;
-      QFile f(outputPath);
-      std::cout << "File exists: " << f.exists() << " size=" << f.size() << std::endl;
-      app.quit();
-    });
-  }
+  // Capture after setup (WebEngine needs time to initialize pages)
+  QTimer::singleShot(3000, [&]() {
+    QPixmap pixmap(window.size());
+    window.render(&pixmap);
+    QString outputPath = QString("./capture-%1-%2.png")
+        .arg(QString::number(g_state), g_dark ? "dark" : "light");
+    QDir dir("./");
+    dir.mkpath(".");
+    pixmap.save(outputPath, "PNG");
+    std::cout << "Captured: " << outputPath.toStdString() << std::endl;
+    app.quit();
+  });
 
   return app.exec();
 }
