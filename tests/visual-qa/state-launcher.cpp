@@ -34,10 +34,10 @@ int main(int argc, char* argv[]) {
   // Process initial events to show the window
   app.processEvents();
 
-  QTimer::singleShot(800, [&]() {
+  QTimer::singleShot(500, [&]() {
     // Set up the requested UI state
     switch (g_state) {
-      case 0: // Initial, no tabs (empty workspace)
+      case 0: // Initial, no tabs
         break;
       case 1: { // One tab (DeepSeek) - active provider
         window.openProviderForTest("deepseek");
@@ -49,12 +49,12 @@ int main(int argc, char* argv[]) {
         QTimer::singleShot(800, [&]() { window.openProviderForTest("gemini"); });
         break;
       }
-      case 3: { // Collapsed sidebar with a tab
+      case 3: { // Collapsed sidebar
         window.openProviderForTest("deepseek");
         QTimer::singleShot(400, [&]() { window.collapseSidebarForTest(); });
         break;
       }
-      case 4: // Empty workspace (no tabs) - same visual as state 0
+      case 4: // Empty workspace (no tabs)
         break;
       case 5: { // Account management dialog
         auto* dialog = new ProfileManagementDialog(&window);
