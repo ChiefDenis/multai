@@ -1,9 +1,11 @@
 #include "BrowserWorkspace.h"
 
+#include "core/SettingsManager.h"
 #include "lifecycle/BrowserTab.h"
 #include "providers/Provider.h"
 #include "providers/ProviderIcons.h"
 #include "providers/ProviderRegistry.h"
+#include "ui/ToolbarIcons.h"
 
 #include <QGridLayout>
 #include <QLabel>
@@ -15,7 +17,8 @@
 
 BrowserWorkspace::BrowserWorkspace(QWidget* parent)
   : QStackedWidget(parent)
-  , m_emptyStateWidget(nullptr) {
+  , m_emptyStateWidget(nullptr)
+  , m_emptyStateFolderIconLabel(nullptr) {
   setObjectName("browserWorkspace");
   setupEmptyState();
   addWidget(m_emptyStateWidget);
@@ -32,10 +35,12 @@ void BrowserWorkspace::setupEmptyState() {
   layout->setContentsMargins(40, 40, 40, 40);
 
   // App identity
-  QLabel* iconLabel = new QLabel(m_emptyStateWidget);
-  iconLabel->setPixmap(style()->standardIcon(QStyle::SP_FileDialogNewFolder).pixmap(48, 48));
-  iconLabel->setAlignment(Qt::AlignCenter);
-  layout->addWidget(iconLabel);
+  m_emptyStateFolderIconLabel = new QLabel(m_emptyStateWidget);
+  m_emptyStateFolderIconLabel->setObjectName("emptyStateFolderIcon");
+  const bool isDark = (SettingsManager::instance()->theme() == "dark");
+  m_emptyStateFolderIconLabel->setPixmap(ToolbarIcons::folderIcon(isDark).pixmap(48, 48));
+  m_emptyStateFolderIconLabel->setAlignment(Qt::AlignCenter);
+  layout->addWidget(m_emptyStateFolderIconLabel);
 
   QLabel* titleLabel = new QLabel("Your AI workspace", m_emptyStateWidget);
   titleLabel->setAlignment(Qt::AlignCenter);
@@ -190,5 +195,17 @@ void BrowserWorkspace::updateEmptyState() {
   if (m_tabs.isEmpty()) {
     setCurrentWidget(m_emptyStateWidget);
     m_currentTabId.clear();
+  }
+}
+
+void BrowserWorkspace::updateTheme(const QString& theme) {
+  const bool isDark = (theme == "dark");
+  if (m_emptyStateFolderIconLabel) {
+    m_emptyStateFolderIconLabel->setPixmap(ToolbarIcons::folderIcon(isDark).pixmap(48, 48));
+  }
+  for (BrowserTab* tab : m_tabs) {
+    if (tab) {
+      tab->updateTheme(theme);
+    }
   }
 }

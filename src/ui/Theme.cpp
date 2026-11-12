@@ -1,8 +1,10 @@
 #include "Theme.h"
 
 #include <QApplication>
+#include <QColor>
 #include <QGuiApplication>
 #include <QPalette>
+#include <QStyleHints>
 
 namespace Theme {
 
@@ -102,7 +104,7 @@ const char* kLightStyleSheet = R"(
     margin: 2px 4px;
     background: transparent;
   }
-  #providerList QWidget, #tabList QWidget {
+  #providerList QWidget {
     background: transparent;
   }
   #providerList::viewport, #tabList::viewport {
@@ -126,7 +128,7 @@ const char* kLightStyleSheet = R"(
     background-color: #e9ecef;
     border-color: #adb5bd;
   }
-  #tabRowWidget:selected {
+  #tabRowWidget[selected="true"] {
     background-color: #e3f2fd;
     border-color: #3584e4;
   }
@@ -161,11 +163,18 @@ const char* kLightStyleSheet = R"(
     background-color: #f8f9fa;
     border-top: 1px solid #dee2e6;
   }
+  #sidebarExpandedContainer, #collapsedRail, #providersSection, #tabsSection {
+    background-color: #f8f9fa;
+  }
+  #sidebarDivider {
+    background-color: #dee2e6;
+    border: none;
+  }
   #sidebarCollapseButton, #sidebarSettingsButton {
     background: transparent;
     border: none;
     border-radius: 6px;
-    padding: 6px;
+    padding: 2px;
     color: #212529;
   }
   #sidebarCollapseButton:hover, #sidebarSettingsButton:hover {
@@ -238,7 +247,7 @@ const char* kLightStyleSheet = R"(
     color: #212529;
     border: 1px solid #dee2e6;
     border-radius: 6px;
-    padding: 6px 14px;
+    padding: 3px;
     font-weight: 500;
   }
   QToolButton:hover {
@@ -255,7 +264,7 @@ const char* kLightStyleSheet = R"(
   }
   QToolButton:focus {
     border: 2px solid #3584e4;
-    padding: 5px 13px;
+    padding: 2px;
   }
   QPushButton {
     background-color: #ffffff;
@@ -307,6 +316,7 @@ const char* kLightStyleSheet = R"(
   QLineEdit, QComboBox, QSpinBox {
     background-color: #ffffff;
     color: #212529;
+    placeholder-text-color: #868e96;
     border: 1px solid #dee2e6;
     border-radius: 6px;
     padding: 6px 10px;
@@ -320,6 +330,7 @@ const char* kLightStyleSheet = R"(
   QListWidget {
     background-color: #ffffff;
     color: #212529;
+    alternate-background-color: #f1f3f5;
     border: 1px solid #dee2e6;
     border-radius: 8px;
     padding: 4px;
@@ -348,6 +359,13 @@ const char* kLightStyleSheet = R"(
     border: none;
     border-top: 1px solid #dee2e6;
     padding: 4px 8px;
+  }
+  QStatusBar QLabel {
+    color: #6c757d;
+    background: transparent;
+  }
+  QStatusBar::item {
+    border: none;
   }
   QScrollBar:vertical {
     background: transparent;
@@ -485,7 +503,7 @@ const char* kDarkStyleSheet = R"(
     margin: 2px 4px;
     background: transparent;
   }
-  #providerList QWidget, #tabList QWidget {
+  #providerList QWidget {
     background: transparent;
   }
   #providerList::viewport, #tabList::viewport {
@@ -509,7 +527,7 @@ const char* kDarkStyleSheet = R"(
     background-color: #2a2a2a;
     border-color: #4a4a4a;
   }
-  #tabRowWidget:selected {
+  #tabRowWidget[selected="true"] {
     background-color: #2a3b5c;
     border-color: #78aeed;
   }
@@ -544,11 +562,18 @@ const char* kDarkStyleSheet = R"(
     background-color: #242424;
     border-top: 1px solid #333333;
   }
+  #sidebarExpandedContainer, #collapsedRail, #providersSection, #tabsSection {
+    background-color: #1e1e1e;
+  }
+  #sidebarDivider {
+    background-color: #333333;
+    border: none;
+  }
   #sidebarCollapseButton, #sidebarSettingsButton {
     background: transparent;
     border: none;
     border-radius: 6px;
-    padding: 6px;
+    padding: 2px;
     color: #e0e0e0;
   }
   #sidebarCollapseButton:hover, #sidebarSettingsButton:hover {
@@ -621,7 +646,7 @@ const char* kDarkStyleSheet = R"(
     color: #e0e0e0;
     border: 1px solid #333333;
     border-radius: 6px;
-    padding: 6px 14px;
+    padding: 3px;
     font-weight: 500;
   }
   QToolButton:hover {
@@ -638,7 +663,7 @@ const char* kDarkStyleSheet = R"(
   }
   QToolButton:focus {
     border: 2px solid #78aeed;
-    padding: 5px 13px;
+    padding: 2px;
   }
   QPushButton {
     background-color: #242424;
@@ -690,6 +715,7 @@ const char* kDarkStyleSheet = R"(
   QLineEdit, QComboBox, QSpinBox {
     background-color: #242424;
     color: #e0e0e0;
+    placeholder-text-color: #9a9a9a;
     border: 1px solid #333333;
     border-radius: 6px;
     padding: 6px 10px;
@@ -703,6 +729,7 @@ const char* kDarkStyleSheet = R"(
   QListWidget {
     background-color: #1e1e1e;
     color: #e0e0e0;
+    alternate-background-color: #242424;
     border: 1px solid #333333;
     border-radius: 8px;
     padding: 4px;
@@ -731,6 +758,13 @@ const char* kDarkStyleSheet = R"(
     border: none;
     border-top: 1px solid #333333;
     padding: 4px 8px;
+  }
+  QStatusBar QLabel {
+    color: #a0a0a0;
+    background: transparent;
+  }
+  QStatusBar::item {
+    border: none;
   }
   QScrollBar:vertical {
     background: transparent;
@@ -806,13 +840,68 @@ QString styleSheetForMode(Mode mode) {
     return QLatin1String(kLightStyleSheet);
   }
 
+  const Qt::ColorScheme scheme = QGuiApplication::styleHints()->colorScheme();
+  if (scheme == Qt::ColorScheme::Dark) {
+    return QLatin1String(kDarkStyleSheet);
+  }
+  if (scheme == Qt::ColorScheme::Light) {
+    return QLatin1String(kLightStyleSheet);
+  }
   const bool isDark = QGuiApplication::palette().window().color().lightness() < 128;
   return isDark ? QLatin1String(kDarkStyleSheet) : QLatin1String(kLightStyleSheet);
 }
 
+Mode effectiveMode(Mode mode) {
+  if (mode == Mode::Dark || mode == Mode::Light) {
+    return mode;
+  }
+  const Qt::ColorScheme scheme = QGuiApplication::styleHints()->colorScheme();
+  if (scheme == Qt::ColorScheme::Dark) {
+    return Mode::Dark;
+  }
+  if (scheme == Qt::ColorScheme::Light) {
+    return Mode::Light;
+  }
+  return QGuiApplication::palette().window().color().lightness() < 128 ? Mode::Dark : Mode::Light;
+}
+
+QPalette paletteForMode(Mode mode) {
+  QPalette palette = QGuiApplication::palette();
+  const bool dark = mode == Mode::Dark;
+
+  palette.setColor(QPalette::Window, QColor(dark ? "#161616" : "#f8f9fa"));
+  palette.setColor(QPalette::WindowText, QColor(dark ? "#e0e0e0" : "#212529"));
+  palette.setColor(QPalette::Base, QColor(dark ? "#1e1e1e" : "#ffffff"));
+  palette.setColor(QPalette::AlternateBase, QColor(dark ? "#242424" : "#f1f3f5"));
+  palette.setColor(QPalette::Text, QColor(dark ? "#e0e0e0" : "#212529"));
+  palette.setColor(QPalette::Button, QColor(dark ? "#242424" : "#ffffff"));
+  palette.setColor(QPalette::ButtonText, QColor(dark ? "#e0e0e0" : "#212529"));
+  palette.setColor(QPalette::Highlight, QColor(dark ? "#78aeed" : "#3584e4"));
+  palette.setColor(QPalette::HighlightedText, QColor(dark ? "#161616" : "#ffffff"));
+  palette.setColor(QPalette::ToolTipBase, QColor(dark ? "#242424" : "#ffffff"));
+  palette.setColor(QPalette::ToolTipText, QColor(dark ? "#e0e0e0" : "#212529"));
+  palette.setColor(QPalette::PlaceholderText, QColor(dark ? "#9a9a9a" : "#868e96"));
+  palette.setColor(QPalette::Mid, QColor(dark ? "#333333" : "#dee2e6"));
+  palette.setColor(QPalette::Dark, QColor(dark ? "#1e1e1e" : "#adb5bd"));
+  palette.setColor(QPalette::Light, QColor(dark ? "#2a2a2a" : "#ffffff"));
+
+  palette.setColor(QPalette::Disabled, QPalette::WindowText,
+                   QColor(dark ? "#5e5c64" : "#adb5bd"));
+  palette.setColor(QPalette::Disabled, QPalette::Text, QColor(dark ? "#5e5c64" : "#adb5bd"));
+  palette.setColor(QPalette::Disabled, QPalette::ButtonText,
+                   QColor(dark ? "#5e5c64" : "#adb5bd"));
+  palette.setColor(QPalette::Disabled, QPalette::Highlight,
+                   QColor(dark ? "#2a2a2a" : "#e9ecef"));
+  palette.setColor(QPalette::Disabled, QPalette::HighlightedText,
+                   QColor(dark ? "#5e5c64" : "#adb5bd"));
+  return palette;
+}
+
 void applyTheme(const QString& themeName) {
   if (qApp) {
-    qApp->setStyleSheet(styleSheetForMode(modeFromString(themeName)));
+    const Mode mode = effectiveMode(modeFromString(themeName));
+    qApp->setStyleSheet(styleSheetForMode(mode));
+    qApp->setPalette(paletteForMode(mode));
   }
 }
 

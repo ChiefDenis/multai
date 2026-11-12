@@ -49,6 +49,7 @@ public:
   void freeze() override;
   void hibernate() override;
   void closeTab();
+  void updateTheme(const QString& theme);
 
 public slots:
   void retry();
@@ -69,6 +70,8 @@ signals:
 private slots:
   void onQtLifecycleStateChanged(QWebEnginePage::LifecycleState qtState);
   void onRecommendedStateChanged(QWebEnginePage::LifecycleState recommendedState);
+  void onLoadProgress(int progress);
+  void onLoadTimeout();
 
 private:
   void setupUi();
@@ -89,6 +92,7 @@ private:
   QWebEnginePage* m_page;
   QTimer* m_freezeTimer;
   QTimer* m_hibernateTimer;
+  QTimer* m_loadTimer;
   QWebEnginePage::LifecycleState m_qtLifecycleState;
   QWebEnginePage::LifecycleState m_recommendedState;
   bool m_pageCreated;

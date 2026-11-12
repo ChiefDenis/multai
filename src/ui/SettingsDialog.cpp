@@ -10,7 +10,7 @@
 #include <QVBoxLayout>
 
 SettingsDialog::SettingsDialog(QWidget* parent)
-  : QDialog(parent)
+  : ThemedDialog(parent)
   , m_themeCombo(nullptr)
   , m_automationCheck(nullptr)
   , m_freezeSpin(nullptr)

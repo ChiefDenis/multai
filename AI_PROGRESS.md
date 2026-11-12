@@ -4,8 +4,8 @@
 
 - **Purpose**: Authoritative progress ledger for AI Workspace project
 - **Status**: Active
-- **Last Updated**: 2026-11-06
-- **Current Stage**: Stage 8 refinement (UI and Interaction Refinement) - complete
+- **Last Updated**: 2026-11-12
+- **Current Stage**: Visual QA correction pass - complete
 
 ## Progress Summary
 
@@ -23,6 +23,7 @@
 | Stage 8 Refinement | ✅ Complete | 2026-11-06 | UI and interaction refinement pass |
 | Stage 9: Testing and Performance | ✅ Complete | 2026-11-05 | 21 tests passing (15 unit + 6 integration + 3 performance) |
 | Stage 10: Documentation and Packaging | ✅ Complete | 2026-11-05 | RPM spec, desktop file, icon, documentation updated |
+| Visual QA Corrections | ✅ Complete | 2026-11-12 | 25/25 tests; 12-state screenshot archive and contact sheet |
 
 Stages 2-6 were delivered together in one work phase because the browser engine,
 profile manager and lifecycle state machine are mutually dependent. That phase is
@@ -1024,3 +1025,176 @@ Investigation determined that clicking a provider opened a modal `ProfileSelecti
 **Version**: 0.3.0 (bumped from 0.2.2 in release preparation)
 
 **License**: GPL-3.0-or-later (migrated from MIT)
+
+## Visual QA Correction Pass (2026-11-12)
+
+Independent visual QA reported reproducible UI and WebEngine defects. Eight correction
+stages were implemented without changing architecture, version (0.3.0) or licence
+(GPL-3.0-or-later). This section records the actual root causes, changes and verified
+results.
+
+### Stage 1: Workspace Header and Toolbar Icons
+
+**Root cause**: The provider icon and provider name were painted into a single `QLabel`
+pixmap, so the name could not use theme typography or elide independently. Back,
+Forward, Reload and Open External used platform standard icons that were missing,
+blurred or low-contrast depending on the active icon theme. The global
+`QToolButton { padding: 6px 14px; }` left no content box for a 16 px icon inside a
+fixed 28x28 button, so icons appeared blank. `ProviderIcons` drew a status dot over
+every provider icon even in the Active state.
+
+**Changes**:
+- Split the header into `m_providerIconLabel` (24x24) and `m_providerLabel`.
+- Added `src/ui/ToolbarIcons.{h,cpp}` with painted Back, Forward, Reload, Open External,
+  folder, tabs, settings and close icons rendered at 16/20/24/32/48/64 px in Normal and
+  Disabled colours for light and dark themes.
+- Reduced `QToolButton` padding to 3 px (2 px on focus) so 16 px icons fit 28x28 buttons.
+- Removed the provider-icon status badge; lifecycle/error state is presented by the tab
+  row and status bar only.
+
+**Verification**: `test_visual_corrections` asserts that the header exposes a separate
+icon label and name label, that each toolbar icon has non-transparent pixels, that
+light and dark icon variants differ, and that provider pixmaps no longer contain the
+overlay dot. Screenshots `01-initial` and `02-active-workspace` show both header
+elements and all four toolbar icons in light and dark themes.
+
+### Stage 2: Blank WebEngine Content and Persistent Loading
+
+**Root cause**: Two independent issues. First, `QWidget::render()` does not capture the
+composited `QWebEngineView` surface, so screenshots showed an empty page even when the
+site had loaded. Second, the harness captured at a fixed three seconds while real
+network loads took longer, leaving the visible lifecycle state at `Loading`.
+
+**Changes**:
+- Screenshot harness composites `QWebEngineView::grab()` at the view's mapped position
+  into the window image instead of relying on `render()`.
+- Added diagnostics in `BrowserTab`: navigation start/finish, URL, progress, success,
+  renderer termination, invalid state transitions and lifecycle changes via `qInfo` /
+  `qWarning`.
+- Added a 45 s single-shot `m_loadTimer`; timeout stops the page and moves the tab to
+  `Unloaded` with a "Load Timed Out" error card, so `Loading` always clears.
+- Removed the dark-theme JavaScript body-style injection. The page background is set
+  natively with `QWebEnginePage::setBackgroundColor()` plus view palette and container
+  styling, so external sites keep their own styles.
+- Theme changes propagate to open tabs through `BrowserTab::updateTheme()`.
+
+**Verification**: `testLoadFailureClearsLoading` and `testNavigationTimeoutClearsLoading`
+assert the state leaves `Loading` on failure and timeout. Real Wayland captures of
+DeepSeek, Qwen and Gemini produced painted page content. Gemini still shows Google's
+consent overlay, which is provider behaviour and was not bypassed.
+
+### Stage 3: Dark Sidebar, Status Bar and Empty State
+
+**Root cause**: Sidebar section containers were transparent and inherited the parent
+window colour, so they stayed light in dark mode. Status-bar labels used the default
+palette, and `#tabList QWidget { background: transparent; }` also erased the selected
+row surface. The empty-state icon used a platform standard folder icon whose contrast
+depended on the system icon theme.
+
+**Changes**:
+- Added explicit dark/light backgrounds for `#sidebarExpandedContainer`, `#collapsedRail`,
+  `#providersSection`, `#tabsSection` and `#sidebarDivider`.
+- Added `QStatusBar QLabel` colours and removed status-bar item borders.
+- Added `QPalette` placeholders, alternate row colours and explicit light/dark palettes in
+  `Theme::applyTheme()`.
+- Replaced the platform empty-state icon with the painted `ToolbarIcons::folderIcon()`.
+- Tab selection is driven by a `selected` dynamic property and
+  `TabRowWidget::WA_StyledBackground`, so the selected row has a visible surface.
+
+**Verification**: `testDarkSidebarRendersDark` checks rendered sidebar luminance,
+`testDarkStatusBarTextContrast` checks foreground/background contrast,
+`testEmptyStateIconContrast` checks the icon against both themes, and
+`testTabSelectionVisualState` checks that selecting a row changes its rendered pixels.
+Screenshots `03-multiple-tabs` and `05-empty-workspace` show readable dark surfaces.
+
+### Stage 4: Collapsed Sidebar Icon Rail
+
+**Root cause**: Collapsing only hid the provider and tab sections, leaving an empty strip
+without app identity or navigation.
+
+**Changes**:
+- Added a compact 64 px icon rail with app mark, nine provider buttons, a tabs button
+  with count, expand button and settings button.
+- Provider and tabs buttons emit the same signals as the expanded sidebar, so navigation
+  behaviour is unchanged.
+- Expanding and collapsing only toggles `QStackedLayout` pages inside the fixed sidebar
+  width; no window resize occurs.
+- Added tooltips to every icon-only control.
+
+**Verification**: `testCollapsedSidebarNavigation` asserts provider and tabs affordances
+exist and emit signals, and `testCollapsedSidebarPreservesWindowSize` asserts window
+dimensions are unchanged across collapse/expand. Screenshot `04-sidebar-collapsed`
+shows the rail in both themes.
+
+### Stage 5: Single Lifecycle Presentation
+
+**Root cause**: The tab row derived its indicator from one state while the status bar
+could show another; error tabs also displayed the lifecycle letter instead of the error
+state, and restored tabs could show persisted page titles.
+
+**Changes**:
+- The tab row and status bar now read the same `BrowserTab` lifecycle state and
+  `hasError` flag; error badges show `!` in red.
+- Restored and newly created tabs use the provider display name as the tab title.
+  Page titles are still stored in metadata but are deliberately not used for the tab row.
+- `MainWindow` refreshes header and status display when the active tab's lifecycle,
+  error or title signal fires.
+
+**Verification**: `testSidebarLifecycleIndicatorsMatchStatus` and
+`testTabTitlesUseProviderNames` cover these rules. Screenshots show provider names for
+all three restored tabs.
+
+### Stage 6: Screenshot Harness
+
+**Root cause**: The previous harness could capture before the intended state existed and
+could not see the account dialog surface on Wayland.
+
+**Changes**:
+- The harness asserts each state before capture: expected tab count, active tab,
+  lifecycle `Active`, visible header, collapsed rail, empty workspace, or shown and
+  exposed account dialog.
+- Capture fails when an assertion fails; there is no silent fallback.
+- Twelve states are captured (six states x light/dark).
+- `capture-all.sh` builds a labelled contact sheet and keeps raw dialog captures.
+- The harness exits with `std::_Exit(0)` after capture to avoid unrelated Qt WebEngine
+  teardown aborts after the state has been written.
+
+**Verification**: All 12 captures completed with exit code 0. Raw PNGs and per-state logs
+are in `artifacts/visual-qa/`; the sheet is
+`artifacts/visual-qa/contact-sheet.png`.
+
+### Stage 7: Regression Tests
+
+**Root cause**: Earlier UI tests asserted stylesheet strings and therefore passed while
+rendered widgets were broken.
+
+**Changes**:
+- Added `tests/test_visual_corrections.cpp` with 14 test functions covering header
+  composition, painted toolbar icons, lifecycle consistency, load failure and timeout,
+  provider tab titles, dark sidebar and status bar, empty-state contrast, collapsed rail
+  navigation and size preservation, tab selection pixels, and account-dialog surfaces.
+- Registered the suite in `tests/CMakeLists.txt` against `ai-workspace-lib`.
+
+**Verification**: `ctest --test-dir build-qa --output-on-failure` passes 25/25 tests
+(10 integration-labelled, 3 performance-labelled; total 40.16 s). A clean configure and
+build in `build-qa` completed without errors.
+
+### Stage 8: Full Verification and Review
+
+- Fresh `cmake -B build-qa -S . -DCMAKE_BUILD_TYPE=Debug` and
+  `cmake --build build-qa -j4` succeeded.
+- Full CTest run passed 25/25.
+- All 12 states recaptured on the real Wayland session.
+- Full images and zoomed crops were inspected for header, toolbar, tab selection,
+  collapsed rail, dark surfaces, empty state and account dialog.
+- Light/dark variants were compared for contrast and consistency.
+- No version bump, no history rewrite, no AI attribution in the commit.
+
+### Remaining Known Limitations
+
+- Live provider pages depend on external networks, consent screens and bot detection.
+  Captures may differ between runs; Google Gemini currently shows a consent overlay.
+- Screenshot capture requires a real Wayland or X11 session because offscreen QPA cannot
+  paint Qt WebEngine content.
+- Renderer-crash recovery is covered by existing lifecycle tests but not reproduced in
+  the visual harness.

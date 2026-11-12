@@ -11,7 +11,7 @@
 #include <QDialogButtonBox>
 
 ProviderSelectionDialog::ProviderSelectionDialog(QWidget* parent)
-  : QDialog(parent)
+  : ThemedDialog(parent)
   , m_providerList(nullptr)
   , m_filterEdit(nullptr)
   , m_createButton(nullptr)

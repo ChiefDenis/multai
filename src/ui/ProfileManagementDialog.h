@@ -1,13 +1,13 @@
 #pragma once
 
-#include <QDialog>
+#include "ThemedDialog.h"
 
 class QComboBox;
 class QLineEdit;
 class QListWidget;
 class QPushButton;
 
-class ProfileManagementDialog : public QDialog {
+class ProfileManagementDialog : public ThemedDialog {
   Q_OBJECT
 public:
   explicit ProfileManagementDialog(QWidget* parent = nullptr);

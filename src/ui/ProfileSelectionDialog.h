@@ -1,12 +1,12 @@
 #pragma once
 
-#include <QDialog>
+#include "ThemedDialog.h"
 
 class QComboBox;
 class QLineEdit;
 class QPushButton;
 
-class ProfileSelectionDialog : public QDialog {
+class ProfileSelectionDialog : public ThemedDialog {
   Q_OBJECT
 public:
   ProfileSelectionDialog(const QString& providerId, const QString& providerName,

@@ -25,9 +25,13 @@ public:
   int tabCount() const;
   bool hasTabs() const;
   BrowserTab* tabById(const QString& tabId) const;
+  QStringList tabIds() const { return m_tabs.keys(); }
 
   void showEmptyState();
   void hideEmptyState();
+  void updateTheme(const QString& theme);
+
+  QLabel* emptyStateFolderIconLabelForTest() const { return m_emptyStateFolderIconLabel; }
 
 signals:
   void tabActivated(BrowserTab* tab, const QString& tabId);
@@ -40,6 +44,7 @@ private:
   void updateEmptyState();
 
   QWidget* m_emptyStateWidget;
+  QLabel* m_emptyStateFolderIconLabel;
   QMap<QString, BrowserTab*> m_tabs;
   QString m_currentTabId;
 };

@@ -7,8 +7,10 @@
 #include <QWidget>
 
 class BrowserTab;
+class QLabel;
 class QListWidget;
 class QListWidgetItem;
+class QResizeEvent;
 class QToolButton;
 class QMenu;
 
@@ -34,6 +36,15 @@ public:
   void setSidebarWidth(int width);
   bool isCollapsed() const;
   void setCollapsed(bool collapsed);
+  void updateTheme(const QString& theme);
+
+  // Test accessors
+  QListWidget* providerListForTest() const { return m_providerList; }
+  QListWidget* tabListForTest() const { return m_tabList; }
+  QWidget* collapsedRailForTest() const { return m_collapsedRail; }
+  QToolButton* collapsedTabsButtonForTest() const { return m_collapsedTabsButton; }
+  QToolButton* collapseButtonForTest() const { return m_collapseButton; }
+  QToolButton* settingsButtonForTest() const { return m_settingsButton; }
 
 signals:
   void providerSelected(const QString& providerId);
@@ -50,7 +61,16 @@ private:
   void setupUi();
   void setupProviderSection();
   void setupTabsSection();
+  void setupCollapsedRail();
   void setupBottomSection();
+  void updateCollapsedTabsButton();
+  void updateProviderListHeight();
+  void showCollapsedTabsMenu();
+
+protected:
+  void resizeEvent(QResizeEvent* event) override;
+
+private:
   QListWidgetItem* createProviderItem(const QString& providerId,
                                       const QString& displayName, const QIcon& icon);
   QListWidgetItem* createTabItem(const QString& tabId, const QString& providerId,
@@ -63,6 +83,11 @@ private:
   void showProviderContextMenu(const QPoint& pos);
   void executeTabAction(const QString& tabId, const QString& action);
 
+  QWidget* m_expandedContainer;
+  QWidget* m_collapsedRail;
+  QLabel* m_headerAppIcon;
+  QLabel* m_headerAppLabel;
+  QToolButton* m_collapsedTabsButton;
   QListWidget* m_providerList;
   QListWidget* m_tabList;
   QToolButton* m_collapseButton;
@@ -70,6 +95,7 @@ private:
 
   QMap<QString, QListWidgetItem*> m_tabItems;
   QMap<QString, QString> m_tabIdToProviderId;
+  QMap<QString, QToolButton*> m_collapsedProviderButtons;
   int m_sidebarWidth;
   bool m_collapsed;
 };

@@ -1,12 +1,12 @@
 #pragma once
 
-#include <QDialog>
+#include "ThemedDialog.h"
 
 class QCheckBox;
 class QComboBox;
 class QSpinBox;
 
-class SettingsDialog : public QDialog {
+class SettingsDialog : public ThemedDialog {
   Q_OBJECT
 public:
   explicit SettingsDialog(QWidget* parent = nullptr);

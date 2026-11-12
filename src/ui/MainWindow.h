@@ -67,11 +67,13 @@ private:
   QString nextTabId();
 
   void updateStatusDisplay(BrowserTab* tab);
+  QString tabDisplayTitle(BrowserTab* tab) const;
 
   Sidebar* m_sidebar;
   BrowserWorkspace* m_workspace;
   QWidget* m_workspaceHeader;
   QHBoxLayout* m_workspaceHeaderLayout;
+  QLabel* m_providerIconLabel;
   QLabel* m_providerLabel;
   QToolButton* m_backButton;
   QToolButton* m_forwardButton;
@@ -91,6 +93,18 @@ public:
   Sidebar* sidebarForTest() const { return m_sidebar; }
   BrowserWorkspace* workspaceForTest() const { return m_workspace; }
   QWidget* workspaceHeaderForTest() const { return m_workspaceHeader; }
+  QLabel* providerIconLabelForTest() const { return m_providerIconLabel; }
+  QLabel* providerLabelForTest() const { return m_providerLabel; }
+  QToolButton* backButtonForTest() const { return m_backButton; }
+  QToolButton* forwardButtonForTest() const { return m_forwardButton; }
+  QToolButton* reloadButtonForTest() const { return m_reloadButton; }
+  QToolButton* openExternalButtonForTest() const { return m_openExternalButton; }
+  QLabel* statusTabInfoLabelForTest() const { return m_statusTabInfoLabel; }
+  QLabel* statusBadgeLabelForTest() const { return m_statusBadgeLabel; }
+  BrowserTab* currentTabForTest() const { return m_currentTab; }
+  void updateWorkspaceHeaderForTest(BrowserTab* tab) { updateWorkspaceHeader(tab); }
+  void updateStatusDisplayForTest(BrowserTab* tab) { updateStatusDisplay(tab); }
+  QString tabDisplayTitleForTest(BrowserTab* tab) const { return tabDisplayTitle(tab); }
   void collapseSidebarForTest() { m_sidebar->setCollapsed(true); }
   void expandSidebarForTest() { m_sidebar->setCollapsed(false); }
   void setThemeForTest(const QString& theme) { SettingsManager::instance()->setTheme(theme); applyTheme(); }

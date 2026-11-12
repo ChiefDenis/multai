@@ -13,7 +13,7 @@
 
 ProfileSelectionDialog::ProfileSelectionDialog(const QString& providerId,
                                                const QString& providerName, QWidget* parent)
-  : QDialog(parent)
+  : ThemedDialog(parent)
   , m_providerId(providerId)
   , m_accountCombo(nullptr)
   , m_newAccountEdit(nullptr)

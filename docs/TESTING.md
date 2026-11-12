@@ -689,18 +689,66 @@ ctest --test-dir build -R performance
 ./build/tests/test_memory_usage
 ./build/tests/test_tab_timings
 ./build/tests/test_profile_growth
+./build/tests/test_visual_corrections
 ```
 
-### Current Test Results (2026-11-05)
+### Current Test Results (2026-11-12)
 
 | Category | Tests | Status |
 |----------|-------|--------|
 | Unit | 12 | ✅ All passing |
-| Integration | 4 | ✅ All passing |
+| Integration | 10 | ✅ All passing |
 | Performance | 3 | ✅ All passing |
-| **Total** | **19** | ✅ **All passing** |
+| **Total** | **25** | ✅ **All passing** |
 
-Total test time: ~25 seconds
+Total test time: ~40 seconds. Verified in a clean `build-qa` configure and build.
+
+### Visual QA Screenshot Harness
+
+The screenshot harness is a manual QA tool, not a CTest test. It drives the real
+application on a Wayland or X11 session and captures six states in light and dark
+themes.
+
+```bash
+# Build the harness and application
+cmake -B build -S . -DCMAKE_BUILD_TYPE=Debug
+cmake --build build --target state-launcher
+
+# Capture all 12 states and generate the contact sheet
+BUILD_DIR="$PWD/build" tests/visual-qa/capture-all.sh
+```
+
+Outputs:
+
+- `artifacts/visual-qa/01-initial-{light,dark}.png`
+- `artifacts/visual-qa/02-active-workspace-{light,dark}.png`
+- `artifacts/visual-qa/03-multiple-tabs-{light,dark}.png`
+- `artifacts/visual-qa/04-sidebar-collapsed-{light,dark}.png`
+- `artifacts/visual-qa/05-empty-workspace-{light,dark}.png`
+- `artifacts/visual-qa/06-account-management-{light,dark}.png`
+- `artifacts/visual-qa/contact-sheet.png`
+- Per-state `.log` files with WebEngine diagnostics
+
+The harness asserts the intended state before writing each image (tab count, active tab,
+lifecycle `Active`, header visibility, collapsed rail, empty workspace, or shown and
+exposed account dialog). If an assertion fails, capture fails rather than writing a
+plausible but wrong screenshot.
+
+The web surface is captured by compositing `QWebEngineView::grab()` at the view's mapped
+position because `QWidget::render()` does not include the composited WebEngine surface.
+Offscreen QPA cannot paint WebEngine content, so a real display server is required.
+
+### UI Regression Tests
+
+`tests/test_visual_corrections.cpp` verifies rendered behaviour rather than stylesheet
+strings: painted toolbar icon pixels, provider icon composition, dark sidebar luminance,
+status-bar contrast, empty-state icon contrast, collapsed-rail navigation and window
+size preservation, tab selection pixels, load failure/timeout state clearing, provider
+tab titles, and dark/light dialog surfaces.
+
+```bash
+ctest --test-dir build -R test_visual_corrections --output-on-failure
+```
 
 Test labels: `integration` and `performance` CTest labels applied for selective execution.
 

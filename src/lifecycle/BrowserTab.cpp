@@ -2,13 +2,19 @@
 #include "LifecycleManager.h"
 #include "SettingsManager.h"
 #include "profiles/ProfileManager.h"
+#include <QDebug>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPushButton>
 #include <QStackedWidget>
 #include <QStyle>
 #include <QVBoxLayout>
+#include <QWebEngineCertificateError>
 #include <QWebEngineProfile>
+
+namespace {
+constexpr int kLoadTimeoutMs = 45000;
+}
 
 BrowserTab::BrowserTab(const QString& providerId, const QString& profileId, const QUrl& url,
                        LifecycleState initialState, QWidget* parent)
@@ -19,6 +25,7 @@ BrowserTab::BrowserTab(const QString& providerId, const QString& profileId, cons
   , m_page(nullptr)
   , m_freezeTimer(nullptr)
   , m_hibernateTimer(nullptr)
+  , m_loadTimer(nullptr)
   , m_qtLifecycleState(QWebEnginePage::LifecycleState::Active)
   , m_recommendedState(QWebEnginePage::LifecycleState::Active)
   , m_pageCreated(false)
@@ -43,6 +50,11 @@ BrowserTab::BrowserTab(const QString& providerId, const QString& profileId, cons
   m_hibernateTimer = new QTimer(this);
   m_hibernateTimer->setSingleShot(true);
   connect(m_hibernateTimer, &QTimer::timeout, this, &BrowserTab::hibernate);
+
+  m_loadTimer = new QTimer(this);
+  m_loadTimer->setSingleShot(true);
+  m_loadTimer->setInterval(kLoadTimeoutMs);
+  connect(m_loadTimer, &QTimer::timeout, this, &BrowserTab::onLoadTimeout);
 }
 
 BrowserTab::~BrowserTab() {
@@ -57,6 +69,8 @@ void BrowserTab::setupUi() {
   layout->addWidget(m_stack);
 
   m_viewContainer = new QWidget(this);
+  const bool isDark = (SettingsManager::instance()->theme() == "dark");
+  m_viewContainer->setStyleSheet(isDark ? "background-color: #161616;" : "background-color: #f8f9fa;");
   m_viewLayout = new QVBoxLayout(m_viewContainer);
   m_viewLayout->setContentsMargins(0, 0, 0, 0);
   m_stack->addWidget(m_viewContainer);
@@ -155,6 +169,7 @@ void BrowserTab::createPage() {
   ProfileManager* profileManager = ProfileManager::instance();
   m_profile = profileManager->getOrCreateProfile(m_metadata.providerId(), m_metadata.profileId());
   if (!m_profile) {
+    qWarning() << "[WebEngine] Failed to get/create profile for provider:" << m_metadata.providerId();
     return;
   }
 
@@ -164,6 +179,17 @@ void BrowserTab::createPage() {
   m_page = new QWebEnginePage(m_profile->webEngineProfile(), m_view);
   m_view->setPage(m_page);
 
+  // Set application-owned background natively without invasive JS injection
+  const bool isDark = (SettingsManager::instance()->theme() == "dark");
+  const QColor bg = isDark ? QColor("#161616") : QColor("#FFFFFF");
+  m_page->setBackgroundColor(bg);
+
+  QPalette pal = m_view->palette();
+  pal.setColor(QPalette::Window, bg);
+  pal.setColor(QPalette::Base, bg);
+  m_view->setPalette(pal);
+  m_view->setAutoFillBackground(true);
+
   m_qtLifecycleState = m_page->lifecycleState();
   m_recommendedState = m_page->recommendedState();
 
@@ -172,29 +198,36 @@ void BrowserTab::createPage() {
   connect(m_page, &QWebEnginePage::recommendedStateChanged, this,
           &BrowserTab::onRecommendedStateChanged);
   connect(m_page, &QWebEnginePage::loadStarted, this, &BrowserTab::onLoadStarted);
+  connect(m_page, &QWebEnginePage::loadProgress, this, &BrowserTab::onLoadProgress);
   connect(m_page, &QWebEnginePage::loadFinished, this, &BrowserTab::onLoadFinished);
   connect(m_page, &QWebEnginePage::titleChanged, this, &BrowserTab::onTitleChanged);
   connect(m_page, &QWebEnginePage::renderProcessTerminated, this,
           &BrowserTab::onRenderProcessTerminated);
+  connect(m_page, &QWebEnginePage::certificateError, this,
+          [this](const QWebEngineCertificateError& error) {
+            qWarning() << "[WebEngine] Certificate error for provider:" << m_metadata.providerId()
+                       << "URL:" << error.url().toString()
+                       << "Description:" << error.description()
+                       << "Overridable:" << error.isOverridable();
+          });
 
   m_viewLayout->addWidget(m_view);
   m_pageCreated = true;
 
-  // Set dark background for WebEngineView when dark theme is active
-  if (SettingsManager::instance()->theme() == "dark") {
-    QPalette pal = m_view->palette();
-    pal.setColor(QPalette::Window, QColor("#161616"));
-    m_view->setPalette(pal);
-    m_view->setAutoFillBackground(true);
-    m_page->runJavaScript(
-        "document.documentElement.style.backgroundColor = '#161616'; "
-        "document.body.style.backgroundColor = '#161616';");
-  }
+  qInfo() << "[WebEngine] Created page for provider:" << m_metadata.providerId()
+          << "URL:" << m_metadata.url().toString()
+          << "Dark theme:" << isDark;
 }
 
 void BrowserTab::destroyPage() {
   if (!m_pageCreated) {
     return;
+  }
+
+  qInfo() << "[WebEngine] Destroying page for provider:" << m_metadata.providerId();
+
+  if (m_loadTimer) {
+    m_loadTimer->stop();
   }
 
   if (m_page) {
@@ -217,6 +250,23 @@ void BrowserTab::destroyPage() {
   m_pageCreated = false;
 }
 
+void BrowserTab::updateTheme(const QString& theme) {
+  const bool isDark = (theme == "dark");
+  const QColor bg = isDark ? QColor("#161616") : QColor("#FFFFFF");
+  if (m_viewContainer) {
+    m_viewContainer->setStyleSheet(isDark ? "background-color: #161616;" : "background-color: #f8f9fa;");
+  }
+  if (m_view) {
+    QPalette pal = m_view->palette();
+    pal.setColor(QPalette::Window, bg);
+    pal.setColor(QPalette::Base, bg);
+    m_view->setPalette(pal);
+  }
+  if (m_page) {
+    m_page->setBackgroundColor(bg);
+  }
+}
+
 void BrowserTab::activate() {
   m_freezeTimer->stop();
   m_hibernateTimer->stop();
@@ -226,6 +276,8 @@ void BrowserTab::activate() {
   }
 
   const LifecycleState state = m_metadata.lifecycleState();
+  qInfo() << "[WebEngine] Activating tab:" << m_metadata.providerId()
+          << "current state:" << lifecycleStateToString(state);
 
   if (state == LifecycleState::Frozen && m_page) {
     setQtLifecycleState(QWebEnginePage::LifecycleState::Active);
@@ -234,9 +286,13 @@ void BrowserTab::activate() {
   }
 
   if (state == LifecycleState::Unloaded || state == LifecycleState::Discarded || !m_page) {
-    setLifecycleState(LifecycleState::Loading);
+    if (m_metadata.lifecycleState() != LifecycleState::Loading) {
+      setLifecycleState(LifecycleState::Loading);
+    }
     createPage();
     if (m_page) {
+      qInfo() << "[WebEngine] Loading URL:" << m_metadata.url().toString();
+      m_loadTimer->start();
       m_page->load(m_metadata.url());
     } else {
       setLifecycleState(LifecycleState::Unloaded);
@@ -348,24 +404,64 @@ void BrowserTab::onRecommendedStateChanged(QWebEnginePage::LifecycleState recomm
 }
 
 void BrowserTab::onLoadStarted() {
+  qInfo() << "[WebEngine] Navigation started for provider:" << m_metadata.providerId()
+          << "URL:" << m_metadata.url().toString();
   if (m_hasError) {
     hideError();
   }
-  setLifecycleState(LifecycleState::Loading);
+  if (m_metadata.lifecycleState() != LifecycleState::Loading) {
+    setLifecycleState(LifecycleState::Loading);
+  }
+  if (m_loadTimer) {
+    m_loadTimer->start();
+  }
   emit loadStarted();
 }
 
+void BrowserTab::onLoadProgress(int progress) {
+  if (progress == 0 || progress == 100 || progress % 25 == 0) {
+    qInfo() << "[WebEngine] Load progress for provider:" << m_metadata.providerId()
+            << "Progress:" << progress;
+  }
+}
+
+void BrowserTab::onLoadTimeout() {
+  if (m_metadata.lifecycleState() != LifecycleState::Loading) {
+    return;
+  }
+  qWarning() << "[WebEngine] Navigation timed out for provider:" << m_metadata.providerId()
+             << "URL:" << m_metadata.url().toString();
+  if (m_page) {
+    m_page->triggerAction(QWebEnginePage::Stop);
+  }
+  setLifecycleState(LifecycleState::Unloaded);
+  showError("Load Timed Out",
+            QString("Loading \"%1\" did not complete in time. Check your network connection "
+                    "and try again.")
+                .arg(m_metadata.url().toString()));
+}
+
 void BrowserTab::onLoadFinished(bool success) {
+  if (m_loadTimer) {
+    m_loadTimer->stop();
+  }
+  qInfo() << "[WebEngine] Navigation finished for provider:" << m_metadata.providerId()
+          << "URL:" << m_metadata.url().toString()
+          << "Success:" << success
+          << "Current state:" << lifecycleStateToString(m_metadata.lifecycleState());
   if (success) {
     m_recoveryAttempted = false;
     hideError();
-    setLifecycleState(LifecycleState::Active);
+    if (m_metadata.lifecycleState() != LifecycleState::Active) {
+      setLifecycleState(LifecycleState::Active);
+    }
     if (m_page && !m_page->title().isEmpty()) {
-      m_metadata.setTitle(m_page->title());
-      emit titleChanged(m_metadata.title());
+      onTitleChanged(m_page->title());
     }
   } else {
-    setLifecycleState(LifecycleState::Unloaded);
+    if (m_metadata.lifecycleState() != LifecycleState::Unloaded) {
+      setLifecycleState(LifecycleState::Unloaded);
+    }
     showError(
         "Unable to Load Page",
         QString("Could not load \"%1\". Check your network connection or verify provider availability.")
@@ -375,12 +471,22 @@ void BrowserTab::onLoadFinished(bool success) {
 }
 
 void BrowserTab::onTitleChanged(const QString& title) {
-  m_metadata.setTitle(title);
-  emit titleChanged(title);
+  QString cleanTitle = title.trimmed();
+  // Filter out URLs, hostnames, and empty strings to maintain consistent provider display names
+  if (cleanTitle.isEmpty() || cleanTitle.startsWith("http://") || cleanTitle.startsWith("https://")
+      || cleanTitle == m_metadata.url().host() || cleanTitle == m_metadata.url().toString()) {
+    return;
+  }
+  qInfo() << "[WebEngine] Page title updated for provider:" << m_metadata.providerId()
+          << "Title:" << cleanTitle;
+  m_metadata.setTitle(cleanTitle);
+  emit titleChanged(cleanTitle);
 }
 
 void BrowserTab::onRenderProcessTerminated(
     QWebEnginePage::RenderProcessTerminationStatus status, int exitCode) {
+  qWarning() << "[WebEngine] Render process terminated for provider:" << m_metadata.providerId()
+             << "Status:" << static_cast<int>(status) << "Exit code:" << exitCode;
   emit renderProcessTerminated(static_cast<int>(status), exitCode);
 
   const LifecycleState state = m_metadata.lifecycleState();
@@ -427,8 +533,17 @@ void BrowserTab::setQtLifecycleState(QWebEnginePage::LifecycleState state) {
 
 void BrowserTab::setLifecycleState(LifecycleState state) {
   if (!canTransition(m_metadata.lifecycleState(), state)) {
+    qWarning() << "[WebEngine] Invalid state transition from"
+               << lifecycleStateToString(m_metadata.lifecycleState())
+               << "to" << lifecycleStateToString(state)
+               << "for provider:" << m_metadata.providerId();
     return;
   }
+
+  qInfo() << "[WebEngine] Lifecycle transition:"
+          << lifecycleStateToString(m_metadata.lifecycleState()) << "->"
+          << lifecycleStateToString(state)
+          << "for provider:" << m_metadata.providerId();
 
   m_metadata.setLifecycleState(state);
   emit lifecycleStateChanged(state);

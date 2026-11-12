@@ -17,7 +17,7 @@
 #include <QVBoxLayout>
 
 ProfileManagementDialog::ProfileManagementDialog(QWidget* parent)
-  : QDialog(parent)
+  : ThemedDialog(parent)
   , m_providerCombo(nullptr)
   , m_profileList(nullptr)
   , m_nameEdit(nullptr)

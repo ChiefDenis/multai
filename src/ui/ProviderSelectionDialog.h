@@ -1,6 +1,6 @@
 #pragma once
 
-#include <QDialog>
+#include "ThemedDialog.h"
 #include <QListWidget>
 
 class Provider;
@@ -10,7 +10,7 @@ class QLabel;
 class QLineEdit;
 class QPushButton;
 
-class ProviderSelectionDialog : public QDialog {
+class ProviderSelectionDialog : public ThemedDialog {
   Q_OBJECT
 public:
   explicit ProviderSelectionDialog(QWidget* parent = nullptr);

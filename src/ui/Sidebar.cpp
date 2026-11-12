@@ -8,6 +8,7 @@
 #include "lifecycle/BrowserTab.h"
 #include "lifecycle/TabMetadata.h"
 #include "providers/ProviderRegistry.h"
+#include "ui/ToolbarIcons.h"
 
 #include <QEvent>
 #include <QFrame>
@@ -18,6 +19,8 @@
 #include <QPainter>
 #include <QPixmap>
 #include <QPoint>
+#include <QResizeEvent>
+#include <QStyle>
 #include <QToolButton>
 #include <QVBoxLayout>
 
@@ -26,21 +29,9 @@ namespace {
 constexpr int kDefaultSidebarWidth = 260;
 constexpr int kCollapsedSidebarWidth = 60;
 constexpr int kTabRowHeight = 48;
-constexpr int kProviderRowHeight = 44;
-
-// Create a light-colored version of a standard icon for use on dark backgrounds.
-QIcon makeLightIcon(const QIcon& icon, int size = 16) {
-  QPixmap source = icon.pixmap(size, size);
-  QPixmap result(size, size);
-  result.fill(Qt::transparent);
-  QPainter painter(&result);
-  painter.setCompositionMode(QPainter::CompositionMode_Source);
-  painter.drawPixmap(0, 0, source);
-  painter.setCompositionMode(QPainter::CompositionMode_SourceIn);
-  painter.fillRect(result.rect(), Qt::white);
-  painter.end();
-  return QIcon(result);
-}
+constexpr int kProviderRowHeight = 36;
+constexpr int kSidebarHeaderHeight = 56;
+constexpr int kSidebarBottomHeight = 44;
 
 }  // namespace
 
@@ -50,6 +41,7 @@ public:
   explicit TabRowWidget(const QString& tabId, QWidget* parent = nullptr)
     : QWidget(parent), m_tabId(tabId) {
     setAttribute(Qt::WA_Hover, true);
+    setAttribute(Qt::WA_StyledBackground, true);
   }
 
   QString tabId() const { return m_tabId; }
@@ -74,6 +66,11 @@ private:
 
 Sidebar::Sidebar(QWidget* parent)
   : QWidget(parent)
+  , m_expandedContainer(nullptr)
+  , m_collapsedRail(nullptr)
+  , m_headerAppIcon(nullptr)
+  , m_headerAppLabel(nullptr)
+  , m_collapsedTabsButton(nullptr)
   , m_providerList(nullptr)
   , m_tabList(nullptr)
   , m_collapseButton(nullptr)
@@ -81,6 +78,7 @@ Sidebar::Sidebar(QWidget* parent)
   , m_sidebarWidth(kDefaultSidebarWidth)
   , m_collapsed(false) {
   setObjectName("sidebar");
+  setAttribute(Qt::WA_StyledBackground, true);
   setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
   setMinimumWidth(kCollapsedSidebarWidth);
   setMaximumWidth(kDefaultSidebarWidth);
@@ -98,14 +96,40 @@ void Sidebar::setupUi() {
   header->setObjectName("sidebarHeader");
   header->setFixedHeight(56);
   QHBoxLayout* headerLayout = new QHBoxLayout(header);
-  headerLayout->setContentsMargins(16, 0, 16, 0);
+  headerLayout->setContentsMargins(14, 0, 14, 0);
+  headerLayout->setSpacing(10);
 
-  QLabel* appLabel = new QLabel("AI Workspace", header);
-  QFont appFont = appLabel->font();
-  appFont.setPointSize(16);
+  m_headerAppIcon = new QLabel(header);
+  m_headerAppIcon->setObjectName("sidebarAppIcon");
+  m_headerAppIcon->setFixedSize(28, 28);
+  m_headerAppIcon->setScaledContents(true);
+  QPixmap appPixmap(":/icons/hicolor/256x256/apps/ai-workspace.png");
+  if (appPixmap.isNull()) {
+    appPixmap = QPixmap(32, 32);
+    appPixmap.fill(Qt::transparent);
+    QPainter p(&appPixmap);
+    p.setRenderHint(QPainter::Antialiasing, true);
+    p.setBrush(QColor("#3584e4"));
+    p.setPen(Qt::NoPen);
+    p.drawRoundedRect(0, 0, 32, 32, 8, 8);
+    p.setPen(Qt::white);
+    QFont f = p.font();
+    f.setBold(true);
+    f.setPixelSize(16);
+    p.setFont(f);
+    p.drawText(QRectF(0, 0, 32, 32), Qt::AlignCenter, "AI");
+  }
+  m_headerAppIcon->setPixmap(appPixmap);
+  m_headerAppIcon->setToolTip("AI Workspace");
+  headerLayout->addWidget(m_headerAppIcon);
+
+  m_headerAppLabel = new QLabel("AI Workspace", header);
+  QFont appFont = m_headerAppLabel->font();
+  appFont.setPointSize(15);
   appFont.setBold(true);
-  appLabel->setFont(appFont);
-  headerLayout->addWidget(appLabel);
+  m_headerAppLabel->setFont(appFont);
+  m_headerAppLabel->setObjectName("sidebarAppTitle");
+  headerLayout->addWidget(m_headerAppLabel);
 
   mainLayout->addWidget(header);
 
@@ -116,21 +140,28 @@ void Sidebar::setupUi() {
   divider->setObjectName("sidebarDivider");
   mainLayout->addWidget(divider);
 
-  // Provider section
+  // Expanded container
+  m_expandedContainer = new QWidget(this);
+  m_expandedContainer->setObjectName("sidebarExpandedContainer");
+  QVBoxLayout* expandedLayout = new QVBoxLayout(m_expandedContainer);
+  expandedLayout->setContentsMargins(0, 0, 0, 0);
+  expandedLayout->setSpacing(0);
+
   setupProviderSection();
-
-  // Tabs section
   setupTabsSection();
+  mainLayout->addWidget(m_expandedContainer);
 
-  // Stretch to push bottom section down
-  mainLayout->addStretch();
+  // Collapsed rail
+  setupCollapsedRail();
+  mainLayout->addWidget(m_collapsedRail);
+  m_collapsedRail->setVisible(false);
 
   // Bottom section
   setupBottomSection();
 }
 
 void Sidebar::setupProviderSection() {
-  QWidget* section = new QWidget(this);
+  QWidget* section = new QWidget(m_expandedContainer ? m_expandedContainer : this);
   section->setObjectName("providersSection");
   QVBoxLayout* sectionLayout = new QVBoxLayout(section);
   sectionLayout->setContentsMargins(12, 8, 12, 4);
@@ -152,6 +183,7 @@ void Sidebar::setupProviderSection() {
   m_providerList->setFrameShape(QListWidget::NoFrame);
   m_providerList->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
   m_providerList->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+  m_providerList->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
   connect(m_providerList, &QListWidget::itemClicked, this,
           [this](QListWidgetItem* item) {
@@ -172,12 +204,17 @@ void Sidebar::setupProviderSection() {
   for (Provider* provider : registry->providers()) {
     addProviderRow(provider->id(), provider->displayName(), provider->icon());
   }
+  updateProviderListHeight();
 
-  layout()->addWidget(section);
+  if (m_expandedContainer && m_expandedContainer->layout()) {
+    static_cast<QVBoxLayout*>(m_expandedContainer->layout())->addWidget(section, 0);
+  } else {
+    layout()->addWidget(section);
+  }
 }
 
 void Sidebar::setupTabsSection() {
-  QWidget* section = new QWidget(this);
+  QWidget* section = new QWidget(m_expandedContainer ? m_expandedContainer : this);
   section->setObjectName("tabsSection");
   QVBoxLayout* sectionLayout = new QVBoxLayout(section);
   sectionLayout->setContentsMargins(12, 8, 12, 4);
@@ -207,7 +244,109 @@ void Sidebar::setupTabsSection() {
 
   sectionLayout->addWidget(m_tabList);
 
-  layout()->addWidget(section);
+  if (m_expandedContainer && m_expandedContainer->layout()) {
+    static_cast<QVBoxLayout*>(m_expandedContainer->layout())->addWidget(section, 1);
+  } else {
+    layout()->addWidget(section);
+  }
+}
+
+void Sidebar::setupCollapsedRail() {
+  m_collapsedRail = new QWidget(this);
+  m_collapsedRail->setObjectName("collapsedRail");
+  QVBoxLayout* railLayout = new QVBoxLayout(m_collapsedRail);
+  railLayout->setContentsMargins(6, 6, 6, 6);
+  railLayout->setSpacing(4);
+  railLayout->setAlignment(Qt::AlignHCenter | Qt::AlignTop);
+
+  ProviderRegistry* registry = ProviderRegistry::instance();
+  for (Provider* provider : registry->providers()) {
+    QToolButton* btn = new QToolButton(m_collapsedRail);
+    btn->setObjectName("collapsedProviderButton");
+    btn->setFixedSize(36, 36);
+    btn->setIcon(provider->icon());
+    btn->setIconSize(QSize(26, 26));
+    btn->setToolTip(provider->displayName());
+    btn->setProperty("providerId", provider->id());
+    btn->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(btn, &QToolButton::clicked, this, [this, provider]() {
+      emit providerSelected(provider->id());
+    });
+    connect(btn, &QToolButton::customContextMenuRequested, this,
+            [this, provider, btn](const QPoint& pos) {
+              QMenu menu(this);
+              menu.addAction("Add Account", this, [this, provider]() {
+                emit providerAddAccountRequested(provider->id());
+              });
+              menu.addAction("Manage Accounts", this, [this, provider]() {
+                emit providerManageAccountsRequested(provider->id());
+              });
+              menu.exec(btn->mapToGlobal(pos));
+            });
+    m_collapsedProviderButtons.insert(provider->id(), btn);
+    railLayout->addWidget(btn);
+  }
+
+  QFrame* railDivider = new QFrame(m_collapsedRail);
+  railDivider->setFrameShape(QFrame::HLine);
+  railDivider->setFixedHeight(1);
+  railDivider->setObjectName("sidebarDivider");
+  railLayout->addWidget(railDivider);
+
+  const bool isDark = (SettingsManager::instance()->theme() == "dark");
+  m_collapsedTabsButton = new QToolButton(m_collapsedRail);
+  m_collapsedTabsButton->setObjectName("collapsedTabsButton");
+  m_collapsedTabsButton->setFixedSize(36, 36);
+  m_collapsedTabsButton->setIcon(ToolbarIcons::tabsIcon(isDark));
+  m_collapsedTabsButton->setIconSize(QSize(20, 20));
+  m_collapsedTabsButton->setToolTip("Open Tabs (0)");
+  connect(m_collapsedTabsButton, &QToolButton::clicked, this, &Sidebar::showCollapsedTabsMenu);
+  railLayout->addWidget(m_collapsedTabsButton);
+
+  railLayout->addStretch();
+}
+
+void Sidebar::showCollapsedTabsMenu() {
+  QMenu menu(this);
+  if (m_tabItems.isEmpty()) {
+    QAction* empty = menu.addAction("No tabs open");
+    empty->setEnabled(false);
+  } else {
+    for (auto it = m_tabItems.begin(); it != m_tabItems.end(); ++it) {
+      QString tabId = it.key();
+      QListWidgetItem* item = it.value();
+      QString tooltip = item ? item->toolTip() : tabId;
+      QString providerId = m_tabIdToProviderId.value(tabId);
+      Provider* p = ProviderRegistry::instance()->providerById(providerId);
+      QIcon icon = p ? p->icon() : QIcon();
+      QAction* act = menu.addAction(icon, tooltip);
+      connect(act, &QAction::triggered, this, [this, tabId]() {
+        emit tabSelected(tabId);
+      });
+    }
+  }
+  menu.exec(m_collapsedTabsButton->mapToGlobal(QPoint(m_collapsedTabsButton->width() + 4, 0)));
+}
+
+void Sidebar::updateCollapsedTabsButton() {
+  if (m_collapsedTabsButton) {
+    m_collapsedTabsButton->setToolTip(QString("Open Tabs (%1)").arg(m_tabItems.size()));
+  }
+}
+
+void Sidebar::updateProviderListHeight() {
+  if (!m_providerList) {
+    return;
+  }
+  const int contentHeight = m_providerList->count() * (kProviderRowHeight + 4) + 8;
+  const int available = qMax(0, height() - kSidebarHeaderHeight - kSidebarBottomHeight - 2);
+  const int maxForProviders = qMax(kProviderRowHeight * 2, available - 120);
+  m_providerList->setFixedHeight(qMin(contentHeight, maxForProviders));
+}
+
+void Sidebar::resizeEvent(QResizeEvent* event) {
+  QWidget::resizeEvent(event);
+  updateProviderListHeight();
 }
 
 void Sidebar::setupBottomSection() {
@@ -217,10 +356,12 @@ void Sidebar::setupBottomSection() {
   bottomLayout->setContentsMargins(12, 8, 12, 8);
   bottomLayout->setSpacing(8);
 
+  const bool isDark = (SettingsManager::instance()->theme() == "dark");
+
   m_collapseButton = new QToolButton(this);
   m_collapseButton->setObjectName("sidebarCollapseButton");
   m_collapseButton->setToolTip("Collapse sidebar");
-  m_collapseButton->setIcon(makeLightIcon(style()->standardIcon(QStyle::SP_ArrowLeft)));
+  m_collapseButton->setIcon(ToolbarIcons::backIcon(isDark));
   m_collapseButton->setIconSize(QSize(16, 16));
   m_collapseButton->setFixedSize(28, 28);
   m_collapseButton->setToolButtonStyle(Qt::ToolButtonIconOnly);
@@ -235,7 +376,7 @@ void Sidebar::setupBottomSection() {
   m_settingsButton = new QToolButton(this);
   m_settingsButton->setObjectName("sidebarSettingsButton");
   m_settingsButton->setToolTip("Settings");
-  m_settingsButton->setIcon(makeLightIcon(style()->standardIcon(QStyle::SP_FileDialogDetailedView)));
+  m_settingsButton->setIcon(ToolbarIcons::settingsIcon(isDark));
   m_settingsButton->setIconSize(QSize(16, 16));
   m_settingsButton->setFixedSize(28, 28);
   m_settingsButton->setToolButtonStyle(Qt::ToolButtonIconOnly);
@@ -254,7 +395,7 @@ void Sidebar::addProviderRow(const QString& providerId, const QString& displayNa
 
   QWidget* widget = new QWidget(m_providerList);
   QHBoxLayout* layout = new QHBoxLayout(widget);
-  layout->setContentsMargins(12, 4, 12, 4);
+  layout->setContentsMargins(12, 2, 12, 2);
   layout->setSpacing(10);
 
   QLabel* iconLabel = new QLabel(widget);
@@ -268,9 +409,9 @@ void Sidebar::addProviderRow(const QString& providerId, const QString& displayNa
   nameFont.setPointSize(10);
   nameLabel->setFont(nameFont);
   nameLabel->setObjectName("providerNameLabel");
-  nameLabel->setWordWrap(true);
+  nameLabel->setWordWrap(false);
   nameLabel->setMinimumWidth(70);
-  nameLabel->setMaximumWidth(170);
+  nameLabel->setMaximumWidth(180);
   layout->addWidget(nameLabel);
 
   layout->addStretch();
@@ -326,9 +467,11 @@ void Sidebar::addTabRow(const QString& tabId, const QString& providerId,
   QToolButton* closeButton = new QToolButton(widget);
   closeButton->setObjectName("tabCloseButton");
   closeButton->setFixedSize(20, 20);
-  closeButton->setIcon(style()->standardIcon(QStyle::SP_DialogCloseButton));
+  const bool isDark = (SettingsManager::instance()->theme() == "dark");
+  closeButton->setIcon(ToolbarIcons::closeIcon(isDark));
   closeButton->setIconSize(QSize(10, 10));
   closeButton->setToolButtonStyle(Qt::ToolButtonIconOnly);
+  closeButton->setToolTip("Close tab");
   closeButton->setVisible(false);
   closeButton->setProperty("tabId", tabId);
   connect(closeButton, &QToolButton::clicked, this, [this, closeButton]() {
@@ -350,6 +493,7 @@ void Sidebar::addTabRow(const QString& tabId, const QString& providerId,
   m_tabIdToProviderId.insert(tabId, providerId);
 
   updateTabItemWidget(item, title, state, hasError);
+  updateCollapsedTabsButton();
 }
 
 void Sidebar::updateTabRow(const QString& tabId, const QString& title,
@@ -377,31 +521,36 @@ void Sidebar::updateTabItemWidget(QListWidgetItem* item, const QString& title,
   if (stateBadge) {
     QString badgeText;
     QColor badgeColor;
-    switch (state) {
-      case LifecycleState::Active:
-        badgeText = "A";
-        badgeColor = QColor("#26A269");
-        break;
-      case LifecycleState::Frozen:
-        badgeText = "F";
-        badgeColor = QColor("#33C7DE");
-        break;
-      case LifecycleState::Discarded:
-        badgeText = "H";
-        badgeColor = QColor("#9A9996");
-        break;
-      case LifecycleState::Loading:
-        badgeText = "L";
-        badgeColor = QColor("#3584E4");
-        break;
-      case LifecycleState::Unloaded:
-        badgeText = "U";
-        badgeColor = QColor("#77767B");
-        break;
-      case LifecycleState::Closing:
-        badgeText = "C";
-        badgeColor = QColor("#77767B");
-        break;
+    if (hasError) {
+      badgeText = "!";
+      badgeColor = QColor("#E01B24");
+    } else {
+      switch (state) {
+        case LifecycleState::Active:
+          badgeText = "A";
+          badgeColor = QColor("#26A269");
+          break;
+        case LifecycleState::Frozen:
+          badgeText = "F";
+          badgeColor = QColor("#33C7DE");
+          break;
+        case LifecycleState::Discarded:
+          badgeText = "H";
+          badgeColor = QColor("#9A9996");
+          break;
+        case LifecycleState::Loading:
+          badgeText = "L";
+          badgeColor = QColor("#3584E4");
+          break;
+        case LifecycleState::Unloaded:
+          badgeText = "U";
+          badgeColor = QColor("#77767B");
+          break;
+        case LifecycleState::Closing:
+          badgeText = "C";
+          badgeColor = QColor("#77767B");
+          break;
+      }
     }
     stateBadge->setText(badgeText);
     stateBadge->setStyleSheet(
@@ -430,6 +579,7 @@ void Sidebar::removeTabRow(const QString& tabId) {
     m_tabList->takeItem(row);
   }
   delete item;
+  updateCollapsedTabsButton();
 }
 
 void Sidebar::selectTabRow(const QString& tabId) {
@@ -439,12 +589,26 @@ void Sidebar::selectTabRow(const QString& tabId) {
   }
   m_tabList->setCurrentItem(item);
   m_tabList->scrollToItem(item);
+  for (auto it = m_tabItems.cbegin(); it != m_tabItems.cend(); ++it) {
+    QWidget* widget = m_tabList->itemWidget(it.value());
+    if (!widget) {
+      continue;
+    }
+    const bool selected = (it.value() == item);
+    if (widget->property("selected").toBool() != selected) {
+      widget->setProperty("selected", selected);
+      widget->style()->unpolish(widget);
+      widget->style()->polish(widget);
+      widget->update();
+    }
+  }
 }
 
 void Sidebar::clearTabRows() {
   m_tabItems.clear();
   m_tabIdToProviderId.clear();
   m_tabList->clear();
+  updateCollapsedTabsButton();
 }
 
 void Sidebar::onItemClicked(QListWidgetItem* item) {
@@ -532,21 +696,48 @@ void Sidebar::setCollapsed(bool collapsed) {
     setMinimumWidth(kDefaultSidebarWidth);
     setMaximumWidth(kDefaultSidebarWidth);
   }
-  m_collapseButton->setIcon(
-      style()->standardIcon(collapsed ? QStyle::SP_ArrowRight : QStyle::SP_ArrowLeft));
+
+  const bool isDark = (SettingsManager::instance()->theme() == "dark");
+  m_collapseButton->setIcon(collapsed ? ToolbarIcons::forwardIcon(isDark) : ToolbarIcons::backIcon(isDark));
   m_collapseButton->setToolTip(
       collapsed ? tr("Expand sidebar") : tr("Collapse sidebar"));
 
-  m_providerList->setVisible(!collapsed);
-  m_tabList->setVisible(!collapsed);
-  for (QWidget* w : findChildren<QLabel*>()) {
-    if (w->objectName() == "sidebarSectionLabel") {
-      w->setVisible(!collapsed);
-    }
+  if (m_expandedContainer) {
+    m_expandedContainer->setVisible(!collapsed);
   }
+  if (m_collapsedRail) {
+    m_collapsedRail->setVisible(collapsed);
+  }
+  if (m_headerAppLabel) {
+    m_headerAppLabel->setVisible(!collapsed);
+  }
+  if (m_headerAppIcon) {
+    m_headerAppIcon->setFixedSize(collapsed ? QSize(32, 32) : QSize(28, 28));
+  }
+
+  updateCollapsedTabsButton();
 
   emit sidebarCollapsedChanged(collapsed);
   emit sidebarWidthChanged(collapsed ? kCollapsedSidebarWidth : kDefaultSidebarWidth);
+}
+
+void Sidebar::updateTheme(const QString& theme) {
+  const bool isDark = (theme == "dark");
+  if (m_collapsedTabsButton) {
+    m_collapsedTabsButton->setIcon(ToolbarIcons::tabsIcon(isDark));
+  }
+  if (m_collapseButton) {
+    m_collapseButton->setIcon(m_collapsed ? ToolbarIcons::forwardIcon(isDark) : ToolbarIcons::backIcon(isDark));
+  }
+  if (m_settingsButton) {
+    m_settingsButton->setIcon(ToolbarIcons::settingsIcon(isDark));
+  }
+  for (QWidget* widget : m_tabList->findChildren<QWidget*>("tabRowWidget")) {
+    QToolButton* closeButton = widget->findChild<QToolButton*>("tabCloseButton");
+    if (closeButton) {
+      closeButton->setIcon(ToolbarIcons::closeIcon(isDark));
+    }
+  }
 }
 
 #include "Sidebar.moc"

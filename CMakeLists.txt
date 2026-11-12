@@ -26,6 +26,7 @@ set(LIB_SOURCES
     src/ui/ProfileManagementDialog.cpp
     src/ui/SettingsDialog.cpp
     src/ui/Theme.cpp
+    src/ui/ToolbarIcons.cpp
     src/profiles/ProfileManager.cpp
     src/profiles/ProfileStorage.cpp
     src/profiles/Profile.cpp
@@ -52,6 +53,7 @@ set(PROJECT_HEADERS
     src/ui/ProfileManagementDialog.h
     src/ui/SettingsDialog.h
     src/ui/Theme.h
+    src/ui/ToolbarIcons.h
     src/profiles/ProfileManager.h
     src/profiles/ProfileStorage.h
     src/profiles/Profile.h
@@ -67,6 +69,12 @@ set(PROJECT_HEADERS
 qt_add_library(ai-workspace-lib STATIC
     ${LIB_SOURCES}
     ${PROJECT_HEADERS}
+)
+
+qt_add_resources(ai-workspace-lib "appicon"
+    PREFIX "/icons"
+    BASE "icons"
+    FILES icons/hicolor/256x256/apps/ai-workspace.png
 )
 
 target_include_directories(ai-workspace-lib PRIVATE

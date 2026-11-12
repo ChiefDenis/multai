@@ -177,9 +177,11 @@ add_test(NAME test_ui_polish COMMAND test_ui_polish)
 qt_add_executable(test_sidebar
   test_sidebar.cpp
   ../src/ui/Sidebar.cpp
+  ../src/ui/ToolbarIcons.cpp
   ../src/providers/Provider.cpp
   ../src/providers/ProviderRegistry.cpp
   ../src/providers/ProviderIcons.cpp
+  ../src/core/SettingsManager.cpp
 )
 
 target_link_libraries(test_sidebar PRIVATE
@@ -197,6 +199,7 @@ add_test(NAME test_sidebar COMMAND test_sidebar)
 qt_add_executable(test_browserworkspace
   test_browserworkspace.cpp
   ../src/ui/BrowserWorkspace.cpp
+  ../src/ui/ToolbarIcons.cpp
   ../src/lifecycle/BrowserTab.cpp
   ../src/lifecycle/BrowserView.cpp
   ../src/lifecycle/LifecycleManager.cpp
@@ -442,6 +445,7 @@ set_property(TEST test_auto_default_profile PROPERTY LABELS "integration")
 qt_add_executable(test_empty_state
   test_empty_state.cpp
   ../src/ui/BrowserWorkspace.cpp
+  ../src/ui/ToolbarIcons.cpp
   ../src/lifecycle/BrowserTab.cpp
   ../src/lifecycle/BrowserView.cpp
   ../src/lifecycle/LifecycleManager.cpp
@@ -522,6 +526,25 @@ target_include_directories(test_ui_regression PRIVATE ${TEST_INCLUDE_DIRS})
 
 add_test(NAME test_ui_regression COMMAND test_ui_regression)
 set_property(TEST test_ui_regression PROPERTY LABELS "integration")
+
+# Visual corrections regression test - header, toolbar icons, lifecycle consistency,
+# dark surfaces, collapsed navigation, capture-state configuration
+qt_add_executable(test_visual_corrections
+  test_visual_corrections.cpp
+)
+
+target_link_libraries(test_visual_corrections PRIVATE
+  ai-workspace-lib
+  Qt6::Core
+  Qt6::Test
+  Qt6::Widgets
+  Qt6::WebEngineWidgets
+)
+
+target_include_directories(test_visual_corrections PRIVATE ${TEST_INCLUDE_DIRS})
+
+add_test(NAME test_visual_corrections COMMAND test_visual_corrections)
+set_property(TEST test_visual_corrections PROPERTY LABELS "integration")
 
 # Visual QA harness - not registered as ctest test (manual QA tool)
 add_subdirectory(visual-qa)

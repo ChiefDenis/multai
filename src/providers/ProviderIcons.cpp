@@ -54,6 +54,7 @@ QString providerInitial(const QString& providerId) {
 }
 
 QPixmap providerPixmap(const QString& providerId, int size, LifecycleState state, bool hasError) {
+  Q_UNUSED(hasError)
   QPixmap pixmap(size, size);
   pixmap.fill(Qt::transparent);
 
@@ -77,46 +78,6 @@ QPixmap providerPixmap(const QString& providerId, int size, LifecycleState state
   painter.drawText(QRectF(0, 0, size, size), Qt::AlignCenter, providerInitial(providerId));
 
   painter.setOpacity(1.0);
-
-  if (hasError || state != LifecycleState::Active) {
-    QColor badgeColor;
-    if (hasError) {
-      badgeColor = QColor("#E01B24");
-    } else {
-      switch (state) {
-        case LifecycleState::Frozen:
-          badgeColor = QColor("#33C7DE");
-          break;
-        case LifecycleState::Discarded:
-          badgeColor = QColor("#9A9996");
-          break;
-        case LifecycleState::Loading:
-          badgeColor = QColor("#3584E4");
-          break;
-        case LifecycleState::Unloaded:
-          badgeColor = QColor("#77767B");
-          break;
-        case LifecycleState::Closing:
-        case LifecycleState::Active:
-          break;
-      }
-    }
-
-    if (badgeColor.isValid()) {
-      const qreal badgeDiameter = qMax(4.0, size * 0.32);
-      const qreal badgeRadius = badgeDiameter / 2.0;
-      const qreal cx = size - badgeRadius - 1.0;
-      const qreal cy = size - badgeRadius - 1.0;
-
-      painter.setPen(Qt::NoPen);
-      painter.setBrush(QColor(36, 36, 36, 180));
-      painter.drawEllipse(QPointF(cx, cy), badgeRadius + 1.0, badgeRadius + 1.0);
-
-      painter.setBrush(badgeColor);
-      painter.drawEllipse(QPointF(cx, cy), badgeRadius, badgeRadius);
-    }
-  }
-
   painter.end();
   return pixmap;
 }

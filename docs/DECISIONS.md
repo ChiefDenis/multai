@@ -4,7 +4,7 @@
 
 - **Purpose**: Track technical decisions and their rationale throughout the project
 - **Status**: Active
-- **Last Updated**: 2026-10-30
+- **Last Updated**: 2026-11-12
 - **Related Documents**: SPEC.md, ARCHITECTURE.md, AGENTS.md
 
 ## Overview
@@ -707,6 +707,175 @@ This document records significant technical decisions made during the developmen
 
 ---
 
+### Decision 022: Explicit QPalette Alongside Stylesheets
+
+**Date**: 2026-11-12
+**Status**: Accepted
+**Context**: Stylesheet-only theming left several surfaces dependent on the system
+palette. Dark-mode dialogs, status-bar labels and list alternates inherited light
+colours on some Wayland sessions, and `Qt::WA_StyledBackground` was not sufficient for
+every composite widget.
+
+**Alternatives Considered**:
+- Add `Qt::WA_StyledBackground` to every affected widget: fixes only widgets that opt in
+  and still depends on a parent painting behind them
+- Style each widget individually: duplicates colours and misses native-drawn parts
+- Apply an explicit light/dark `QPalette` in addition to the stylesheet: one authoritative
+  colour source for both styled and natively drawn surfaces
+
+**Decision**: `Theme::applyTheme()` sets an explicit `QPalette` for the effective mode
+(light/dark/system) in addition to the application stylesheet.
+
+**Rationale**:
+- Dialogs, tooltips, disabled text and placeholder text use palette colours that a
+  stylesheet does not always override
+- A single palette removes dependence on the host desktop palette
+- System mode is resolved once through `QStyleHints::colorScheme()` with a palette
+  lightness fallback
+
+**Consequences**:
+- Positive: Consistent dark and light surfaces across widgets and dialogs
+- Positive: Disabled and placeholder states have deliberate contrast
+- Negative: Palette and stylesheet colour values must be kept in sync manually
+
+**Related Decisions**: Decision 007 (Libadwaita-Inspired Design), Decision 024 (ThemedDialog)
+**Related Issues**: Visual QA dark-surface defects
+
+---
+
+### Decision 023: Painted Application-Owned Toolbar Icons
+
+**Date**: 2026-11-12
+**Status**: Accepted
+**Context**: Platform standard icons (`SP_ArrowBack`, `SP_BrowserReload`,
+`SP_DesktopIcon`) were missing, blurred or low-contrast under some icon themes. The
+global button padding also collapsed the icon content box.
+
+**Alternatives Considered**:
+- Depend on the system icon theme: no control over availability or contrast
+- Ship SVG assets: adds resource/theme plumbing and still needs disabled variants
+- Paint icons at runtime for each required size and state: deterministic and testable
+
+**Decision**: Generate Back, Forward, Reload, Open External, folder, tabs, settings and
+close icons in `src/ui/ToolbarIcons.cpp` using `QPainter`, with Normal and Disabled
+pixmaps for 16/20/24/32/48/64 px and separate light/dark colours.
+
+**Rationale**:
+- Icons render identically regardless of the desktop icon theme
+- Disabled states have deliberate contrast
+- Painted pixmaps can be asserted in tests without external assets
+
+**Consequences**:
+- Positive: Reliable, theme-aware toolbar affordances
+- Positive: Icon rendering is unit-testable
+- Negative: Icon shapes must be maintained in code rather than replaced by designers
+
+**Related Decisions**: Decision 019 (Provider Icons Generated at Runtime)
+**Related Issues**: Visual QA blank-toolbar defect
+
+---
+
+### Decision 024: ThemedDialog Paints Its Own Background
+
+**Date**: 2026-11-12
+**Status**: Accepted
+**Context**: `QDialog` did not paint its stylesheet or palette background on Wayland when
+captured through `QWidget::grab()`, so the account and settings dialogs appeared light
+even in dark mode.
+
+**Alternatives Considered**:
+- Set `Qt::WA_StyledBackground` on each dialog: did not reliably paint the dialog surface
+  in the captured window
+- Use a frameless custom window: changes window behaviour and decorations
+- Derive application dialogs from a small base class that fills the background explicitly
+
+**Decision**: Add `src/ui/ThemedDialog.h`; all application-owned dialogs derive from it and
+fill `rect()` with `palette().color(QPalette::Window)` before normal dialog painting.
+
+**Rationale**:
+- Guarantees a themed surface for capture and for compositors that do not paint the
+  dialog background
+- Keeps native dialog decoration and modality behaviour
+- One small base class instead of per-dialog workarounds
+
+**Consequences**:
+- Positive: Account, provider, profile and settings dialogs are readable in both themes
+- Positive: Dialog captures can be asserted in tests
+- Negative: Dialogs must derive from `ThemedDialog` rather than `QDialog` directly
+
+**Related Decisions**: Decision 022 (Explicit QPalette)
+**Related Issues**: Visual QA dark-dialog defect
+
+---
+
+### Decision 025: State-Asserted Screenshot Harness with WebEngine Compositing
+
+**Date**: 2026-11-12
+**Status**: Accepted
+**Context**: `QWidget::render()` does not include the composited `QWebEngineView`
+surface, and fixed-delay captures could record a `Loading` state instead of the intended
+state. Silent captures made visual regressions easy to miss.
+
+**Alternatives Considered**:
+- Capture with `render()` only: web content is always blank
+- Increase fixed delays: slow and still racy
+- Offscreen QPA: does not paint WebEngine content
+- Run on a real Wayland/X11 session, composite `QWebEngineView::grab()`, and assert each
+  state before writing the image
+
+**Decision**: The visual QA launcher asserts the expected tab count, active tab,
+lifecycle state, header visibility, sidebar mode, empty state or exposed dialog before
+capture, composites the web view grab into the window image, and fails the capture when
+an assertion fails.
+
+**Rationale**:
+- Captures represent a verified application state, not a timer guess
+- WebEngine content is included in the archive
+- Failures are visible instead of producing plausible but wrong screenshots
+
+**Consequences**:
+- Positive: 12 reproducible light/dark state captures
+- Positive: Harness can gate visual regressions in the future
+- Negative: Requires an interactive Wayland or X11 session
+- Negative: Live provider content still depends on external networks
+
+**Related Decisions**: Decision 010 (Lazy Page Creation)
+**Related Issues**: Visual QA blank-capture and persistent-Loading defects
+
+---
+
+### Decision 026: Provider Display Names as Tab Titles
+
+**Date**: 2026-11-12
+**Status**: Accepted
+**Context**: Restored tabs showed persisted page titles such as "DeepSeek - Into the
+Unknown", and page titles could also collapse into a URL or hostname, producing
+inconsistent and unstable tab labels.
+
+**Alternatives Considered**:
+- Use live page titles: unstable, provider-controlled and sometimes a URL
+- Use metadata page titles on restore: differs from the live title and can be stale
+- Use provider display names consistently: stable and predictable
+
+**Decision**: Tab row text is always the provider display name. Page titles continue to be
+stored in metadata but are not used for tab row text.
+
+**Rationale**:
+- Tabs remain identifiable even when a provider changes its document title
+- Restored and new tabs present identically
+- Provider identity matches the sidebar and workspace header
+
+**Consequences**:
+- Positive: Stable, consistent tab labels
+- Positive: No URL or hostname leakage in tab labels
+- Negative: A single account cannot distinguish two tabs of the same provider by title;
+  lifecycle and error state still differentiate them
+
+**Related Decisions**: Decision 019 (Provider Icons Generated at Runtime)
+**Related Issues**: Visual QA inconsistent-tab-title defect
+
+---
+
 ## Decision Review Process
 
 ### When to Review Decisions
@@ -761,6 +930,10 @@ UI/UX design choices:
 - Decision 007: Libadwaita-Inspired Design with Qt Widgets
 - Decision 008: Profile Storage in User Config Directory
 - Decision 019: Provider Icons Generated at Runtime
+- Decision 022: Explicit QPalette Alongside Stylesheets
+- Decision 023: Painted Application-Owned Toolbar Icons
+- Decision 024: ThemedDialog Paints Its Own Background
+- Decision 026: Provider Display Names as Tab Titles
 
 ### Implementation Decisions
 
@@ -775,6 +948,7 @@ Implementation approach choices:
 - Decision 016: ProfileManager is the Single Owner of Profile Objects
 - Decision 017: Provider Embedding Compatibility Detection (proposed, still open)
 - Decision 020: recommendedState Gate is User-Configurable
+- Decision 025: State-Asserted Screenshot Harness with WebEngine Compositing
 
 ## Decision Impact Analysis
 
