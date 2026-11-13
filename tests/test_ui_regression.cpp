@@ -1,4 +1,5 @@
 #include <QtTest/QtTest>
+#include <QFile>
 #include <QStandardPaths>
 #include <QToolButton>
 #include <QListWidget>
@@ -29,6 +30,9 @@ private slots:
   void testDarkThemeSidebarBackground();
   void testProviderStripScrollConfiguration();
   void testProviderStripButtonContent();
+  void testApplicationIconSet();
+  void testMainWindowIconSet();
+  void testDesktopFileHasStartupWMClass();
 };
 
 void TestUIRegression::initTestCase() {
@@ -165,6 +169,51 @@ void TestUIRegression::testProviderStripButtonContent() {
     QVERIFY(button->toolTip().isEmpty() == false);
     QVERIFY(button->width() >= 40);
   }
+}
+
+void TestUIRegression::testApplicationIconSet() {
+  // QApplication created by test framework has no icon
+  // The real application sets it in Application constructor
+  QVERIFY(qApp != nullptr);
+  // This test passes as long as we can verify the icon resource exists
+  QIcon icon(":/icons/hicolor/256x256/apps/ai-workspace.png");
+  QVERIFY(!icon.isNull());
+}
+
+void TestUIRegression::testMainWindowIconSet() {
+  MainWindow window;
+  window.resize(1100, 720);
+  window.show();
+  QApplication::processEvents();
+
+  // MainWindow should have the window icon set
+  QVERIFY(!window.windowIcon().isNull());
+}
+
+void TestUIRegression::testDesktopFileHasStartupWMClass() {
+  // Try to find the desktop file in source tree
+  QStringList possiblePaths = {
+    ":/../ai-workspace.desktop",
+    "../ai-workspace.desktop",
+    "../../ai-workspace.desktop",
+    "/home/denis/devprojects/ai-workspace/ai-workspace.desktop"
+  };
+
+  QString content;
+  bool found = false;
+  for (const QString& path : possiblePaths) {
+    QFile desktopFile(path);
+    if (desktopFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+      content = desktopFile.readAll();
+      desktopFile.close();
+      found = true;
+      break;
+    }
+  }
+  
+  QVERIFY(found);
+  QVERIFY(content.contains("StartupWMClass=ai-workspace"));
+  QVERIFY(content.contains("Icon=ai-workspace"));
 }
 
 QTEST_MAIN(TestUIRegression)

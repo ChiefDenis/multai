@@ -762,12 +762,12 @@ ctest --test-dir build -R performance
 | Category | Tests | Status |
 |----------|-------|--------|
 | Unit | 12 | ✅ All passing |
-| Integration | 11 | ✅ All passing |
+| Integration | 12 | ✅ All passing |
 | Performance | 3 | ✅ All passing |
-| **Total** | **26** | ✅ **All passing** |
+| **Total** | **27** | ✅ **All passing** |
 
-Total test time: ~63 seconds. Verified in an incremental `build-qa` build with
-`ctest --test-dir build-qa --output-on-failure`.
+Total test time: ~90 seconds. Verified in a clean `build` build with
+`ctest --test-dir build --output-on-failure`.
 
 ### Visual QA Screenshot Harness
 

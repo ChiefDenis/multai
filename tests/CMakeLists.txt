@@ -236,11 +236,10 @@ add_test(NAME test_browserworkspace COMMAND test_browserworkspace)
 # SettingsDialog test
 qt_add_executable(test_settingsdialog
   test_settingsdialog.cpp
-  ../src/ui/SettingsDialog.cpp
-  ../src/core/SettingsManager.cpp
 )
 
 target_link_libraries(test_settingsdialog PRIVATE
+  ai-workspace-lib
   Qt6::Core
   Qt6::Test
   Qt6::Widgets

@@ -1,4 +1,6 @@
 #include <QtTest/QtTest>
+#include <QApplication>
+#include <QPalette>
 #include "providers/ProviderIcons.h"
 #include "ui/Theme.h"
 #include "lifecycle/TabMetadata.h"
@@ -16,6 +18,10 @@ private slots:
   void testProviderIconsWithLifecycleStates();
   void testProviderIconWithErrorBadge();
   void testAllNineProvidersHaveIcons();
+  void testTooltipStylesheetLight();
+  void testTooltipStylesheetDark();
+  void testTooltipPaletteLight();
+  void testTooltipPaletteDark();
 };
 
 void TestUiPolish::initTestCase() {
@@ -108,6 +114,42 @@ void TestUiPolish::testAllNineProvidersHaveIcons() {
     QVERIFY(!icon.isNull());
     QVERIFY(!icon.availableSizes().isEmpty());
   }
+}
+
+void TestUiPolish::testTooltipStylesheetLight() {
+  const QString sheet = Theme::styleSheetForMode(Theme::Mode::Light);
+  QVERIFY(sheet.contains("QToolTip"));
+  QVERIFY(sheet.contains("background-color: #ffffff"));
+  QVERIFY(sheet.contains("color: #212529"));
+  QVERIFY(sheet.contains("border: 1px solid #dee2e6"));
+  QVERIFY(sheet.contains("border-radius: 6px"));
+  QVERIFY(sheet.contains("padding: 4px 8px"));
+}
+
+void TestUiPolish::testTooltipStylesheetDark() {
+  const QString sheet = Theme::styleSheetForMode(Theme::Mode::Dark);
+  QVERIFY(sheet.contains("QToolTip"));
+  QVERIFY(sheet.contains("background-color: #242424"));
+  QVERIFY(sheet.contains("color: #e0e0e0"));
+  QVERIFY(sheet.contains("border: 1px solid #333333"));
+  QVERIFY(sheet.contains("border-radius: 6px"));
+  QVERIFY(sheet.contains("padding: 4px 8px"));
+}
+
+void TestUiPolish::testTooltipPaletteLight() {
+  Theme::applyTheme("light");
+  QApplication::processEvents();
+  const QPalette palette = qApp->palette();
+  QCOMPARE(palette.color(QPalette::ToolTipBase), QColor("#ffffff"));
+  QCOMPARE(palette.color(QPalette::ToolTipText), QColor("#212529"));
+}
+
+void TestUiPolish::testTooltipPaletteDark() {
+  Theme::applyTheme("dark");
+  QApplication::processEvents();
+  const QPalette palette = qApp->palette();
+  QCOMPARE(palette.color(QPalette::ToolTipBase), QColor("#242424"));
+  QCOMPARE(palette.color(QPalette::ToolTipText), QColor("#e0e0e0"));
 }
 
 QTEST_MAIN(TestUiPolish)

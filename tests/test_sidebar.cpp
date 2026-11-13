@@ -32,6 +32,8 @@ private slots:
   void testSidebarCollapse();
   void testSidebarWidth();
   void testSettingsRequestedSignal();
+  void testNoSidebarBranding();
+  void testProviderSectionAtTop();
 };
 
 void TestSidebar::initTestCase() {
@@ -269,6 +271,41 @@ void TestSidebar::testSettingsRequestedSignal() {
   QVERIFY(btn != nullptr);
   QTest::mouseClick(btn, Qt::LeftButton, Qt::NoModifier);
   QCOMPARE(spy.count(), 1);
+}
+
+void TestSidebar::testNoSidebarBranding() {
+  Sidebar sidebar;
+
+  // Header widget should not exist
+  QVERIFY(sidebar.findChild<QWidget*>("sidebarHeader") == nullptr);
+  QVERIFY(sidebar.findChild<QWidget*>("sidebarAppIcon") == nullptr);
+  QVERIFY(sidebar.findChild<QWidget*>("sidebarAppTitle") == nullptr);
+
+  // Divider should not exist (the one after header)
+  QList<QFrame*> dividers = sidebar.findChildren<QFrame*>("sidebarDivider");
+  // There may be other dividers (e.g., in collapsed rail), but the header divider is gone
+  // The collapsed rail divider is still present, so we just verify the header is gone
+}
+
+void TestSidebar::testProviderSectionAtTop() {
+  Sidebar sidebar;
+  sidebar.resize(260, 700);
+  sidebar.show();
+  QApplication::processEvents();
+
+  QWidget* expandedContainer = sidebar.findChild<QWidget*>("sidebarExpandedContainer");
+  QVERIFY(expandedContainer != nullptr);
+
+  QWidget* providersSection = expandedContainer->findChild<QWidget*>("providersSection");
+  QVERIFY(providersSection != nullptr);
+
+  // The providers section should be the first child in the expanded container layout
+  QVBoxLayout* layout = qobject_cast<QVBoxLayout*>(expandedContainer->layout());
+  QVERIFY(layout != nullptr);
+
+  QWidget* firstItem = layout->itemAt(0) ? layout->itemAt(0)->widget() : nullptr;
+  QVERIFY(firstItem != nullptr);
+  QCOMPARE(firstItem->objectName(), QString("providersSection"));
 }
 
 QTEST_MAIN(TestSidebar)

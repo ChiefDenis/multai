@@ -1,5 +1,5 @@
 Name:           ai-workspace
-Version:        0.4.0
+Version:        0.4.1
 Release:        1%{?dist}
 Summary:        Resource-conscious multi-provider AI desktop application
 
@@ -66,6 +66,14 @@ update-desktop-database %{_datadir}/applications &>/dev/null || :
 %{_datadir}/icons/hicolor/*/apps/%{name}.png
 
 %changelog
+* Fri Nov 13 2026 AI Workspace <noreply@localhost> - 0.4.1-1
+- Release version 0.4.1
+- Remove sidebar branding header (app icon and name)
+- Fix tooltip contrast in both light and dark themes
+- Audit and improve settings screen contrast across all states
+- Fix application icon rendering in window and KDE taskbar
+- Add regression tests for sidebar, tooltips, settings contrast, and application icon
+
 * Fri Nov 13 2026 AI Workspace <noreply@localhost> - 0.4.0-1
 - Release version 0.4.0
 - Persist and restore open tabs, profiles, ordering and selected tab across restarts

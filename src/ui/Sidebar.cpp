@@ -16,8 +16,6 @@
 #include <QLabel>
 #include <QListWidget>
 #include <QMenu>
-#include <QPainter>
-#include <QPixmap>
 #include <QPoint>
 #include <QResizeEvent>
 #include <QScrollArea>
@@ -104,8 +102,6 @@ Sidebar::Sidebar(QWidget* parent)
   : QWidget(parent)
   , m_expandedContainer(nullptr)
   , m_collapsedRail(nullptr)
-  , m_headerAppIcon(nullptr)
-  , m_headerAppLabel(nullptr)
   , m_collapsedTabsButton(nullptr)
   , m_providerScrollArea(nullptr)
   , m_providerStrip(nullptr)
@@ -127,55 +123,6 @@ void Sidebar::setupUi() {
   QVBoxLayout* mainLayout = new QVBoxLayout(this);
   mainLayout->setContentsMargins(0, 0, 0, 0);
   mainLayout->setSpacing(0);
-
-  // Header
-  QWidget* header = new QWidget(this);
-  header->setObjectName("sidebarHeader");
-  header->setFixedHeight(56);
-  QHBoxLayout* headerLayout = new QHBoxLayout(header);
-  headerLayout->setContentsMargins(14, 0, 14, 0);
-  headerLayout->setSpacing(10);
-
-  m_headerAppIcon = new QLabel(header);
-  m_headerAppIcon->setObjectName("sidebarAppIcon");
-  m_headerAppIcon->setFixedSize(28, 28);
-  m_headerAppIcon->setScaledContents(true);
-  QPixmap appPixmap(":/icons/hicolor/256x256/apps/ai-workspace.png");
-  if (appPixmap.isNull()) {
-    appPixmap = QPixmap(32, 32);
-    appPixmap.fill(Qt::transparent);
-    QPainter p(&appPixmap);
-    p.setRenderHint(QPainter::Antialiasing, true);
-    p.setBrush(QColor("#3584e4"));
-    p.setPen(Qt::NoPen);
-    p.drawRoundedRect(0, 0, 32, 32, 8, 8);
-    p.setPen(Qt::white);
-    QFont f = p.font();
-    f.setBold(true);
-    f.setPixelSize(16);
-    p.setFont(f);
-    p.drawText(QRectF(0, 0, 32, 32), Qt::AlignCenter, "AI");
-  }
-  m_headerAppIcon->setPixmap(appPixmap);
-  m_headerAppIcon->setToolTip("AI Workspace");
-  headerLayout->addWidget(m_headerAppIcon);
-
-  m_headerAppLabel = new QLabel("AI Workspace", header);
-  QFont appFont = m_headerAppLabel->font();
-  appFont.setPointSize(15);
-  appFont.setBold(true);
-  m_headerAppLabel->setFont(appFont);
-  m_headerAppLabel->setObjectName("sidebarAppTitle");
-  headerLayout->addWidget(m_headerAppLabel);
-
-  mainLayout->addWidget(header);
-
-  // Divider
-  QFrame* divider = new QFrame(this);
-  divider->setFrameShape(QFrame::HLine);
-  divider->setFixedHeight(1);
-  divider->setObjectName("sidebarDivider");
-  mainLayout->addWidget(divider);
 
   // Expanded container
   m_expandedContainer = new QWidget(this);
@@ -755,12 +702,6 @@ void Sidebar::setCollapsed(bool collapsed) {
   }
   if (m_collapsedRail) {
     m_collapsedRail->setVisible(collapsed);
-  }
-  if (m_headerAppLabel) {
-    m_headerAppLabel->setVisible(!collapsed);
-  }
-  if (m_headerAppIcon) {
-    m_headerAppIcon->setFixedSize(collapsed ? QSize(32, 32) : QSize(28, 28));
   }
 
   updateCollapsedTabsButton();

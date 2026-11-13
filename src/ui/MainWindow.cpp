@@ -40,6 +40,7 @@ MainWindow::MainWindow(QWidget* parent)
   , m_restoringSession(false)
   , m_currentTab(nullptr) {
   setWindowTitle("AI Workspace");
+  setWindowIcon(QIcon(":/icons/hicolor/256x256/apps/ai-workspace.png"));
   resize(1200, 800);
 
   ProfileManager::instance()->loadProfiles();

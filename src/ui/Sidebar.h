@@ -48,6 +48,7 @@ public:
   QToolButton* collapsedTabsButtonForTest() const { return m_collapsedTabsButton; }
   QToolButton* collapseButtonForTest() const { return m_collapseButton; }
   QToolButton* settingsButtonForTest() const { return m_settingsButton; }
+  QWidget* expandedContainerForTest() const { return m_expandedContainer; }
 
 signals:
   void providerSelected(const QString& providerId);
@@ -80,8 +81,6 @@ private:
 
   QWidget* m_expandedContainer;
   QWidget* m_collapsedRail;
-  QLabel* m_headerAppIcon;
-  QLabel* m_headerAppLabel;
   QToolButton* m_collapsedTabsButton;
   QScrollArea* m_providerScrollArea;
   QWidget* m_providerStrip;

@@ -1093,6 +1093,140 @@ bar, session restoration and lifecycle indicators are unchanged.
 
 ---
 
+### Decision 033: Remove Sidebar Branding Header
+
+**Date**: 2026-11-13
+**Status**: Accepted
+**Context**: The expanded sidebar displayed an application logo and name ("AI Workspace")
+at the top, consuming ~70px of vertical space. This branding was redundant with the
+window title, taskbar, and application launcher, and pushed the provider strip and
+Open Tabs sections down.
+
+**Alternatives Considered**:
+- Hide contents only: leaves the empty header container and divider
+- Move branding to bottom: still consumes space
+- Remove the header widget, divider, and stylesheet rules entirely
+
+**Decision**: Deleted the `sidebarHeader` widget (56px), its `sidebarDivider` (1px),
+`m_headerAppIcon`, `m_headerAppLabel` members, and all `#sidebarHeader` stylesheet
+rules. The provider section now starts at the top of the expanded sidebar container.
+
+**Rationale**:
+- Reclaims ~70px of vertical space for provider strip and Open Tabs
+- No functional loss: application identity is in window title, taskbar, launcher
+- Simplifies sidebar layout and reduces stylesheet complexity
+
+**Consequences**:
+- Positive: More vertical space for providers and tabs
+- Positive: Cleaner sidebar layout
+- Negative: Application logo no longer visible in expanded sidebar (still in window/taskbar)
+
+**Related Decisions**: Decision 032 (workspace header removal)
+**Related Issues**: Stage 1 of 0.4.1 release
+
+---
+
+### Decision 034: Application-Wide Tooltip Palette
+
+**Date**: 2026-11-13
+**Status**: Accepted
+**Context**: Native Qt tooltips had poor contrast in both themes (black text on black
+background in dark mode, light text on light background in light mode). Per-widget
+stylesheet fixes were inconsistent and didn't cover native tooltips.
+
+**Alternatives Considered**:
+- Per-widget tooltip stylesheets: incomplete, doesn't cover native tooltips
+- Custom tooltip widget: unnecessary complexity
+- Explicit QPalette ToolTipBase/ToolTipText + QSS QToolTip rule
+
+**Decision**: Added `QPalette::ToolTipBase` and `QPalette::ToolTipText` to
+`paletteForMode()` for both light and dark themes. Added `QToolTip` stylesheet rule
+with themed background, text, border, padding, and font-size.
+
+**Rationale**:
+- Single authoritative source for tooltip appearance
+- Works for both native Qt tooltips and custom tooltip widgets
+- Theme-aware: light theme uses white surface/dark text, dark theme uses dark surface/light text
+- Covers all tooltips: providers, tabs, sidebar controls, settings, account management
+
+**Consequences**:
+- Positive: Consistent tooltip contrast across entire application
+- Positive: No per-widget hardcoding required
+- Positive: Automatically updates on theme change
+- Negative: Palette and QSS values must be kept in sync
+
+**Related Decisions**: Decision 022 (Explicit QPalette)
+**Related Issues**: Stage 2 of 0.4.1 release
+
+---
+
+### Decision 035: Settings Screen Contrast Audit and Refinement
+
+**Date**: 2026-11-13
+**Status**: Accepted
+**Context**: Settings dialog had inconsistent contrast across states (hover, focus,
+disabled, placeholder) in both themes. Some labels used colours intended for other
+contexts.
+
+**Alternatives Considered**:
+- Fix individual widgets: scattered changes, easy to miss states
+- Full contrast audit with explicit palette/stylesheet for all controls
+
+**Decision**: Added explicit `QCheckBox`, `QRadioButton`, `QDialogButtonBox` styling
+to both themes. Defined indicator sizes, checked/unchecked/hover/disabled states with
+theme-appropriate colours. Verified placeholder text, focus indicators, disabled
+states, and form label visibility.
+
+**Rationale**:
+- Systematic coverage of all control states
+- WCAG AA contrast targets (4.5:1 normal, 3:1 large/UI boundaries)
+- Respects hierarchy while maintaining readability
+
+**Consequences**:
+- Positive: Settings screen readable in all states and both themes
+- Positive: Focus indicators visible for keyboard navigation
+- Positive: Disabled controls remain distinguishable and understandable
+- Negative: More stylesheet maintenance surface
+
+**Related Decisions**: Decision 022 (Explicit QPalette), Decision 034 (Tooltip palette)
+**Related Issues**: Stage 3 of 0.4.1 release
+
+---
+
+### Decision 036: Application Icon Identity for Wayland/KDE
+
+**Date**: 2026-11-13
+**Status**: Accepted
+**Context**: Application icon was set via QApplication but Wayland/KDE Plasma requires
+additional identity configuration (StartupWMClass, desktop file name) for correct
+taskbar grouping and launcher display.
+
+**Alternatives Considered**:
+- Rely on QApplication icon only: incomplete for Wayland
+- Set QGuiApplication::setDesktopFileName(): required but not sufficient
+- Full identity configuration: desktop file name, StartupWMClass, window icon, resource icon
+
+**Decision**: 
+- `Application.cpp`: Added `QGuiApplication::setDesktopFileName("ai-workspace")`
+- `MainWindow.cpp`: Explicit `setWindowIcon()` with resource icon
+- `ai-workspace.desktop`: Added `StartupWMClass=ai-workspace`
+- All 7 hicolor icon sizes (16-256) installed via RPM
+
+**Rationale**:
+- Complete Wayland/KDE application identity
+- Consistent icon in window titlebar, taskbar, launcher, window switcher
+- Desktop file identity matches Qt application identity
+
+**Consequences**:
+- Positive: Correct icon and grouping in KDE Plasma Wayland
+- Positive: All standard icon sizes available after RPM install
+- Negative: Requires all icon sizes to be maintained
+
+**Related Decisions**: Decision 027 (Versioned Session Schema)
+**Related Issues**: Stage 4 of 0.4.1 release
+
+---
+
 ## Decision Review Process
 
 ### When to Review Decisions

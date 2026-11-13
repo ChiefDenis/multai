@@ -5,7 +5,7 @@
 - **Purpose**: Authoritative progress ledger for AI Workspace project
 - **Status**: Active
 - **Last Updated**: 2026-11-13
-- **Current Stage**: Provider brand logos and chrome-free workspace - complete
+- **Current Stage**: Release 0.4.1 - complete
 
 ## Progress Summary
 
@@ -26,6 +26,7 @@
 | Visual QA Corrections | ✅ Complete | 2026-11-12 | 25/25 tests; 12-state screenshot archive and contact sheet |
 | Release 0.4.0 | ✅ Complete | 2026-11-13 | Persistent sessions, horizontal provider strip, toolbar removal; 26/26 tests; 16-state restarted-session QA |
 | Provider Logos and Header Removal | ✅ Complete | 2026-11-13 | Authentic SVG brand logos in every provider surface; workspace header deleted; 27/27 tests; 16-state real-session QA |
+| Release 0.4.1 | ✅ Complete | 2026-11-13 | Sidebar branding removed, tooltip contrast fixed, settings contrast audited, application icon fixed; 27/27 tests; RPM built |
 
 Stages 2-6 were delivered together in one work phase because the browser engine,
 profile manager and lifecycle state machine are mutually dependent. That phase is
@@ -1402,3 +1403,117 @@ left the other two `Unloaded` with no page.
   owners.
 - The expanded strip still requires horizontal scrolling to reach all nine providers.
 - Live provider pages remain subject to network, consent and bot-detection variability.
+
+---
+
+## Release 0.4.1: Sidebar Cleanup, Contrast Refinement and Application Icon Fix (2026-11-13)
+
+**Version**: 0.4.1
+**Status**: ✅ Complete
+
+### Stage 1: Remove Sidebar Branding
+
+**Goal**: Remove the application branding header at the top of the expanded sidebar.
+
+**Changes**:
+- Deleted `m_headerAppIcon`, `m_headerAppLabel` members and their layout space from `Sidebar`
+- Removed the header widget (56px height), its divider, and all related stylesheet rules
+- Provider section now sits at the very top of the expanded sidebar
+- Reclaimed ~70px of vertical space for provider strip and Open Tabs sections
+- Preserved horizontal provider strip, Open Tabs list, settings access, collapsed rail functionality
+
+**Verification**:
+- `test_sidebar::testNoSidebarBranding()` asserts header widget, app icon, and app title are absent
+- `test_sidebar::testProviderSectionAtTop()` asserts providers section is first child in expanded container
+- All 27 tests passing
+
+### Stage 2: Fix Tooltip Contrast Throughout Application
+
+**Goal**: Investigate and fix the root cause of tooltip contrast issues (black text on black background).
+
+**Root Cause**: Qt's native tooltip palette was not explicitly configured for either theme.
+
+**Changes**:
+- Added `QToolTip` stylesheet rules to both light and dark themes in `Theme.cpp`
+- Light theme: white background (`#ffffff`), dark text (`#212529`), subtle border (`#dee2e6`)
+- Dark theme: dark surface (`#242424`), light text (`#e0e0e0`), subtle border (`#333333`)
+- Added `QPalette::ToolTipBase` and `QPalette::ToolTipText` to `paletteForMode()` for both themes
+- Single coherent application-wide tooltip policy; no per-widget hardcoding
+
+**Verification**:
+- `test_ui_polish::testTooltipStylesheetLight()` and `testTooltipStylesheetDark()` assert stylesheet content
+- `test_ui_polish::testTooltipPaletteLight()` and `testTooltipPaletteDark()` assert palette colors
+- All provider, tab, sidebar, and settings tooltips now render with correct contrast in both themes
+
+### Stage 3: Audit Settings-Screen Contrast
+
+**Goal**: Complete visual and code-level contrast audit of Settings screen across all states and both themes.
+
+**Changes**:
+- Added explicit `QCheckBox`, `QRadioButton`, `QDialogButtonBox` styling to both themes
+- Checkbox/radio indicators: 18x18px with theme-appropriate checked/unchecked/hover/disabled states
+- Focus indicators: 2px solid accent border (`#3584e4` light, `#78aeed` dark)
+- Disabled states: readable text colors (`#adb5bd` light, `#5e5c64` dark)
+- Placeholder text: visible contrast (`#868e96` light, `#9a9a9a` dark)
+- Form labels and section headings verified in both themes
+
+**Verification**:
+- `test_settingsdialog::testContrastLightTheme()` and `testContrastDarkTheme()` assert palette colors
+- `test_settingsdialog::testFormLabelsVisible()` asserts section headings present
+- `test_settingsdialog::testPlaceholderTextContrast()` asserts placeholder colors
+- `test_settingsdialog::testDisabledStateContrast()` asserts disabled readability
+- `test_settingsdialog::testFocusIndicatorsVisible()` asserts focus styles
+- All 13 SettingsDialog tests passing
+
+### Stage 4: Fix Application Icon Rendering
+
+**Goal**: Ensure the existing application artwork renders correctly in window, KDE taskbar, and launcher.
+
+**Changes**:
+- `Application.cpp`: Added `QGuiApplication::setDesktopFileName("ai-workspace")` for Wayland identity
+- `MainWindow.cpp`: Explicit `setWindowIcon()` call with resource icon
+- `ai-workspace.desktop`: Added `StartupWMClass=ai-workspace` for correct taskbar grouping
+- Verified all 7 hicolor icon sizes (16, 24, 32, 48, 64, 128, 256) installed via RPM
+
+**Verification**:
+- `test_ui_regression::testApplicationIconSet()` verifies icon resource loads
+- `test_ui_regression::testMainWindowIconSet()` asserts MainWindow has icon
+- `test_ui_regression::testDesktopFileHasStartupWMClass()` verifies desktop file contents
+- RPM package includes all icon sizes and desktop entry
+
+### Stage 5: Regression Tests
+
+**New Tests Added**:
+- `test_sidebar::testNoSidebarBranding()` - branding widget absent
+- `test_sidebar::testProviderSectionAtTop()` - providers section reclaims top position
+- `test_ui_polish::testTooltipStylesheetLight/Dark()` - tooltip stylesheet assertions
+- `test_ui_polish::testTooltipPaletteLight/Dark()` - tooltip palette assertions
+- `test_settingsdialog` - 6 new contrast/state tests (total 13)
+- `test_ui_regression::testApplicationIconSet()` - icon resource
+- `test_ui_regression::testMainWindowIconSet()` - window icon
+- `test_ui_regression::testDesktopFileHasStartupWMClass()` - desktop file identity
+
+**Total Tests**: 27/27 passing (12 integration, 3 performance)
+
+### Stage 6: Real Wayland Visual QA
+
+- Visual QA harness executed in KDE Plasma Wayland session
+- 8 states × light/dark = 16 screenshots captured
+- Verified: sidebar branding removed, tooltips readable in both themes, settings contrast correct, application icon in window/taskbar/launcher
+- Contact sheet generated at `artifacts/visual-qa/contact-sheet.png`
+
+### Stage 7: Clean Release Build and RPM
+
+- Version bumped from 0.4.0 to 0.4.1 in `CMakeLists.txt`, `Application.cpp`, `ai-workspace.spec`
+- Fresh configure and build from clean directory
+- Full CTest suite: 27/27 passed
+- RPM built: `dist/ai-workspace-0.4.1-1.fc43.x86_64.rpm` (259 KB)
+- Source RPM: `dist/ai-workspace-0.4.1-1.fc43.src.rpm` (3.6 MB)
+- Debuginfo/debugsource packages produced
+- RPM verified: binary, desktop entry, all 7 icon sizes, LICENSE, README included
+
+### Remaining Known Limitations
+
+- Live provider pages still subject to network variability, consent screens, bot detection
+- Expanded provider strip requires horizontal scrolling for all nine providers
+- Visual QA screenshots may differ between runs due to external provider state

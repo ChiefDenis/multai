@@ -74,15 +74,6 @@ const char* kLightStyleSheet = R"(
     background-color: #f8f9fa;
     border-right: 1px solid #dee2e6;
   }
-  #sidebarHeader {
-    background-color: #f8f9fa;
-    border-bottom: 1px solid #dee2e6;
-  }
-  #sidebarHeader QLabel {
-    color: #212529;
-    background: transparent;
-    border: none;
-  }
   #sidebarSectionLabel {
     color: #6c757d;
     background: transparent;
@@ -322,6 +313,48 @@ const char* kLightStyleSheet = R"(
   QPushButton[default="true"]:pressed {
     background-color: #1a5fb4;
   }
+  QCheckBox, QRadioButton {
+    color: #212529;
+    spacing: 8px;
+  }
+  QCheckBox::indicator, QRadioButton::indicator {
+    width: 18px;
+    height: 18px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    background-color: #ffffff;
+  }
+  QCheckBox::indicator:checked {
+    background-color: #3584e4;
+    border-color: #3584e4;
+    image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMiIgaGVpZ2h0PSIxMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMyIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cG9seWxpbmUgcG9pbnRzPSIyMCA2IDkgMTcgNCAxMiI+PC9wb2x5bGluZT48L3N2Zz4=);
+  }
+  QCheckBox::indicator:hover, QRadioButton::indicator:hover {
+    border-color: #adb5bd;
+  }
+  QCheckBox::indicator:disabled, QRadioButton::indicator:disabled {
+    background-color: #f8f9fa;
+    border-color: #e9ecef;
+  }
+  QRadioButton::indicator {
+    border-radius: 9px;
+  }
+  QRadioButton::indicator:checked {
+    background-color: #ffffff;
+    border-color: #3584e4;
+  }
+  QRadioButton::indicator:checked::after {
+    content: "";
+    display: block;
+    width: 8px;
+    height: 8px;
+    margin: 3px;
+    background-color: #3584e4;
+    border-radius: 4px;
+  }
+  QDialogButtonBox QPushButton {
+    min-width: 80px;
+  }
   QLineEdit, QComboBox, QSpinBox {
     background-color: #ffffff;
     color: #212529;
@@ -375,6 +408,14 @@ const char* kLightStyleSheet = R"(
   }
   QStatusBar::item {
     border: none;
+  }
+  QToolTip {
+    background-color: #ffffff;
+    color: #212529;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 10pt;
   }
   QScrollBar:vertical {
     background: transparent;
@@ -481,15 +522,6 @@ const char* kDarkStyleSheet = R"(
   #sidebar {
     background-color: #1e1e1e;
     border-right: 1px solid #333333;
-  }
-  #sidebarHeader {
-    background-color: #1e1e1e;
-    border-bottom: 1px solid #333333;
-  }
-  #sidebarHeader QLabel {
-    color: #e0e0e0;
-    background: transparent;
-    border: none;
   }
   #sidebarSectionLabel {
     color: #a0a0a0;
@@ -730,6 +762,48 @@ const char* kDarkStyleSheet = R"(
   QPushButton[default="true"]:pressed {
     background-color: #5e9bd8;
   }
+  QCheckBox, QRadioButton {
+    color: #e0e0e0;
+    spacing: 8px;
+  }
+  QCheckBox::indicator, QRadioButton::indicator {
+    width: 18px;
+    height: 18px;
+    border: 1px solid #333333;
+    border-radius: 4px;
+    background-color: #242424;
+  }
+  QCheckBox::indicator:checked {
+    background-color: #78aeed;
+    border-color: #78aeed;
+    image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMiIgaGVpZ2h0PSIxMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMxNjE2MTYiIHN0cm9rZS13aWR0aD0iMyIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cG9seWxpbmUgcG9pbnRzPSIyMCA2IDkgMTcgNCAxMiI+PC9wb2x5bGluZT48L3N2Zz4=);
+  }
+  QCheckBox::indicator:hover, QRadioButton::indicator:hover {
+    border-color: #4a4a4a;
+  }
+  QCheckBox::indicator:disabled, QRadioButton::indicator:disabled {
+    background-color: #1e1e1e;
+    border-color: #2a2a2a;
+  }
+  QRadioButton::indicator {
+    border-radius: 9px;
+  }
+  QRadioButton::indicator:checked {
+    background-color: #242424;
+    border-color: #78aeed;
+  }
+  QRadioButton::indicator:checked::after {
+    content: "";
+    display: block;
+    width: 8px;
+    height: 8px;
+    margin: 3px;
+    background-color: #78aeed;
+    border-radius: 4px;
+  }
+  QDialogButtonBox QPushButton {
+    min-width: 80px;
+  }
   QLineEdit, QComboBox, QSpinBox {
     background-color: #242424;
     color: #e0e0e0;
@@ -783,6 +857,14 @@ const char* kDarkStyleSheet = R"(
   }
   QStatusBar::item {
     border: none;
+  }
+  QToolTip {
+    background-color: #242424;
+    color: #e0e0e0;
+    border: 1px solid #333333;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 10pt;
   }
   QScrollBar:vertical {
     background: transparent;
