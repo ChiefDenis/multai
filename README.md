@@ -154,7 +154,9 @@ ctest --test-dir build --output-on-failure
 - Provider selection from sidebar opens chat interface immediately; default profile created automatically on first use
 - Multiple accounts per provider, each with an isolated persistent profile
 - Provider context menu (right-click) for adding and managing accounts
-- Provider websites load in embedded views at their actual chat URLs; page titles appear in sidebar tab rows
+- Provider websites load in embedded views at their actual chat URLs; tab rows use the stable provider display name
+- Horizontal provider icon strip with tooltips; Open Tabs remains a vertical list
+- No browser navigation toolbar: page content starts directly beneath the provider header
 - Inactive tabs freeze after the freeze delay and hibernate after the hibernate delay
 - The least recently used inactive tab is hibernated when memory runs low
 - Open tabs are restored on startup in the Unloaded state (no page until activated)
@@ -172,17 +174,18 @@ ctest --test-dir build --output-on-failure
 - ChatGPT: https://chatgpt.com/
 - Kimi: https://kimi.ai/
 
-**Tests** (21 test executables, all passing):
+**Tests** (26 test executables, all passing):
 - Unit (12): test_providerregistry, test_settingsmanager, test_lifecycle,
   test_lifecyclemanager, test_memorymonitor, test_tabstore, test_profilemanager,
   test_recovery, test_ui_polish, test_settingsdialog, test_sidebar,
   test_browserworkspace
-- Integration (6): test_lifecycle_integration, test_profile_isolation,
+- Integration (11): test_lifecycle_integration, test_profile_isolation,
   test_persistence, test_browser_integration, test_auto_default_profile,
-  test_empty_state
+  test_empty_state, test_sidebar_resize, test_empty_state_ui, test_ui_regression,
+  test_visual_corrections, test_session_restore
 - Performance (3): test_memory_usage, test_tab_timings, test_profile_growth
 
-**Version**: 0.3.0
+**Version**: 0.4.0
 
 **Packaging**:
 - RPM spec: `ai-workspace.spec` (Fedora)

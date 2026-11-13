@@ -2,6 +2,8 @@
 #include "LifecycleManager.h"
 #include "SettingsManager.h"
 #include "profiles/ProfileManager.h"
+#include "providers/Provider.h"
+#include "providers/ProviderRegistry.h"
 #include <QDebug>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -201,6 +203,7 @@ void BrowserTab::createPage() {
   connect(m_page, &QWebEnginePage::loadProgress, this, &BrowserTab::onLoadProgress);
   connect(m_page, &QWebEnginePage::loadFinished, this, &BrowserTab::onLoadFinished);
   connect(m_page, &QWebEnginePage::titleChanged, this, &BrowserTab::onTitleChanged);
+  connect(m_page, &QWebEnginePage::urlChanged, this, &BrowserTab::onUrlChanged);
   connect(m_page, &QWebEnginePage::renderProcessTerminated, this,
           &BrowserTab::onRenderProcessTerminated);
   connect(m_page, &QWebEnginePage::certificateError, this,
@@ -455,6 +458,9 @@ void BrowserTab::onLoadFinished(bool success) {
     if (m_metadata.lifecycleState() != LifecycleState::Active) {
       setLifecycleState(LifecycleState::Active);
     }
+    if (m_page) {
+      onUrlChanged(m_page->url());
+    }
     if (m_page && !m_page->title().isEmpty()) {
       onTitleChanged(m_page->title());
     }
@@ -481,6 +487,22 @@ void BrowserTab::onTitleChanged(const QString& title) {
           << "Title:" << cleanTitle;
   m_metadata.setTitle(cleanTitle);
   emit titleChanged(cleanTitle);
+}
+
+void BrowserTab::onUrlChanged(const QUrl& url) {
+  if (m_metadata.lifecycleState() != LifecycleState::Active) {
+    return;
+  }
+
+  Provider* provider = ProviderRegistry::instance()->providerById(m_metadata.providerId());
+  if (!provider || !provider->isUrlAllowed(url) || url == m_metadata.url()) {
+    return;
+  }
+
+  qInfo() << "[WebEngine] URL updated for provider:" << m_metadata.providerId()
+          << "URL:" << url.toString();
+  m_metadata.setUrl(url);
+  emit urlChanged(url);
 }
 
 void BrowserTab::onRenderProcessTerminated(

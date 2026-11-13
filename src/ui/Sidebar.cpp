@@ -20,18 +20,22 @@
 #include <QPixmap>
 #include <QPoint>
 #include <QResizeEvent>
+#include <QScrollArea>
+#include <QScrollBar>
 #include <QStyle>
 #include <QToolButton>
 #include <QVBoxLayout>
+#include <QWheelEvent>
 
 namespace {
 
 constexpr int kDefaultSidebarWidth = 260;
 constexpr int kCollapsedSidebarWidth = 60;
 constexpr int kTabRowHeight = 48;
-constexpr int kProviderRowHeight = 36;
-constexpr int kSidebarHeaderHeight = 56;
-constexpr int kSidebarBottomHeight = 44;
+constexpr int kProviderButtonSize = 42;
+constexpr int kProviderStripSpacing = 5;
+constexpr int kProviderStripMargin = 2;
+constexpr int kProviderStripHeight = kProviderButtonSize + 2 * kProviderStripMargin;
 
 }  // namespace
 
@@ -64,6 +68,38 @@ private:
   QString m_tabId;
 };
 
+class ProviderScrollArea : public QScrollArea {
+  Q_OBJECT
+public:
+  explicit ProviderScrollArea(QWidget* parent = nullptr)
+    : QScrollArea(parent) {
+  }
+
+protected:
+  void wheelEvent(QWheelEvent* event) override {
+    QScrollBar* bar = horizontalScrollBar();
+    if (!bar || bar->maximum() == 0) {
+      QScrollArea::wheelEvent(event);
+      return;
+    }
+
+    int delta = event->angleDelta().y();
+    if (delta == 0) {
+      delta = event->angleDelta().x();
+    }
+    if (delta == 0) {
+      delta = event->pixelDelta().y() + event->pixelDelta().x();
+    }
+    if (delta == 0) {
+      QScrollArea::wheelEvent(event);
+      return;
+    }
+
+    bar->setValue(bar->value() - delta);
+    event->accept();
+  }
+};
+
 Sidebar::Sidebar(QWidget* parent)
   : QWidget(parent)
   , m_expandedContainer(nullptr)
@@ -71,7 +107,8 @@ Sidebar::Sidebar(QWidget* parent)
   , m_headerAppIcon(nullptr)
   , m_headerAppLabel(nullptr)
   , m_collapsedTabsButton(nullptr)
-  , m_providerList(nullptr)
+  , m_providerScrollArea(nullptr)
+  , m_providerStrip(nullptr)
   , m_tabList(nullptr)
   , m_collapseButton(nullptr)
   , m_settingsButton(nullptr)
@@ -164,8 +201,8 @@ void Sidebar::setupProviderSection() {
   QWidget* section = new QWidget(m_expandedContainer ? m_expandedContainer : this);
   section->setObjectName("providersSection");
   QVBoxLayout* sectionLayout = new QVBoxLayout(section);
-  sectionLayout->setContentsMargins(12, 8, 12, 4);
-  sectionLayout->setSpacing(4);
+  sectionLayout->setContentsMargins(12, 8, 12, 8);
+  sectionLayout->setSpacing(6);
 
   QLabel* sectionLabel = new QLabel("PROVIDERS", section);
   QFont labelFont = sectionLabel->font();
@@ -176,35 +213,38 @@ void Sidebar::setupProviderSection() {
   sectionLabel->setObjectName("sidebarSectionLabel");
   sectionLayout->addWidget(sectionLabel);
 
-  m_providerList = new QListWidget(this);
-  m_providerList->setObjectName("providerList");
-  m_providerList->setSelectionMode(QListWidget::NoSelection);
-  m_providerList->setFocusPolicy(Qt::NoFocus);
-  m_providerList->setFrameShape(QListWidget::NoFrame);
-  m_providerList->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-  m_providerList->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-  m_providerList->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+  m_providerScrollArea = new ProviderScrollArea(section);
+  m_providerScrollArea->setObjectName("providerScrollArea");
+  m_providerScrollArea->setFrameShape(QFrame::NoFrame);
+  m_providerScrollArea->setWidgetResizable(false);
+  m_providerScrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+  m_providerScrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+  m_providerScrollArea->setFocusPolicy(Qt::NoFocus);
+  m_providerScrollArea->setFixedHeight(kProviderStripHeight + 4);
+  m_providerScrollArea->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+  m_providerScrollArea->viewport()->setAutoFillBackground(false);
 
-  connect(m_providerList, &QListWidget::itemClicked, this,
-          [this](QListWidgetItem* item) {
-            QString providerId = item->data(Qt::UserRole).toString();
-            if (!providerId.isEmpty()) {
-              emit providerSelected(providerId);
-            }
-          });
+  m_providerStrip = new QWidget(m_providerScrollArea);
+  m_providerStrip->setObjectName("providerStrip");
+  m_providerStrip->setAutoFillBackground(false);
+  m_providerStrip->setFixedHeight(kProviderStripHeight);
+  QHBoxLayout* stripLayout = new QHBoxLayout(m_providerStrip);
+  stripLayout->setContentsMargins(kProviderStripMargin, kProviderStripMargin,
+                                  kProviderStripMargin, kProviderStripMargin);
+  stripLayout->setSpacing(kProviderStripSpacing);
+  stripLayout->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+  m_providerScrollArea->setWidget(m_providerStrip);
+  sectionLayout->addWidget(m_providerScrollArea);
 
-  m_providerList->setContextMenuPolicy(Qt::CustomContextMenu);
-  connect(m_providerList, &QListWidget::customContextMenuRequested, this,
-          &Sidebar::showProviderContextMenu);
-
-  sectionLayout->addWidget(m_providerList);
-
-  // Add all providers
   ProviderRegistry* registry = ProviderRegistry::instance();
   for (Provider* provider : registry->providers()) {
     addProviderRow(provider->id(), provider->displayName(), provider->icon());
   }
-  updateProviderListHeight();
+
+  const int count = registry->providers().size();
+  const int stripWidth = 2 * kProviderStripMargin + count * kProviderButtonSize
+                         + qMax(0, count - 1) * kProviderStripSpacing;
+  m_providerStrip->setFixedWidth(stripWidth);
 
   if (m_expandedContainer && m_expandedContainer->layout()) {
     static_cast<QVBoxLayout*>(m_expandedContainer->layout())->addWidget(section, 0);
@@ -268,6 +308,7 @@ void Sidebar::setupCollapsedRail() {
     btn->setIconSize(QSize(26, 26));
     btn->setToolTip(provider->displayName());
     btn->setProperty("providerId", provider->id());
+    btn->setProperty("selected", false);
     btn->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(btn, &QToolButton::clicked, this, [this, provider]() {
       emit providerSelected(provider->id());
@@ -334,19 +375,34 @@ void Sidebar::updateCollapsedTabsButton() {
   }
 }
 
-void Sidebar::updateProviderListHeight() {
-  if (!m_providerList) {
-    return;
+void Sidebar::setSelectedProvider(const QString& providerId) {
+  m_selectedProviderId = providerId;
+
+  for (auto it = m_providerButtons.begin(); it != m_providerButtons.end(); ++it) {
+    applySelectedProvider(it.value(), it.key());
   }
-  const int contentHeight = m_providerList->count() * (kProviderRowHeight + 4) + 8;
-  const int available = qMax(0, height() - kSidebarHeaderHeight - kSidebarBottomHeight - 2);
-  const int maxForProviders = qMax(kProviderRowHeight * 2, available - 120);
-  m_providerList->setFixedHeight(qMin(contentHeight, maxForProviders));
+  for (auto it = m_collapsedProviderButtons.begin(); it != m_collapsedProviderButtons.end(); ++it) {
+    applySelectedProvider(it.value(), it.key());
+  }
+
+  QToolButton* selected = m_providerButtons.value(providerId, nullptr);
+  if (selected && m_providerScrollArea) {
+    m_providerScrollArea->ensureWidgetVisible(selected, 8, 0);
+  }
 }
 
-void Sidebar::resizeEvent(QResizeEvent* event) {
-  QWidget::resizeEvent(event);
-  updateProviderListHeight();
+void Sidebar::applySelectedProvider(QToolButton* button, const QString& providerId) {
+  if (!button) {
+    return;
+  }
+
+  const bool selected = !m_selectedProviderId.isEmpty() && providerId == m_selectedProviderId;
+  if (button->property("selected").toBool() != selected) {
+    button->setProperty("selected", selected);
+    button->style()->unpolish(button);
+    button->style()->polish(button);
+    button->update();
+  }
 }
 
 void Sidebar::setupBottomSection() {
@@ -388,35 +444,32 @@ void Sidebar::setupBottomSection() {
 
 void Sidebar::addProviderRow(const QString& providerId, const QString& displayName,
                              const QIcon& icon) {
-  QListWidgetItem* item = new QListWidgetItem(m_providerList);
-  item->setData(Qt::UserRole, providerId);
-  item->setData(Qt::UserRole + 1, "provider");
-  item->setSizeHint(QSize(0, kProviderRowHeight));
+  if (!m_providerStrip) {
+    return;
+  }
 
-  QWidget* widget = new QWidget(m_providerList);
-  QHBoxLayout* layout = new QHBoxLayout(widget);
-  layout->setContentsMargins(12, 2, 12, 2);
-  layout->setSpacing(10);
+  QToolButton* button = new QToolButton(m_providerStrip);
+  button->setObjectName("providerStripButton");
+  button->setFixedSize(kProviderButtonSize, kProviderButtonSize);
+  button->setIcon(icon);
+  button->setIconSize(QSize(28, 28));
+  button->setToolTip(displayName);
+  button->setToolButtonStyle(Qt::ToolButtonIconOnly);
+  button->setProperty("providerId", providerId);
+  button->setProperty("selected", false);
+  button->setContextMenuPolicy(Qt::CustomContextMenu);
 
-  QLabel* iconLabel = new QLabel(widget);
-  iconLabel->setFixedSize(24, 24);
-  iconLabel->setPixmap(icon.pixmap(24, 24));
-  iconLabel->setScaledContents(true);
-  layout->addWidget(iconLabel);
+  connect(button, &QToolButton::clicked, this, [this, providerId]() {
+    emit providerSelected(providerId);
+  });
+  connect(button, &QToolButton::customContextMenuRequested, this,
+          [this, button](const QPoint& pos) {
+            showProviderContextMenu(button, pos);
+          });
 
-  QLabel* nameLabel = new QLabel(displayName, widget);
-  QFont nameFont = nameLabel->font();
-  nameFont.setPointSize(10);
-  nameLabel->setFont(nameFont);
-  nameLabel->setObjectName("providerNameLabel");
-  nameLabel->setWordWrap(false);
-  nameLabel->setMinimumWidth(70);
-  nameLabel->setMaximumWidth(180);
-  layout->addWidget(nameLabel);
-
-  layout->addStretch();
-
-  m_providerList->setItemWidget(item, widget);
+  m_providerButtons.insert(providerId, button);
+  static_cast<QHBoxLayout*>(m_providerStrip->layout())->addWidget(button);
+  applySelectedProvider(button, providerId);
 }
 
 void Sidebar::addTabRow(const QString& tabId, const QString& providerId,
@@ -616,9 +669,6 @@ void Sidebar::onItemClicked(QListWidgetItem* item) {
   if (type == "tab") {
     QString tabId = item->data(Qt::UserRole).toString();
     emit tabSelected(tabId);
-  } else if (type == "provider") {
-    QString providerId = item->data(Qt::UserRole).toString();
-    emit providerSelected(providerId);
   }
 }
 
@@ -642,16 +692,14 @@ void Sidebar::showTabContextMenu(const QPoint& pos) {
   menu.exec(m_tabList->viewport()->mapToGlobal(pos));
 }
 
-void Sidebar::showProviderContextMenu(const QPoint& pos) {
-  QListWidgetItem* item = m_providerList->itemAt(pos);
-  if (!item) {
+void Sidebar::showProviderContextMenu(QToolButton* button, const QPoint& pos) {
+  if (!button) {
     return;
   }
-  QString type = item->data(Qt::UserRole + 1).toString();
-  if (type != "provider") {
+  const QString providerId = button->property("providerId").toString();
+  if (providerId.isEmpty()) {
     return;
   }
-  QString providerId = item->data(Qt::UserRole).toString();
 
   QMenu menu(this);
   menu.addAction("Add Account", this, [this, providerId]() {
@@ -660,7 +708,7 @@ void Sidebar::showProviderContextMenu(const QPoint& pos) {
   menu.addAction("Manage Accounts", this, [this, providerId]() {
     emit providerManageAccountsRequested(providerId);
   });
-  menu.exec(m_providerList->viewport()->mapToGlobal(pos));
+  menu.exec(button->mapToGlobal(pos));
 }
 
 void Sidebar::executeTabAction(const QString& tabId, const QString& action) {
@@ -738,6 +786,7 @@ void Sidebar::updateTheme(const QString& theme) {
       closeButton->setIcon(ToolbarIcons::closeIcon(isDark));
     }
   }
+  setSelectedProvider(m_selectedProviderId);
 }
 
 #include "Sidebar.moc"

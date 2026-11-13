@@ -4,8 +4,8 @@
 
 - **Purpose**: Authoritative progress ledger for AI Workspace project
 - **Status**: Active
-- **Last Updated**: 2026-11-12
-- **Current Stage**: Visual QA correction pass - complete
+- **Last Updated**: 2026-11-13
+- **Current Stage**: Release 0.4.0 - complete
 
 ## Progress Summary
 
@@ -24,6 +24,7 @@
 | Stage 9: Testing and Performance | ✅ Complete | 2026-11-05 | 21 tests passing (15 unit + 6 integration + 3 performance) |
 | Stage 10: Documentation and Packaging | ✅ Complete | 2026-11-05 | RPM spec, desktop file, icon, documentation updated |
 | Visual QA Corrections | ✅ Complete | 2026-11-12 | 25/25 tests; 12-state screenshot archive and contact sheet |
+| Release 0.4.0 | ✅ Complete | 2026-11-13 | Persistent sessions, horizontal provider strip, toolbar removal; 26/26 tests; 16-state restarted-session QA |
 
 Stages 2-6 were delivered together in one work phase because the browser engine,
 profile manager and lifecycle state machine are mutually dependent. That phase is
@@ -1198,3 +1199,120 @@ build in `build-qa` completed without errors.
   paint Qt WebEngine content.
 - Renderer-crash recovery is covered by existing lifecycle tests but not reproduced in
   the visual harness.
+
+---
+
+## Release 0.4.0: Persistent Sessions and Compact Provider Navigation (2026-11-13)
+
+**Version**: 0.4.0
+**Status**: ✅ Complete
+
+### Stage 1: Session Persistence
+
+**Goal**: Restore the workspace across process restarts without weakening profile
+isolation or re-creating every browser page at startup.
+
+**Changes**:
+- Extended `core/TabStore` with an explicit schema version
+  (`workspace/sessionVersion = 1`), a 50-tab cap and defensive parsing for empty,
+  malformed and future-version sessions.
+- `TabStore::load()` validates each provider against `ProviderRegistry` and each URL
+  against `Provider::isUrlAllowed()`, falling back to the provider's chat URL.
+- Session records contain only `providerId`, `profileId`, `url`, `title` and
+  `lifecycleState`. No cookies, tokens or passwords are written.
+- `ProfileManager::resolveProfile(providerId, accountId)` reuses a saved account profile
+  when available, otherwise falls back to the provider's first profile or creates the
+  `Default` account.
+- `BrowserTab` now persists the last meaningful URL from `QWebEnginePage::urlChanged`
+  only while active and only when the URL belongs to the provider.
+- `MainWindow` saves the session when tabs are opened, selected, reordered or closed, on
+  URL changes, in `closeEvent`, and on `QCoreApplication::aboutToQuit`.
+- Restore creates every tab with `LifecycleState::Unloaded` via
+  `BrowserWorkspace::addTab(..., activate = false)`; only the saved selected tab is
+  activated.
+- Workspace tab ordering is tracked explicitly with `BrowserWorkspace::moveTab()`.
+
+**Storage**:
+- Session: `QSettings` keys `workspace/openTabs`, `workspace/currentTabIndex`,
+  `workspace/sessionVersion` (INI format, existing Decision 013).
+- Authentication and site data: per-account Qt WebEngine persistent profiles under
+  `QStandardPaths::AppConfigLocation + "/profiles/<provider>-<account>"` with
+  `ForcePersistentCookies`, separate `storage/` and `cache/` trees.
+
+**Verification**:
+- `tests/test_session_restore.cpp`: 12 cases covering restore order, profiles, URLs and
+  active tab; lazy inactive tabs; save on open/select/reorder/close; empty, malformed and
+  future sessions; deleted profile; missing provider; no credentials; shutdown during
+  load.
+- `tests/test_tabstore.cpp` extended with schema version, future-schema, missing-provider,
+  unrelated-URL, allowed-subdomain, 50-tab limit and credential-free record tests.
+- `tests/test_profilemanager.cpp` and `tests/test_profile_isolation.cpp` extended with
+  `resolveProfile` and persistent-profile assertions.
+
+### Stage 2: Browser Toolbar Removal
+
+- Removed the workspace navigation toolbar (Back, Forward, Reload, Open External) and its
+  layout row, callbacks, member variables and obsolete `ToolbarIcons` entries.
+- Browser content now starts directly beneath the compact provider header.
+- `test_ui_regression` and `test_visual_corrections` assert that the header contains no
+  `QToolButton`, that no `workspaceNavigationToolbar` object exists, and that the
+  workspace top edge meets the header bottom.
+
+### Stage 3: Horizontal Provider Strip
+
+- Replaced the vertical provider `QListWidget` with a single horizontal `QScrollArea`
+  strip of 42x42 painted provider buttons, each with a tooltip and selected state.
+- The strip scrolls natively with the wheel and keeps all nine providers reachable.
+  Spacing is 5 px so exactly five icons fit in the expanded sidebar without clipping.
+- The collapsed rail mirrors the selected provider and stays synchronised.
+- Open Tabs remains a vertical list.
+- Light and dark selected/unselected styles were added in `Theme.cpp`; unsupported
+  `color-scheme` QSS blocks were removed.
+
+### Stage 4: Regression Tests
+
+- Added `tests/test_session_restore.cpp` (new executable).
+- Updated `test_sidebar`, `test_ui_regression`, `test_visual_corrections` and
+  `test_tabstore` for the strip, toolbar removal and session rules.
+- Full suite: **26/26 passed** with
+  `ctest --test-dir build-qa --output-on-failure` (about 63 s, 11 integration-labelled,
+  3 performance-labelled).
+
+### Stage 5: Real Restart and Visual QA
+
+- The visual QA launcher now has states 0-7 plus a `prepare` mode that creates a
+  three-tab session in one process and writes `session-meta.json`.
+- State 7 restores in a separate process and verifies tab order, provider, profile, URL,
+  selected index, sidebar selection and lazy inactive tabs against that metadata.
+- Ran under `systemd-inhibit --what=idle:sleep` because KDE screen blanking previously
+  disturbed capture assertions.
+- Captures produced: 8 states x light/dark = 16 images, plus `contact-sheet.png`.
+  Files are in `artifacts/visual-qa/`.
+- Inspected the contact sheet and full-size `01-initial-*`, `07-provider-strip-end-*` and
+  `08-restored-session-*`: no navigation toolbar, browser content under the header,
+  horizontal strip without clipped icons, restored tabs with lifecycle badges and the
+  selected provider outlined in both themes.
+
+**Real restart result**: the prepared session saved DeepSeek, Qwen and ChatGPT; a fresh
+process restored that order, selected DeepSeek (index 0), loaded only the selected tab and
+left the other two `Unloaded` with no page.
+
+### Stage 6: Packaging and Versioning
+
+- Version bumped to `0.4.0` in `CMakeLists.txt`, `src/core/Application.cpp`,
+  `ai-workspace.spec` and `README.md`.
+- Licence remains GPL-3.0-or-later; providers, icons and profile layout unchanged.
+- Built `dist/ai-workspace-0.4.0-1.fc43.x86_64.rpm` (plus debuginfo, debugsource and
+  source RPM) with `rpmbuild -ba` from a source tarball of the working tree. The build
+  ran under `/tmp/opencode/rpmbuild` because the root filesystem was near capacity.
+- Verified the binary RPM contains `/usr/bin/ai-workspace`, the desktop entry, all seven
+  hicolor icon sizes, README and LICENSE, and requires Qt 6.10 WebEngine libraries.
+
+### Remaining Known Limitations
+
+- Live provider pages still depend on external networks, consent screens and bot
+  detection; captures can differ between runs.
+- Screenshot capture requires a real Wayland or X11 session because offscreen QPA cannot
+  paint Qt WebEngine content.
+- Restored sessions store URLs, not page DOM or form state; sites may redirect on reload.
+- The 50-tab cap is a defensive bound; larger sessions are truncated oldest-last.

@@ -13,9 +13,6 @@ namespace {
 // Light theme semantic colors
 const char* kLightStyleSheet = R"(
   /* Color palette (light) */
-  * {
-    color-scheme: light;
-  }
   QMainWindow, QDialog {
     background-color: #f8f9fa;
     color: #212529;
@@ -109,6 +106,32 @@ const char* kLightStyleSheet = R"(
   }
   #providerList::viewport, #tabList::viewport {
     background: transparent;
+  }
+  #providerScrollArea {
+    background: transparent;
+    border: none;
+  }
+  #providerStrip {
+    background: transparent;
+    border: none;
+  }
+  #providerStripButton {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    padding: 2px;
+  }
+  #providerStripButton:hover {
+    background-color: #e9ecef;
+    border-color: #dee2e6;
+  }
+  #providerStripButton[selected="true"] {
+    background-color: #e3f2fd;
+    border-color: #3584e4;
+  }
+  #collapsedProviderButton[selected="true"] {
+    background-color: #e3f2fd;
+    border-color: #3584e4;
   }
   #providerNameLabel {
     color: #212529;
@@ -412,9 +435,6 @@ const char* kLightStyleSheet = R"(
 // Dark theme semantic colors
 const char* kDarkStyleSheet = R"(
   /* Color palette (dark) */
-  * {
-    color-scheme: dark;
-  }
   QMainWindow, QDialog {
     background-color: #161616;
     color: #e0e0e0;
@@ -508,6 +528,32 @@ const char* kDarkStyleSheet = R"(
   }
   #providerList::viewport, #tabList::viewport {
     background: transparent;
+  }
+  #providerScrollArea {
+    background: transparent;
+    border: none;
+  }
+  #providerStrip {
+    background: transparent;
+    border: none;
+  }
+  #providerStripButton {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    padding: 2px;
+  }
+  #providerStripButton:hover {
+    background-color: #2a2a2a;
+    border-color: #4a4a4a;
+  }
+  #providerStripButton[selected="true"] {
+    background-color: #2a3b5c;
+    border-color: #78aeed;
+  }
+  #collapsedProviderButton[selected="true"] {
+    background-color: #2a3b5c;
+    border-color: #78aeed;
   }
   #providerNameLabel {
     color: #e0e0e0;

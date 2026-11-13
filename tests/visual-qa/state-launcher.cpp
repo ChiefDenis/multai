@@ -4,6 +4,8 @@
 #include "Profile.h"
 #include "ProfileManager.h"
 #include "ProfileManagementDialog.h"
+#include "Provider.h"
+#include "ProviderRegistry.h"
 #include "SettingsManager.h"
 #include "Sidebar.h"
 #include "TabStore.h"
@@ -14,13 +16,20 @@
 #include <QDir>
 #include <QElapsedTimer>
 #include <QEventLoop>
+#include <QFile>
 #include <QImage>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QPainter>
 #include <QPixmap>
 #include <QScreen>
+#include <QScrollArea>
+#include <QScrollBar>
 #include <QSet>
 #include <QStandardPaths>
 #include <QTimer>
+#include <QToolButton>
 #include <QWebEngineView>
 #include <QWindow>
 
@@ -121,9 +130,11 @@ bool savePixmap(const QPixmap& pixmap, const QString& name) {
   return true;
 }
 
-BrowserTab* waitForLoad(MainWindow* window) {
+enum class LoadOutcome { Loaded, Failed, Timeout };
+
+LoadOutcome awaitTabLoad(MainWindow* window) {
   BrowserWorkspace* workspace = window->workspaceForTest();
-  const bool loaded = waitUntil(
+  const bool settled = waitUntil(
       [window, workspace]() {
         BrowserTab* tab = window->currentTabForTest();
         if (!tab || workspace->tabCount() == 0) {
@@ -133,29 +144,203 @@ BrowserTab* waitForLoad(MainWindow* window) {
         return state != LifecycleState::Loading && state != LifecycleState::Unloaded;
       },
       kLoadTimeoutMs);
-  require(loaded, "Provider page did not leave the Loading/Unloaded state before timeout");
+  if (!settled) {
+    return LoadOutcome::Timeout;
+  }
 
   BrowserTab* tab = window->currentTabForTest();
-  require(tab != nullptr, "No active tab after navigation");
-  require(tab->lifecycleState() == LifecycleState::Active,
-          QString("Navigation did not succeed: %1").arg(lifecycleStateToString(tab->lifecycleState())));
+  if (!tab || tab->lifecycleState() != LifecycleState::Active) {
+    return LoadOutcome::Failed;
+  }
 
   QWebEngineView* view = tab->view();
-  require(view != nullptr, "Active tab has no browser view");
-  const bool painted = waitUntil([view]() { return hasRenderedContent(view->grab()); }, 10000);
-  require(painted, "Browser view never produced painted content");
+  if (!view) {
+    return LoadOutcome::Failed;
+  }
+  return waitUntil([view]() { return hasRenderedContent(view->grab()); }, 10000)
+             ? LoadOutcome::Loaded
+             : LoadOutcome::Failed;
+}
+
+BrowserTab* waitForLoad(MainWindow* window) {
+  const LoadOutcome outcome = awaitTabLoad(window);
+  require(outcome != LoadOutcome::Timeout,
+          "Provider page did not leave the Loading/Unloaded state before timeout");
+  BrowserTab* tab = window->currentTabForTest();
+  require(tab != nullptr, "No active tab after navigation");
+  require(outcome == LoadOutcome::Loaded,
+          QString("Navigation did not succeed: %1")
+              .arg(lifecycleStateToString(tab->lifecycleState())));
   return tab;
 }
 
 void openProviderAndWait(MainWindow* window, const QString& providerId) {
-  const int before = window->workspaceForTest()->tabCount();
-  window->openProviderForTest(providerId);
-  require(window->workspaceForTest()->tabCount() == before + 1,
-          QString("Provider tab was not created: %1").arg(providerId));
-  BrowserTab* tab = waitForLoad(window);
-  require(tab->providerId() == providerId,
-          QString("Active tab provider mismatch: expected %1, got %2")
-              .arg(providerId, tab->providerId()));
+  BrowserWorkspace* workspace = window->workspaceForTest();
+
+  for (int attempt = 1; attempt <= 3; ++attempt) {
+    const int before = workspace->tabCount();
+    window->openProviderForTest(providerId);
+    require(workspace->tabCount() == before + 1,
+            QString("Provider tab was not created: %1").arg(providerId));
+
+    const LoadOutcome outcome = awaitTabLoad(window);
+    BrowserTab* tab = window->currentTabForTest();
+    if (outcome == LoadOutcome::Loaded && tab && tab->providerId() == providerId) {
+      return;
+    }
+
+    std::fprintf(stderr, "Retrying provider %s after load attempt %d failed\n",
+                 qPrintable(providerId), attempt);
+    const QString tabId = workspace->currentTabId();
+    if (!tabId.isEmpty()) {
+      QMetaObject::invokeMethod(window, "onTabClosed", Qt::DirectConnection,
+                                Q_ARG(QString, tabId));
+      QApplication::processEvents();
+    }
+    QEventLoop loop;
+    QTimer::singleShot(1000, &loop, &QEventLoop::quit);
+    loop.exec();
+  }
+
+  fail(QString("Provider page did not load after three attempts: %1").arg(providerId));
+}
+
+void verifyProviderStrip(MainWindow* window, bool scrollToEnd) {
+  Sidebar* sidebar = window->sidebarForTest();
+  QWidget* strip = sidebar->findChild<QWidget*>("providerStrip");
+  require(strip != nullptr, "Provider strip is missing");
+
+  const QList<QToolButton*> buttons = strip->findChildren<QToolButton*>("providerStripButton");
+  require(buttons.size() == 9, QString("Provider strip has %1 buttons, expected 9")
+                                   .arg(buttons.size()));
+
+  const int top = buttons.first()->geometry().top();
+  for (QToolButton* button : buttons) {
+    require(button->geometry().top() == top, "Provider buttons are not arranged horizontally");
+    require(!button->toolTip().isEmpty(), "Provider button has no tooltip");
+    require(!button->icon().isNull(), "Provider button has no icon");
+  }
+
+  QScrollArea* area = sidebar->findChild<QScrollArea*>("providerScrollArea");
+  require(area != nullptr, "Provider scroll area is missing");
+  require(area->horizontalScrollBarPolicy() == Qt::ScrollBarAlwaysOff,
+          "Provider strip must not show a permanent scrollbar");
+  QScrollBar* bar = area->horizontalScrollBar();
+  require(bar->maximum() > 0, "Provider strip should be horizontally scrollable");
+
+  if (scrollToEnd) {
+    bar->setValue(bar->maximum());
+    QApplication::processEvents();
+    require(bar->value() == bar->maximum(), "Provider strip did not scroll to the end");
+  }
+
+  QToolButton* last = buttons.last();
+  const QRect lastRect(last->mapTo(area->viewport(), QPoint(0, 0)), last->size());
+  if (scrollToEnd) {
+    require(area->viewport()->rect().contains(lastRect),
+            "Last provider is not reachable when scrolled to the end");
+  }
+
+  QToolButton* first = buttons.first();
+  const QRect firstRect(first->mapTo(area->viewport(), QPoint(0, 0)), first->size());
+  if (!scrollToEnd) {
+    require(area->viewport()->rect().intersects(firstRect),
+            "First provider is not visible at the start of the strip");
+  }
+}
+
+QJsonObject sessionMetaObject() {
+  QJsonArray tabs;
+  for (const TabMetadata& tab : TabStore::load()) {
+    QJsonObject entry;
+    entry["providerId"] = tab.providerId();
+    entry["profileId"] = tab.profileId();
+    entry["url"] = tab.url().toString();
+    entry["title"] = tab.title();
+    tabs.append(entry);
+  }
+
+  QJsonObject root;
+  root["version"] = TabStore::kSessionVersion;
+  root["currentIndex"] = TabStore::currentIndex();
+  root["tabs"] = tabs;
+  return root;
+}
+
+void writeSessionMeta() {
+  QDir dir(g_outputDir);
+  if (!dir.exists() && !dir.mkpath(".")) {
+    fail(QString("Cannot create output directory: %1").arg(g_outputDir));
+  }
+  QFile file(dir.filePath("session-meta.json"));
+  require(file.open(QIODevice::WriteOnly | QIODevice::Truncate),
+          "Cannot write session metadata for restore verification");
+  file.write(QJsonDocument(sessionMetaObject()).toJson());
+  file.close();
+  std::printf("Wrote %s\n", qPrintable(file.fileName()));
+}
+
+void clearTestProfiles() {
+  ProfileManager* manager = ProfileManager::instance();
+  const QList<Profile*> profiles = manager->profiles();
+  for (Profile* profile : profiles) {
+    while (profile->refCount() > 0) {
+      profile->deref();
+    }
+    manager->deleteProfile(profile);
+  }
+}
+
+void verifyRestoredSession(MainWindow* window) {
+  QFile file(QDir(g_outputDir).filePath("session-meta.json"));
+  require(file.open(QIODevice::ReadOnly), "Restore state requires session-meta.json");
+  const QJsonObject root = QJsonDocument::fromJson(file.readAll()).object();
+  const QJsonArray expectedTabs = root["tabs"].toArray();
+  require(!expectedTabs.isEmpty(), "Restore metadata contains no tabs");
+
+  BrowserWorkspace* workspace = window->workspaceForTest();
+  require(workspace->tabCount() == expectedTabs.size(),
+          QString("Restored tab count %1 does not match saved count %2")
+              .arg(workspace->tabCount())
+              .arg(expectedTabs.size()));
+
+  const QStringList ids = workspace->tabIds();
+  for (int i = 0; i < expectedTabs.size(); ++i) {
+    const QJsonObject expected = expectedTabs.at(i).toObject();
+    BrowserTab* tab = workspace->tabById(ids.at(i));
+    require(tab != nullptr, "Restored workspace returned a null tab");
+    require(tab->providerId() == expected["providerId"].toString(),
+            QString("Restored tab %1 provider mismatch").arg(i));
+    require(tab->profileId() == expected["profileId"].toString(),
+            QString("Restored tab %1 profile mismatch").arg(i));
+    require(tab->url() == QUrl(expected["url"].toString()),
+            QString("Restored tab %1 URL mismatch: %2 != %3")
+                .arg(i)
+                .arg(tab->url().toString(), expected["url"].toString()));
+  }
+
+  const int savedIndex = root["currentIndex"].toInt();
+  require(workspace->tabIndex(workspace->currentTabId()) == savedIndex,
+          "Restored selected tab index does not match the saved index");
+
+  BrowserTab* current = window->currentTabForTest();
+  require(current != nullptr, "Restored session has no active tab");
+  require(window->sidebarForTest()->selectedProvider() == current->providerId(),
+          "Sidebar provider selection was not restored");
+
+  for (const QString& tabId : ids) {
+    if (tabId == workspace->currentTabId()) {
+      continue;
+    }
+    BrowserTab* tab = workspace->tabById(tabId);
+    require(tab->lifecycleState() == LifecycleState::Unloaded,
+            QString("Restored inactive tab %1 is not Unloaded").arg(tabId));
+    require(tab->page() == nullptr,
+            QString("Restored inactive tab %1 created a WebEngine page").arg(tabId));
+  }
+
+  verifyProviderStrip(window, false);
+  waitForLoad(window);
 }
 
 void configureAccountDialog(ProfileManagementDialog* dialog) {
@@ -194,6 +379,7 @@ void runState(MainWindow* window, int state, ProfileManagementDialog** dialogOut
     case 0:
       require(workspace->tabCount() == 0, "Initial state must not have open tabs");
       require(!sidebar->isCollapsed(), "Initial state must have the sidebar expanded");
+      verifyProviderStrip(window, false);
       break;
 
     case 1:
@@ -250,6 +436,16 @@ void runState(MainWindow* window, int state, ProfileManagementDialog** dialogOut
       break;
     }
 
+    case 6:
+      openProviderAndWait(window, "deepseek");
+      verifyProviderStrip(window, true);
+      break;
+
+    case 7:
+      verifyRestoredSession(window);
+      require(!sidebar->isCollapsed(), "Restored session capture expects an expanded sidebar");
+      break;
+
     default:
       fail(QString("Unknown visual QA state index: %1").arg(state));
   }
@@ -262,23 +458,72 @@ int main(int argc, char* argv[]) {
   QStandardPaths::setTestModeEnabled(true);
   app.setApplicationName("AI Workspace Visual QA");
 
+  if (argc >= 2 && QString(argv[1]) == "prepare") {
+    if (argc < 3) {
+      std::fprintf(stderr, "Usage: %s prepare <output-dir>\n", argv[0]);
+      return 1;
+    }
+
+    g_outputDir = QString::fromUtf8(argv[2]);
+    SettingsManager::instance()->setTheme("light");
+    SettingsManager::instance()->reset("sidebar/collapsed");
+    SettingsManager::instance()->reset("sidebar/geometry");
+    TabStore::clear();
+    clearTestProfiles();
+    Theme::applyTheme("light");
+
+    auto* window = new MainWindow();
+    window->resize(kWindowWidth, kWindowHeight);
+    window->show();
+    require(waitUntil([window]() { return isExposed(window); }, 10000),
+            "Main window did not become visible while preparing the session");
+
+    openProviderAndWait(window, "deepseek");
+    openProviderAndWait(window, "qwen");
+    openProviderAndWait(window, "chatgpt");
+
+    const QStringList ids = window->workspaceForTest()->tabIds();
+    require(ids.size() == 3, "Prepared session does not have three tabs");
+    window->selectTabForTest(ids.first());
+    QApplication::processEvents();
+
+    window->close();
+    QApplication::processEvents();
+
+    require(TabStore::load().size() == 3, "Prepared session was not saved");
+    writeSessionMeta();
+
+    delete window;
+    app.processEvents();
+    std::fflush(stdout);
+    std::fflush(stderr);
+    std::_Exit(0);
+  }
+
   if (argc < 4) {
     std::fprintf(stderr,
-                 "Usage: %s <state 0-5> <light|dark> <output-dir>\n"
-                 "States: 0 initial, 1 active, 2 multiple, 3 collapsed, 4 empty, 5 accounts\n",
-                 argv[0]);
+                 "Usage: %s <state 0-7> <light|dark> <output-dir>\n"
+                 "       %s prepare <output-dir>\n"
+                 "States: 0 initial, 1 active, 2 multiple, 3 collapsed, 4 empty,\n"
+                 "        5 accounts, 6 provider-strip-end, 7 restored-session\n",
+                 argv[0], argv[0]);
     return 1;
   }
 
   const int state = std::atoi(argv[1]);
   g_dark = QString(argv[2]) == "dark";
   g_outputDir = QString::fromUtf8(argv[3]);
+  const bool restoring = state == 7;
 
   const QString theme = g_dark ? "dark" : "light";
   SettingsManager::instance()->setTheme(theme);
   SettingsManager::instance()->reset("sidebar/collapsed");
   SettingsManager::instance()->reset("sidebar/geometry");
-  TabStore::clear();
+  if (!restoring) {
+    TabStore::clear();
+  } else {
+    require(!TabStore::load().isEmpty(), "No saved session to restore");
+  }
   Theme::applyTheme(theme);
 
   auto* window = new MainWindow();
@@ -304,16 +549,25 @@ int main(int argc, char* argv[]) {
     savePixmap(shot, QString("%1-%2.png").arg("06-account-management", theme));
     dialog->close();
   } else {
-    window->resize(kWindowWidth, kWindowHeight);
-    require(waitUntil(
-                [window]() { return window->size() == QSize(kWindowWidth, kWindowHeight); }, 10000),
-            "Main window changed size before capture");
-    QApplication::processEvents();
-    const QPixmap shot = captureWindow(window);
-    require(!shot.isNull(), "Main window capture failed");
-    require(shot.size() == QSize(kWindowWidth, kWindowHeight),
-            "Main window capture has an unexpected size");
-    require(hasRenderedContent(shot), "Main window capture is blank");
+    QPixmap shot;
+    bool captured = false;
+    for (int attempt = 0; attempt < 5 && !captured; ++attempt) {
+      window->resize(kWindowWidth, kWindowHeight);
+      require(waitUntil(
+                  [window]() { return window->size() == QSize(kWindowWidth, kWindowHeight); },
+                  10000),
+              "Main window changed size before capture");
+      QApplication::processEvents();
+      shot = captureWindow(window);
+      captured = !shot.isNull() && shot.size() == QSize(kWindowWidth, kWindowHeight) &&
+                 hasRenderedContent(shot);
+      if (!captured) {
+        QEventLoop loop;
+        QTimer::singleShot(200, &loop, &QEventLoop::quit);
+        loop.exec();
+      }
+    }
+    require(captured, "Main window capture is blank or has an unexpected size");
 
     QString name;
     switch (state) {
@@ -322,6 +576,8 @@ int main(int argc, char* argv[]) {
       case 2: name = "03-multiple-tabs"; break;
       case 3: name = "04-sidebar-collapsed"; break;
       case 4: name = "05-empty-workspace"; break;
+      case 6: name = "07-provider-strip-end"; break;
+      case 7: name = "08-restored-session"; break;
       default: fail("Unsupported capture state");
     }
     savePixmap(shot, QString("%1-%2.png").arg(name, theme));

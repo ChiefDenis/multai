@@ -56,6 +56,7 @@ public slots:
   void onLoadStarted();
   void onLoadFinished(bool success);
   void onTitleChanged(const QString& title);
+  void onUrlChanged(const QUrl& url);
   void onRenderProcessTerminated(QWebEnginePage::RenderProcessTerminationStatus status, int exitCode);
 
 signals:
@@ -63,6 +64,7 @@ signals:
   void loadStarted();
   void loadFinished(bool success);
   void titleChanged(const QString& title);
+  void urlChanged(const QUrl& url);
   void renderProcessTerminated(int status, int exitCode);
   void errorChanged(bool hasError);
   void closeRequested();

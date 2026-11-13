@@ -386,6 +386,44 @@ tests/
 - Settings persist correctly
 - Profiles persist correctly
 
+### Session Restore Tests
+
+**File**: `tests/test_session_restore.cpp` (registered with the `integration` label)
+
+**Test Cases**:
+
+1. **Restore order, profiles, URLs and active tab**
+   - Save three tabs with different providers, accounts and chat URLs
+   - Reopen a `MainWindow`
+   - Verify tab order, provider, profile, URL and selected index
+   - Verify an off-provider URL falls back to the provider URL
+
+2. **Lazy inactive tabs**
+   - Save three tabs with the third selected
+   - Verify only the selected tab creates a page
+   - Verify inactive tabs remain `Unloaded` with `page() == nullptr`
+
+3. **Save on open, select, reorder and close**
+   - Open two providers and verify the session grows
+   - Select a tab and verify `currentTabIndex`
+   - Move a tab and verify persisted ordering
+   - Close a tab and verify it leaves the session
+
+4. **Robust session parsing**
+   - Empty session starts clean
+   - Malformed records are skipped or fall back
+   - A future `sessionVersion` is not overwritten
+   - A deleted profile resolves to a valid profile
+   - A missing provider is skipped
+   - Records contain no cookie, token or password keys
+   - Closing during an in-flight load still persists the session
+
+**Acceptance Criteria**:
+- Sessions survive a real process restart
+- Restored inactive tabs stay lazy
+- Invalid sessions never crash or open off-provider URLs
+- Authentication stays in persistent profiles, not session records
+
 ### Browser Integration Tests
 
 **File**: `tests/integration/test_browser_integration.cpp`
@@ -692,30 +730,33 @@ ctest --test-dir build -R performance
 ./build/tests/test_visual_corrections
 ```
 
-### Current Test Results (2026-11-12)
+### Current Test Results (2026-11-13)
 
 | Category | Tests | Status |
 |----------|-------|--------|
 | Unit | 12 | ✅ All passing |
-| Integration | 10 | ✅ All passing |
+| Integration | 11 | ✅ All passing |
 | Performance | 3 | ✅ All passing |
-| **Total** | **25** | ✅ **All passing** |
+| **Total** | **26** | ✅ **All passing** |
 
-Total test time: ~40 seconds. Verified in a clean `build-qa` configure and build.
+Total test time: ~63 seconds. Verified in an incremental `build-qa` build with
+`ctest --test-dir build-qa --output-on-failure`.
 
 ### Visual QA Screenshot Harness
 
 The screenshot harness is a manual QA tool, not a CTest test. It drives the real
-application on a Wayland or X11 session and captures six states in light and dark
-themes.
+application on a Wayland or X11 session and captures eight states in light and dark
+themes, including a real restart-and-restore pair.
 
 ```bash
 # Build the harness and application
 cmake -B build -S . -DCMAKE_BUILD_TYPE=Debug
 cmake --build build --target state-launcher
 
-# Capture all 12 states and generate the contact sheet
-BUILD_DIR="$PWD/build" tests/visual-qa/capture-all.sh
+# Capture all 16 states, the restart pair, and the contact sheet
+BUILD_DIR="$PWD/build" systemd-inhibit --what=idle:sleep \
+  --who="AI Workspace Visual QA" --why="Capture UI states" --mode=block \
+  tests/visual-qa/capture-all.sh
 ```
 
 Outputs:
@@ -726,17 +767,26 @@ Outputs:
 - `artifacts/visual-qa/04-sidebar-collapsed-{light,dark}.png`
 - `artifacts/visual-qa/05-empty-workspace-{light,dark}.png`
 - `artifacts/visual-qa/06-account-management-{light,dark}.png`
+- `artifacts/visual-qa/07-provider-strip-end-{light,dark}.png`
+- `artifacts/visual-qa/08-restored-session-{light,dark}.png`
 - `artifacts/visual-qa/contact-sheet.png`
+- `artifacts/visual-qa/session-meta.json` (saved session used to verify restore)
 - Per-state `.log` files with WebEngine diagnostics
 
 The harness asserts the intended state before writing each image (tab count, active tab,
-lifecycle `Active`, header visibility, collapsed rail, empty workspace, or shown and
-exposed account dialog). If an assertion fails, capture fails rather than writing a
-plausible but wrong screenshot.
+lifecycle `Active`, header visibility without a navigation toolbar, horizontal provider
+strip, collapsed rail, empty workspace, or shown and exposed account dialog). If an
+assertion fails, capture fails rather than writing a plausible but wrong screenshot.
+
+State 7 restores in a fresh process after the `prepare` run created three tabs and wrote
+`session-meta.json`. It verifies tab order, provider, profile, URL, selected index,
+sidebar selection and that inactive tabs stayed `Unloaded`, so the restart capture proves
+real persistence rather than an in-process rebuild.
 
 The web surface is captured by compositing `QWebEngineView::grab()` at the view's mapped
 position because `QWidget::render()` does not include the composited WebEngine surface.
 Offscreen QPA cannot paint WebEngine content, so a real display server is required.
+Run under `systemd-inhibit` because KDE screen blanking can disturb capture assertions.
 
 ### UI Regression Tests
 

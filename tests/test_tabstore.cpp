@@ -4,6 +4,8 @@
 #include <QVariantMap>
 #include "SettingsManager.h"
 #include "TabStore.h"
+#include "providers/Provider.h"
+#include "providers/ProviderRegistry.h"
 
 class TestTabStore : public QObject {
   Q_OBJECT
@@ -19,6 +21,13 @@ private slots:
   void testLastKnownStatePreserved();
   void testOldSettingsWithoutLifecycleState();
   void testInvalidLifecycleStateValues();
+  void testSchemaVersionSaved();
+  void testFutureSchemaIgnored();
+  void testMissingProviderSkipped();
+  void testUnrelatedUrlFallsBack();
+  void testAllowedSubdomainUrlsPreserved();
+  void testSessionTabLimit();
+  void testRecordsStoreNoCredentials();
 };
 
 void TestTabStore::initTestCase() {
@@ -78,8 +87,11 @@ void TestTabStore::testInvalidEntriesSkipped() {
   SettingsManager::instance()->setValue("workspace/openTabs", stored);
 
   const QList<TabMetadata> loaded = TabStore::load();
-  QCOMPARE(loaded.size(), 1);
-  QCOMPARE(loaded.at(0).providerId(), QString("claude"));
+  QCOMPARE(loaded.size(), 2);
+  QCOMPARE(loaded.at(0).providerId(), QString("deepseek"));
+  // A malformed URL falls back to the provider's configured chat URL.
+  QCOMPARE(loaded.at(0).url(), ProviderRegistry::instance()->providerById("deepseek")->url());
+  QCOMPARE(loaded.at(1).providerId(), QString("claude"));
 }
 
 void TestTabStore::testClear() {
@@ -173,6 +185,104 @@ void TestTabStore::testInvalidLifecycleStateValues() {
   QCOMPARE(loaded.size(), 1);
   // Invalid state string defaults to Unloaded.
   QCOMPARE(loaded.at(0).lifecycleState(), LifecycleState::Unloaded);
+}
+
+void TestTabStore::testSchemaVersionSaved() {
+  QList<TabMetadata> tabs;
+  tabs.append(TabMetadata("qwen", "default", QUrl("https://chat.qwen.ai/")));
+  TabStore::save(tabs, 0);
+
+  QCOMPARE(TabStore::savedVersion(), TabStore::kSessionVersion);
+  QCOMPARE(SettingsManager::instance()->value("workspace/sessionVersion").toInt(),
+           TabStore::kSessionVersion);
+}
+
+void TestTabStore::testFutureSchemaIgnored() {
+  SettingsManager::instance()->setValue("workspace/sessionVersion", 99);
+  QVariantList stored;
+  QVariantMap entry;
+  entry["providerId"] = "qwen";
+  entry["profileId"] = "default";
+  entry["url"] = "https://chat.qwen.ai/";
+  stored.append(entry);
+  SettingsManager::instance()->setValue("workspace/openTabs", stored);
+
+  QCOMPARE(TabStore::load().size(), 0);
+}
+
+void TestTabStore::testMissingProviderSkipped() {
+  QVariantList stored;
+  QVariantMap entry;
+  entry["providerId"] = "does-not-exist";
+  entry["profileId"] = "default";
+  entry["url"] = "https://example.org/";
+  stored.append(entry);
+  QVariantMap valid;
+  valid["providerId"] = "kimi";
+  valid["profileId"] = "default";
+  valid["url"] = "https://kimi.ai/chat";
+  stored.append(valid);
+  SettingsManager::instance()->setValue("workspace/openTabs", stored);
+
+  const QList<TabMetadata> loaded = TabStore::load();
+  QCOMPARE(loaded.size(), 1);
+  QCOMPARE(loaded.at(0).providerId(), QString("kimi"));
+}
+
+void TestTabStore::testUnrelatedUrlFallsBack() {
+  QVariantList stored;
+  QVariantMap entry;
+  entry["providerId"] = "claude";
+  entry["profileId"] = "default";
+  entry["url"] = "https://attacker.example.net/";
+  stored.append(entry);
+  SettingsManager::instance()->setValue("workspace/openTabs", stored);
+
+  const QList<TabMetadata> loaded = TabStore::load();
+  QCOMPARE(loaded.size(), 1);
+  QCOMPARE(loaded.at(0).url(), ProviderRegistry::instance()->providerById("claude")->url());
+}
+
+void TestTabStore::testAllowedSubdomainUrlsPreserved() {
+  QList<TabMetadata> tabs;
+  tabs.append(TabMetadata("chatgpt", "default",
+                          QUrl("https://chatgpt.com/c/123e4567-e89b-12d3-a456-426614174000")));
+  tabs.append(TabMetadata("gemini", "default",
+                          QUrl("https://gemini.google.com/app/abcdef")));
+  tabs.append(TabMetadata("kimi", "default", QUrl("https://kimi.com/chat/123")));
+  TabStore::save(tabs, 0);
+
+  const QList<TabMetadata> loaded = TabStore::load();
+  QCOMPARE(loaded.size(), 3);
+  QCOMPARE(loaded.at(0).url(), tabs.at(0).url());
+  QCOMPARE(loaded.at(1).url(), tabs.at(1).url());
+  QCOMPARE(loaded.at(2).url(), tabs.at(2).url());
+}
+
+void TestTabStore::testSessionTabLimit() {
+  QList<TabMetadata> tabs;
+  for (int i = 0; i < 60; ++i) {
+    tabs.append(TabMetadata("deepseek", "default", QUrl("https://chat.deepseek.com/")));
+  }
+  TabStore::save(tabs, 0);
+
+  QCOMPARE(TabStore::load().size(), 50);
+}
+
+void TestTabStore::testRecordsStoreNoCredentials() {
+  QList<TabMetadata> tabs;
+  tabs.append(TabMetadata("copilot", "work",
+                          QUrl("https://copilot.microsoft.com/chats/abc")));
+  TabStore::save(tabs, 0);
+
+  const QVariantList stored =
+      SettingsManager::instance()->value("workspace/openTabs").toList();
+  QCOMPARE(stored.size(), 1);
+  const QVariantMap record = stored.at(0).toMap();
+  const QStringList allowed = {"providerId", "profileId", "url", "title", "lifecycleState"};
+  for (auto it = record.begin(); it != record.end(); ++it) {
+    QVERIFY(allowed.contains(it.key()));
+  }
 }
 
 QTEST_MAIN(TestTabStore)

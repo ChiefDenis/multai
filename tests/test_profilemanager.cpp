@@ -19,6 +19,9 @@ private slots:
   void testDeleteProfileRemovesData();
   void testDeleteProfileRefusedWhileInUse();
   void testLoadProfilesScansStorage();
+  void testResolveProfileReturnsSavedAccount();
+  void testResolveProfileFallsBackToExistingAccount();
+  void testResolveProfileCreatesDefaultAccount();
 };
 
 void TestProfileManager::initTestCase() {
@@ -138,6 +141,33 @@ void TestProfileManager::testLoadProfilesScansStorage() {
   const QList<Profile*> profiles = manager->profilesForProvider("glm");
   QCOMPARE(profiles.size(), 1);
   QCOMPARE(profiles.at(0)->accountId(), QString("default"));
+}
+
+void TestProfileManager::testResolveProfileReturnsSavedAccount() {
+  ProfileManager* manager = ProfileManager::instance();
+  Profile* work = manager->getOrCreateProfile("deepseek", "work");
+  QVERIFY(work != nullptr);
+
+  Profile* resolved = manager->resolveProfile("deepseek", "work");
+  QCOMPARE(resolved, work);
+  QCOMPARE(resolved->id(), QString("deepseek:work"));
+}
+
+void TestProfileManager::testResolveProfileFallsBackToExistingAccount() {
+  ProfileManager* manager = ProfileManager::instance();
+  Profile* work = manager->getOrCreateProfile("deepseek", "work");
+  QVERIFY(work != nullptr);
+  QVERIFY(manager->resolveProfile("deepseek", "deleted-account") != nullptr);
+  QCOMPARE(manager->resolveProfile("deepseek", "deleted-account"), work);
+  QCOMPARE(manager->profilesForProvider("deepseek").size(), 1);
+}
+
+void TestProfileManager::testResolveProfileCreatesDefaultAccount() {
+  ProfileManager* manager = ProfileManager::instance();
+  Profile* resolved = manager->resolveProfile("kimi", "deleted-account");
+  QVERIFY(resolved != nullptr);
+  QCOMPARE(resolved->accountId(), QString("default"));
+  QVERIFY(ProfileStorage::instance()->profileExists("kimi:default"));
 }
 
 QTEST_MAIN(TestProfileManager)

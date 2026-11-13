@@ -2,6 +2,7 @@
 
 #include <QObject>
 #include <QString>
+#include <QStringList>
 #include <QUrl>
 #include <QIcon>
 
@@ -18,10 +19,14 @@ public:
   QIcon icon() const { return m_icon; }
 
   void setIcon(const QIcon& icon) { m_icon = icon; }
+  void setAllowedDomains(const QStringList& domains) { m_allowedDomains = domains; }
+  QStringList allowedDomains() const { return m_allowedDomains; }
+  bool isUrlAllowed(const QUrl& url) const;
 
 private:
   QString m_id;
   QString m_displayName;
   QUrl m_url;
   QIcon m_icon;
+  QStringList m_allowedDomains;
 };

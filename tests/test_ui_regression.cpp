@@ -3,6 +3,7 @@
 #include <QToolButton>
 #include <QListWidget>
 #include <QListWidgetItem>
+#include <QScrollArea>
 #include <QSplitter>
 #include <QWidget>
 #include <Qt>
@@ -22,12 +23,12 @@ private slots:
   void testSidebarExpandedByDefault();
   void testSidebarAllNineProvidersVisible();
   void testSidebarCollapsibleWithoutHeightChange();
-  void testWorkspaceHeaderHasIcons();
+  void testWorkspaceHeaderHasNoNavigationToolbar();
   void testEmptyStateHasProviderShortcuts();
   void testThemeSwitchingUpdatesTheme();
   void testDarkThemeSidebarBackground();
-  void testProviderListHasScrollbar();
-  void testProviderNamesNotEmpty();
+  void testProviderStripScrollConfiguration();
+  void testProviderStripButtonContent();
 };
 
 void TestUIRegression::initTestCase() {
@@ -62,9 +63,9 @@ void TestUIRegression::testSidebarExpandedByDefault() {
 
 void TestUIRegression::testSidebarAllNineProvidersVisible() {
   Sidebar sidebar;
-  QListWidget* providerList = sidebar.findChild<QListWidget*>("providerList");
-  QVERIFY(providerList != nullptr);
-  QCOMPARE(providerList->count(), 9);
+  QWidget* strip = sidebar.findChild<QWidget*>("providerStrip");
+  QVERIFY(strip != nullptr);
+  QCOMPARE(strip->findChildren<QToolButton*>("providerStripButton").size(), 9);
 }
 
 void TestUIRegression::testSidebarCollapsibleWithoutHeightChange() {
@@ -82,7 +83,7 @@ void TestUIRegression::testSidebarCollapsibleWithoutHeightChange() {
   QCOMPARE(sidebar.height(), initialHeight);  // Height unchanged
 }
 
-void TestUIRegression::testWorkspaceHeaderHasIcons() {
+void TestUIRegression::testWorkspaceHeaderHasNoNavigationToolbar() {
   MainWindow window;
   window.show();
   QApplication::processEvents();
@@ -90,13 +91,20 @@ void TestUIRegression::testWorkspaceHeaderHasIcons() {
   QWidget* header = window.workspaceHeaderForTest();
   QVERIFY(header != nullptr);
 
-  QList<QToolButton*> buttons = header->findChildren<QToolButton*>();
-  QCOMPARE(buttons.size(), 4);  // Back, Forward, Reload, Open External
+  QCOMPARE(header->findChildren<QToolButton*>().size(), 0);
+  QVERIFY(window.providerIconLabelForTest() != nullptr);
+  QVERIFY(window.providerLabelForTest() != nullptr);
+  QVERIFY(window.findChild<QWidget*>("workspaceNavigationToolbar") == nullptr);
 
-  for (QToolButton* btn : buttons) {
-    QVERIFY(!btn->icon().isNull());  // Each button has an icon
-    QVERIFY(!btn->toolTip().isEmpty());  // Each button has a tooltip
-  }
+  // The workspace must be the direct neighbour of the header, with no toolbar row between them.
+  QWidget* central = window.centralWidget();
+  QVERIFY(central != nullptr);
+  QVERIFY(window.workspaceForTest() != nullptr);
+  const QRect headerRect(header->mapTo(central, QPoint(0, 0)), header->size());
+  const QRect workspaceRect(window.workspaceForTest()->mapTo(central, QPoint(0, 0)),
+                            window.workspaceForTest()->size());
+  QVERIFY2(workspaceRect.top() <= headerRect.bottom() + 2,
+           "The browser workspace must begin directly beneath the header");
 }
 
 void TestUIRegression::testEmptyStateHasProviderShortcuts() {
@@ -135,27 +143,26 @@ void TestUIRegression::testDarkThemeSidebarBackground() {
   QVERIFY(sheet.contains("background-color: #242424"));
 }
 
-void TestUIRegression::testProviderListHasScrollbar() {
+void TestUIRegression::testProviderStripScrollConfiguration() {
   Sidebar sidebar;
-  QListWidget* providerList = sidebar.findChild<QListWidget*>("providerList");
-  QVERIFY(providerList != nullptr);
-  QCOMPARE(providerList->verticalScrollBarPolicy(),
-           static_cast<int>(Qt::ScrollBarAsNeeded));
+  QScrollArea* scrollArea = sidebar.findChild<QScrollArea*>("providerScrollArea");
+  QVERIFY(scrollArea != nullptr);
+  QCOMPARE(scrollArea->horizontalScrollBarPolicy(), static_cast<int>(Qt::ScrollBarAlwaysOff));
+  QCOMPARE(scrollArea->verticalScrollBarPolicy(), static_cast<int>(Qt::ScrollBarAlwaysOff));
+  QVERIFY(scrollArea->widgetResizable() == false);
 }
 
-void TestUIRegression::testProviderNamesNotEmpty() {
+void TestUIRegression::testProviderStripButtonContent() {
   Sidebar sidebar;
-  QListWidget* providerList = sidebar.findChild<QListWidget*>("providerList");
-  QVERIFY(providerList != nullptr);
-  QCOMPARE(providerList->count(), 9);
+  QWidget* strip = sidebar.findChild<QWidget*>("providerStrip");
+  QVERIFY(strip != nullptr);
 
-  for (int i = 0; i < providerList->count(); ++i) {
-    QListWidgetItem* item = providerList->item(i);
-    QVERIFY(item != nullptr);
-    QWidget* widget = providerList->itemWidget(item);
-    QVERIFY(widget != nullptr);
-    // Widget should have children (icon label + name label)
-    QVERIFY(widget->children().size() >= 2);
+  const QList<QToolButton*> buttons = strip->findChildren<QToolButton*>("providerStripButton");
+  QCOMPARE(buttons.size(), 9);
+  for (QToolButton* button : buttons) {
+    QVERIFY(button->icon().isNull() == false);
+    QVERIFY(button->toolTip().isEmpty() == false);
+    QVERIFY(button->width() >= 40);
   }
 }
 

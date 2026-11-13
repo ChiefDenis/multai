@@ -2,6 +2,7 @@
 
 #include <QList>
 #include <QStackedWidget>
+#include <QStringList>
 #include <QWidget>
 
 class BrowserTab;
@@ -17,7 +18,7 @@ public:
   explicit BrowserWorkspace(QWidget* parent = nullptr);
   ~BrowserWorkspace() override = default;
 
-  void addTab(BrowserTab* tab, const QString& tabId);
+  void addTab(BrowserTab* tab, const QString& tabId, bool activate = true);
   void removeTab(BrowserTab* tab, const QString& tabId);
   void activateTab(const QString& tabId);
   BrowserTab* currentTab() const;
@@ -25,7 +26,9 @@ public:
   int tabCount() const;
   bool hasTabs() const;
   BrowserTab* tabById(const QString& tabId) const;
-  QStringList tabIds() const { return m_tabs.keys(); }
+  QStringList tabIds() const { return m_tabOrder; }
+  int tabIndex(const QString& tabId) const { return m_tabOrder.indexOf(tabId); }
+  bool moveTab(const QString& tabId, int newIndex);
 
   void showEmptyState();
   void hideEmptyState();
@@ -37,6 +40,7 @@ signals:
   void tabActivated(BrowserTab* tab, const QString& tabId);
   void tabAdded(BrowserTab* tab, const QString& tabId);
   void tabRemoved(const QString& tabId);
+  void tabOrderChanged();
   void emptyStateProviderRequested(const QString& providerId);
 
 private:
@@ -46,5 +50,6 @@ private:
   QWidget* m_emptyStateWidget;
   QLabel* m_emptyStateFolderIconLabel;
   QMap<QString, BrowserTab*> m_tabs;
+  QStringList m_tabOrder;
   QString m_currentTabId;
 };

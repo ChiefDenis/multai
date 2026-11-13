@@ -99,11 +99,15 @@ qt_add_executable(test_tabstore
   ../src/core/TabStore.cpp
   ../src/core/SettingsManager.cpp
   ../src/lifecycle/TabMetadata.cpp
+  ../src/providers/Provider.cpp
+  ../src/providers/ProviderRegistry.cpp
+  ../src/providers/ProviderIcons.cpp
 )
 
 target_link_libraries(test_tabstore PRIVATE
   Qt6::Core
   Qt6::Test
+  Qt6::Widgets
 )
 
 target_include_directories(test_tabstore PRIVATE ${TEST_INCLUDE_DIRS})
@@ -143,6 +147,9 @@ qt_add_executable(test_recovery
   ../src/profiles/ProfileManager.cpp
   ../src/profiles/ProfileStorage.cpp
   ../src/core/SettingsManager.cpp
+  ../src/providers/Provider.cpp
+  ../src/providers/ProviderRegistry.cpp
+  ../src/providers/ProviderIcons.cpp
 )
 
 target_link_libraries(test_recovery PRIVATE
@@ -256,6 +263,9 @@ qt_add_executable(test_lifecycle_integration
   ../src/profiles/ProfileManager.cpp
   ../src/profiles/ProfileStorage.cpp
   ../src/core/SettingsManager.cpp
+  ../src/providers/Provider.cpp
+  ../src/providers/ProviderRegistry.cpp
+  ../src/providers/ProviderIcons.cpp
 )
 
 target_link_libraries(test_lifecycle_integration PRIVATE
@@ -297,11 +307,15 @@ qt_add_executable(test_persistence
   ../src/core/TabStore.cpp
   ../src/core/SettingsManager.cpp
   ../src/lifecycle/TabMetadata.cpp
+  ../src/providers/Provider.cpp
+  ../src/providers/ProviderRegistry.cpp
+  ../src/providers/ProviderIcons.cpp
 )
 
 target_link_libraries(test_persistence PRIVATE
   Qt6::Core
   Qt6::Test
+  Qt6::Widgets
 )
 
 target_include_directories(test_persistence PRIVATE ${TEST_INCLUDE_DIRS})
@@ -352,6 +366,9 @@ qt_add_executable(test_memory_usage
   ../src/profiles/ProfileManager.cpp
   ../src/profiles/ProfileStorage.cpp
   ../src/core/SettingsManager.cpp
+  ../src/providers/Provider.cpp
+  ../src/providers/ProviderRegistry.cpp
+  ../src/providers/ProviderIcons.cpp
 )
 
 target_link_libraries(test_memory_usage PRIVATE
@@ -379,6 +396,9 @@ qt_add_executable(test_tab_timings
   ../src/profiles/ProfileManager.cpp
   ../src/profiles/ProfileStorage.cpp
   ../src/core/SettingsManager.cpp
+  ../src/providers/Provider.cpp
+  ../src/providers/ProviderRegistry.cpp
+  ../src/providers/ProviderIcons.cpp
 )
 
 target_link_libraries(test_tab_timings PRIVATE
@@ -427,6 +447,9 @@ qt_add_executable(test_auto_default_profile
   ../src/lifecycle/MemoryMonitor.cpp
   ../src/lifecycle/TabMetadata.cpp
   ../src/lifecycle/TestClock.cpp
+  ../src/providers/Provider.cpp
+  ../src/providers/ProviderRegistry.cpp
+  ../src/providers/ProviderIcons.cpp
 )
 
 target_link_libraries(test_auto_default_profile PRIVATE
@@ -548,3 +571,21 @@ set_property(TEST test_visual_corrections PROPERTY LABELS "integration")
 
 # Visual QA harness - not registered as ctest test (manual QA tool)
 add_subdirectory(visual-qa)
+
+# Session persistence and restoration test
+qt_add_executable(test_session_restore
+  test_session_restore.cpp
+)
+
+target_link_libraries(test_session_restore PRIVATE
+  ai-workspace-lib
+  Qt6::Core
+  Qt6::Test
+  Qt6::Widgets
+  Qt6::WebEngineWidgets
+)
+
+target_include_directories(test_session_restore PRIVATE ${TEST_INCLUDE_DIRS})
+
+add_test(NAME test_session_restore COMMAND test_session_restore)
+set_property(TEST test_session_restore PROPERTY LABELS "integration")

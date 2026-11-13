@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Capture the twelve visual QA states (six states x light/dark) and build a
-# labeled contact sheet. Requires a real Wayland/X11 session: Qt WebEngine
-# cannot paint into an offscreen surface.
+# Capture the visual QA states (light/dark) plus a real restart-and-restore pair,
+# then build a labeled contact sheet. Requires a real Wayland/X11 session:
+# Qt WebEngine cannot paint into an offscreen surface.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -20,7 +20,20 @@ mkdir -p "${OUT_DIR}"
 rm -f "${OUT_DIR}"/01-initial-*.png "${OUT_DIR}"/02-active-workspace-*.png \
       "${OUT_DIR}"/03-multiple-tabs-*.png "${OUT_DIR}"/04-sidebar-collapsed-*.png \
       "${OUT_DIR}"/05-empty-workspace-*.png "${OUT_DIR}"/06-account-management-*.png \
-      "${OUT_DIR}"/contact-sheet.png
+      "${OUT_DIR}"/07-provider-strip-end-*.png "${OUT_DIR}"/08-restored-session-*.png \
+      "${OUT_DIR}"/contact-sheet.png "${OUT_DIR}"/session-meta.json
+
+capture() {
+  local state="$1"
+  local name="$2"
+  local theme="$3"
+  echo "Capturing ${name} (${theme})"
+  QT_ASSUME_STDERR_HAS_CONSOLE=1 \
+    timeout 240 "${LAUNCHER}" "${state}" "${theme}" "${OUT_DIR}" \
+    >"${OUT_DIR}/${name}-${theme}.log" 2>&1 \
+    || { echo "Capture failed for ${name} ${theme}; see ${OUT_DIR}/${name}-${theme}.log" >&2; exit 1; }
+  sleep 1
+}
 
 states=(
   "0:01-initial"
@@ -29,18 +42,29 @@ states=(
   "3:04-sidebar-collapsed"
   "4:05-empty-workspace"
   "5:06-account-management"
+  "6:07-provider-strip-end"
 )
 
 for entry in "${states[@]}"; do
   state="${entry%%:*}"
   name="${entry##*:}"
   for theme in light dark; do
-    echo "Capturing ${name} (${theme})"
-    QT_ASSUME_STDERR_HAS_CONSOLE=1 \
-      timeout 180 "${LAUNCHER}" "${state}" "${theme}" "${OUT_DIR}" \
-      >"${OUT_DIR}/${name}-${theme}.log" 2>&1 \
-      || { echo "Capture failed for ${name} ${theme}; see ${OUT_DIR}/${name}-${theme}.log" >&2; exit 1; }
+    capture "${state}" "${name}" "${theme}"
   done
+done
+
+# Create a persistent workspace in one process, then capture restoration in a
+# fresh process. This is a real application restart, not an in-process rebuild.
+echo "Preparing persistent session for restart capture"
+QT_ASSUME_STDERR_HAS_CONSOLE=1 \
+  timeout 240 "${LAUNCHER}" prepare "${OUT_DIR}" \
+  >"${OUT_DIR}/08-restored-session-prepare.log" 2>&1 \
+  || { echo "Session preparation failed; see ${OUT_DIR}/08-restored-session-prepare.log" >&2; exit 1; }
+sleep 2
+
+for theme in light dark; do
+  capture 7 "08-restored-session" "${theme}"
+  sleep 2
 done
 
 # Account dialog captures are dialog-sized; create centred sheet variants on a
@@ -63,6 +87,8 @@ states = [
     "04-sidebar-collapsed",
     "05-empty-workspace",
     "06-account-management",
+    "07-provider-strip-end",
+    "08-restored-session",
 ]
 
 for theme in ("light", "dark"):
@@ -83,13 +109,14 @@ PY
 # Build a two-column (light/dark) contact sheet with labels.
 if command -v montage >/dev/null 2>&1; then
   args=()
-  for entry in "${states[@]}"; do
-    name="${entry##*:}"
+  for name in 01-initial 02-active-workspace 03-multiple-tabs 04-sidebar-collapsed \
+              05-empty-workspace 06-account-management 07-provider-strip-end \
+              08-restored-session; do
     args+=(-label "${name} (light)" "${SHEET_DIR}/${name}-light.png")
     args+=(-label "${name} (dark)" "${SHEET_DIR}/${name}-dark.png")
   done
   montage "${args[@]}" \
-    -tile 2x6 -geometry 640x360+8+8 -background "#202020" -fill "#f0f0f0" \
+    -tile 2x8 -geometry 640x360+8+8 -background "#202020" -fill "#f0f0f0" \
     -pointsize 18 "${OUT_DIR}/contact-sheet.png"
   echo "Wrote ${OUT_DIR}/contact-sheet.png"
 else

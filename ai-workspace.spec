@@ -1,5 +1,5 @@
 Name:           ai-workspace
-Version:        0.3.0
+Version:        0.4.0
 Release:        1%{?dist}
 Summary:        Resource-conscious multi-provider AI desktop application
 
@@ -66,7 +66,14 @@ update-desktop-database %{_datadir}/applications &>/dev/null || :
 %{_datadir}/icons/hicolor/*/apps/%{name}.png
 
 %changelog
-* Wed Nov 06 2026 AI Workspace <noreply@localhost> - 0.3.0-1
+* Fri Nov 13 2026 AI Workspace <noreply@localhost> - 0.4.0-1
+- Release version 0.4.0
+- Persist and restore open tabs, profiles, ordering and selected tab across restarts
+- Restore inactive tabs lazily and validate restored provider URLs
+- Replace the vertical provider list with a horizontal provider icon strip
+- Remove the browser navigation toolbar and obsolete icons
+
+* Fri Nov 06 2026 AI Workspace <noreply@localhost> - 0.3.0-1
 - Release version 0.3.0
 - Migrate to GPL-3.0-or-later license
 - UI refinement: coherent visual design, dark mode, spacing

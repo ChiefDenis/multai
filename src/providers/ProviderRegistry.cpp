@@ -29,6 +29,16 @@ void ProviderRegistry::initializeProviders() {
   m_providers["chatgpt"] = new Provider("chatgpt", "ChatGPT", QUrl("https://chatgpt.com/"), this);
   m_providers["kimi"] = new Provider("kimi", "Kimi", QUrl("https://kimi.ai/"), this);
 
+  m_providers["deepseek"]->setAllowedDomains({"deepseek.com"});
+  m_providers["qwen"]->setAllowedDomains({"qwen.ai"});
+  m_providers["glm"]->setAllowedDomains({"z.ai"});
+  m_providers["copilot"]->setAllowedDomains({"copilot.microsoft.com", "microsoft.com"});
+  m_providers["gemini"]->setAllowedDomains({"gemini.google.com", "google.com"});
+  m_providers["claude"]->setAllowedDomains({"claude.ai"});
+  m_providers["perplexity"]->setAllowedDomains({"perplexity.ai"});
+  m_providers["chatgpt"]->setAllowedDomains({"chatgpt.com", "openai.com"});
+  m_providers["kimi"]->setAllowedDomains({"kimi.ai", "kimi.com", "moonshot.cn"});
+
   for (Provider* provider : m_providers) {
     provider->setIcon(providerIcon(provider->id()));
   }

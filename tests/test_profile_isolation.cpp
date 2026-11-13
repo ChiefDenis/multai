@@ -16,6 +16,8 @@ private slots:
   void testProfilesForProvider();
   void testProfilePersistence();
   void testHibernationPreservesProfileData();
+  void testProfilesArePersistent();
+  void testSameAccountResolvesSameStorage();
 };
 
 void TestProfileIsolation::initTestCase() {
@@ -98,6 +100,39 @@ void TestProfileIsolation::testHibernationPreservesProfileData() {
   // Profile should still exist (owned by ProfileManager)
   QVERIFY(profile->webEngineProfile() != nullptr);
   QVERIFY(profile->isLive());
+}
+
+void TestProfileIsolation::testProfilesArePersistent() {
+  ProfileManager* pm = ProfileManager::instance();
+  Profile* profile = pm->getOrCreateProfile("chatgpt", "persistent");
+  QVERIFY(profile != nullptr);
+
+  QWebEngineProfile* webProfile = profile->webEngineProfile();
+  QVERIFY(webProfile != nullptr);
+  QVERIFY2(!webProfile->isOffTheRecord(), "Browser profiles must not be off-the-record");
+  QCOMPARE(webProfile->persistentCookiesPolicy(),
+           QWebEngineProfile::ForcePersistentCookies);
+  QVERIFY(webProfile->persistentStoragePath().startsWith(profile->path()));
+  QVERIFY(webProfile->cachePath().startsWith(profile->path()));
+  QVERIFY(webProfile->persistentStoragePath() != webProfile->cachePath());
+}
+
+void TestProfileIsolation::testSameAccountResolvesSameStorage() {
+  ProfileManager* pm = ProfileManager::instance();
+  Profile* first = pm->getOrCreateProfile("qwen", "same-account");
+  Profile* second = pm->getOrCreateProfile("qwen", "same-account");
+  QCOMPARE(first, second);
+  QCOMPARE(first->webEngineProfile(), second->webEngineProfile());
+  QCOMPARE(first->webEngineProfile()->persistentStoragePath(),
+           second->webEngineProfile()->persistentStoragePath());
+
+  Profile* resolved = pm->resolveProfile("qwen", "same-account");
+  QCOMPARE(resolved, first);
+
+  Profile* otherAccount = pm->getOrCreateProfile("qwen", "other-account");
+  QVERIFY(otherAccount->webEngineProfile() != first->webEngineProfile());
+  QVERIFY(otherAccount->webEngineProfile()->persistentStoragePath() !=
+          first->webEngineProfile()->persistentStoragePath());
 }
 
 QTEST_MAIN(TestProfileIsolation)

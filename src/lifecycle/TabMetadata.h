@@ -64,6 +64,7 @@ public:
   QString providerId() const { return m_providerId; }
   QString profileId() const { return m_profileId; }
   QUrl url() const { return m_url; }
+  void setUrl(const QUrl& url) { m_url = url; }
   LifecycleState lifecycleState() const { return m_lifecycleState; }
   void setLifecycleState(LifecycleState state) { m_lifecycleState = state; }
 

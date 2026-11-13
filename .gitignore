@@ -74,8 +74,8 @@ Thumbs.db
 *.backup
 
 # Qt WebEngine profile data (user data should be in separate directory)
-profiles/
-cache/
+/profiles/
+/cache/
 
 # Release artifacts
 dist/

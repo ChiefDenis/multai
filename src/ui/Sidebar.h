@@ -10,7 +10,7 @@ class BrowserTab;
 class QLabel;
 class QListWidget;
 class QListWidgetItem;
-class QResizeEvent;
+class QScrollArea;
 class QToolButton;
 class QMenu;
 
@@ -37,9 +37,12 @@ public:
   bool isCollapsed() const;
   void setCollapsed(bool collapsed);
   void updateTheme(const QString& theme);
+  void setSelectedProvider(const QString& providerId);
+  QString selectedProvider() const { return m_selectedProviderId; }
 
   // Test accessors
-  QListWidget* providerListForTest() const { return m_providerList; }
+  QScrollArea* providerScrollAreaForTest() const { return m_providerScrollArea; }
+  QWidget* providerStripForTest() const { return m_providerStrip; }
   QListWidget* tabListForTest() const { return m_tabList; }
   QWidget* collapsedRailForTest() const { return m_collapsedRail; }
   QToolButton* collapsedTabsButtonForTest() const { return m_collapsedTabsButton; }
@@ -64,23 +67,15 @@ private:
   void setupCollapsedRail();
   void setupBottomSection();
   void updateCollapsedTabsButton();
-  void updateProviderListHeight();
   void showCollapsedTabsMenu();
-
-protected:
-  void resizeEvent(QResizeEvent* event) override;
+  void applySelectedProvider(QToolButton* button, const QString& providerId);
 
 private:
-  QListWidgetItem* createProviderItem(const QString& providerId,
-                                      const QString& displayName, const QIcon& icon);
-  QListWidgetItem* createTabItem(const QString& tabId, const QString& providerId,
-                                 const QString& title, const QIcon& icon,
-                                 LifecycleState state, bool hasError);
   void updateTabItemWidget(QListWidgetItem* item, const QString& title,
                            LifecycleState state, bool hasError);
   void onItemClicked(QListWidgetItem* item);
   void showTabContextMenu(const QPoint& pos);
-  void showProviderContextMenu(const QPoint& pos);
+  void showProviderContextMenu(QToolButton* button, const QPoint& pos);
   void executeTabAction(const QString& tabId, const QString& action);
 
   QWidget* m_expandedContainer;
@@ -88,14 +83,17 @@ private:
   QLabel* m_headerAppIcon;
   QLabel* m_headerAppLabel;
   QToolButton* m_collapsedTabsButton;
-  QListWidget* m_providerList;
+  QScrollArea* m_providerScrollArea;
+  QWidget* m_providerStrip;
   QListWidget* m_tabList;
   QToolButton* m_collapseButton;
   QToolButton* m_settingsButton;
 
   QMap<QString, QListWidgetItem*> m_tabItems;
   QMap<QString, QString> m_tabIdToProviderId;
+  QMap<QString, QToolButton*> m_providerButtons;
   QMap<QString, QToolButton*> m_collapsedProviderButtons;
+  QString m_selectedProviderId;
   int m_sidebarWidth;
   bool m_collapsed;
 };

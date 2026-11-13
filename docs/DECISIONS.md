@@ -876,6 +876,147 @@ stored in metadata but are not used for tab row text.
 
 ---
 
+### Decision 027: Versioned Session Schema in QSettings
+
+**Date**: 2026-11-13
+**Status**: Accepted
+**Context**: 0.4.0 restores open tabs across restarts. The previous `TabStore` wrote a
+plain list with no schema marker and no validation, so a malformed or future-version
+record could restore an invalid provider, an unrelated URL or an unsafe profile reference.
+
+**Alternatives Considered**:
+- Store the whole workspace (including page content) in SQLite: heavier and does not
+  restore authentication
+- Persist only the provider list: loses ordering, profiles and meaningful chat URLs
+- Keep the existing flat list without validation: minimal change but brittle
+- Versioned QSettings record with provider and URL validation
+
+**Decision**: `TabStore` writes `workspace/sessionVersion = 1`, a bounded list of
+records containing `providerId`, `profileId`, `url`, `title` and `lifecycleState`, plus
+`workspace/currentTabIndex`. On load, providers are resolved through
+`ProviderRegistry`, URLs are checked with `Provider::isUrlAllowed()` and fall back to the
+provider chat URL, unknown providers are skipped, and a session written by a newer schema
+is left untouched. Sessions are capped at 50 tabs.
+
+**Rationale**:
+- A schema marker allows future migrations without guessing record shape
+- Provider allowlists prevent a corrupted record from opening an arbitrary origin
+- Leaving a future session intact avoids destroying data written by a newer release
+- QSettings keeps the existing dependency-free, portable storage path
+
+**Consequences**:
+- Positive: Corrupt or hostile session records cannot redirect a tab off-provider
+- Positive: Forward compatibility is preserved by refusing to overwrite newer schemas
+- Negative: Page DOM, form state and scroll position are not restored
+- Negative: A session can contain fewer tabs than were open if providers are removed
+
+**Related Decisions**: Decision 004 (QSettings), Decision 013 (INI format),
+Decision 010 (Lazy Page Creation)
+**Related Issues**: 0.4.0 persistent session requirement
+
+---
+
+### Decision 028: Restore Tabs Unloaded and Activate Only the Saved Selection
+
+**Date**: 2026-11-13
+**Status**: Accepted
+**Context**: Restoring every tab eagerly would create one WebEngine page per saved tab,
+spiking memory and network traffic at startup and competing with the user's selected tab.
+
+**Alternatives Considered**:
+- Recreate all pages during restore: simple but resource-heavy
+- Restore tab metadata only and drop the selected tab's URL: loses the workspace
+- Create all tabs in `Unloaded` state and activate only the saved index
+
+**Decision**: All restored tabs are added with `LifecycleState::Unloaded` and
+`activate = false`. The tab matching `workspace/currentTabIndex` is activated afterwards,
+which creates its page and navigates to the validated URL. Inactive restored tabs keep
+`page() == nullptr` until selected.
+
+**Rationale**:
+- Matches the existing lazy page-creation contract
+- Startup cost is proportional to one page, not the whole session
+- Lifecycle automation can manage restored tabs exactly like newly opened ones
+- Sidebar and header selection stay consistent with the active tab
+
+**Consequences**:
+- Positive: Low startup memory and no background reload storm
+- Positive: Inactive tabs show `Unloaded` until the user needs them
+- Negative: Switching to a restored tab always performs a fresh navigation
+
+**Related Decisions**: Decision 010 (Lazy Page Creation), Decision 012 (LRU)
+**Related Issues**: 0.4.0 restore requirement
+
+---
+
+### Decision 029: Horizontal Provider Strip with Painted Buttons
+
+**Date**: 2026-11-13
+**Status**: Accepted
+**Context**: A vertical nine-row provider list consumed most of the sidebar height and
+left little room for Open Tabs. The request was a compact, single-row provider selector.
+
+**Alternatives Considered**:
+- Keep the vertical `QListWidget` and shrink rows: still consumes vertical space
+- Use a `QComboBox`: hides providers behind a popup and weakens discoverability
+- Use a horizontal `QListWidget` in icon mode: workable but more configuration and
+  inconsistent painting
+- Horizontal `QScrollArea` containing fixed 42x42 painted `QToolButton`s
+
+**Decision**: Providers are shown in one horizontal `QScrollArea` strip of owned painted
+buttons. The strip scrolls with the wheel, shows tooltips, marks the selected provider
+with a dynamic `selected` property, and mirrors selection in the collapsed rail. Open Tabs
+remains a vertical list.
+
+**Rationale**:
+- One row of icons preserves vertical space for tabs
+- Native horizontal scrolling keeps all nine providers reachable on narrow sidebars
+- Painted buttons match the existing application-owned icon rendering
+- A 5 px spacing lets exactly five icons fit without partial clipping
+
+**Consequences**:
+- Positive: Provider selection is compact and recognisable by icon
+- Positive: Collapsed and expanded sidebars stay synchronised
+- Negative: Provider names require tooltips when the strip is narrow
+- Negative: Wheel-over-strip scrolls horizontally instead of the tab list
+
+**Related Decisions**: Decision 019 (runtime icons), Decision 023 (painted icons)
+**Related Issues**: 0.4.0 compact-navigation requirement
+
+---
+
+### Decision 030: Remove the Workspace Navigation Toolbar
+
+**Date**: 2026-11-13
+**Status**: Accepted
+**Context**: The Back/Forward/Reload/Open External row duplicated provider-site controls,
+consumed vertical space and added callbacks and icons that no longer served the
+provider-embedding workflow.
+
+**Alternatives Considered**:
+- Keep the toolbar hidden by default: leaves dead widgets and ambiguous state
+- Keep only Reload: still a partial toolbar with the same layout cost
+- Remove the toolbar entirely and rely on provider pages plus the existing menu bar
+
+**Decision**: The workspace header contains only the provider icon and name. All
+navigation toolbar widgets, callbacks, member variables and their `ToolbarIcons` entries
+are deleted. Existing menu actions and status indicators remain.
+
+**Rationale**:
+- Providers render their own navigation and reload affordances
+- Removing the row gives the browser content the maximum usable height
+- Deleted code is better than disabled code for maintenance and tests
+
+**Consequences**:
+- Positive: Cleaner header and more content area
+- Positive: No stale callbacks or unused icon code
+- Negative: Users lose an in-app reload button; the menu bar and provider UI cover this
+
+**Related Decisions**: Decision 023 (painted toolbar icons)
+**Related Issues**: 0.4.0 toolbar-removal requirement
+
+---
+
 ## Decision Review Process
 
 ### When to Review Decisions
@@ -934,6 +1075,8 @@ UI/UX design choices:
 - Decision 023: Painted Application-Owned Toolbar Icons
 - Decision 024: ThemedDialog Paints Its Own Background
 - Decision 026: Provider Display Names as Tab Titles
+- Decision 029: Horizontal Provider Strip with Painted Buttons
+- Decision 030: Remove the Workspace Navigation Toolbar
 
 ### Implementation Decisions
 
@@ -949,6 +1092,8 @@ Implementation approach choices:
 - Decision 017: Provider Embedding Compatibility Detection (proposed, still open)
 - Decision 020: recommendedState Gate is User-Configurable
 - Decision 025: State-Asserted Screenshot Harness with WebEngine Compositing
+- Decision 027: Versioned Session Schema in QSettings
+- Decision 028: Restore Tabs Unloaded and Activate Only the Saved Selection
 
 ## Decision Impact Analysis
 

@@ -108,15 +108,16 @@ void BrowserWorkspace::setupEmptyState() {
   layout->addStretch();
 }
 
-void BrowserWorkspace::addTab(BrowserTab* tab, const QString& tabId) {
+void BrowserWorkspace::addTab(BrowserTab* tab, const QString& tabId, bool activate) {
   if (m_tabs.contains(tabId)) {
     return;
   }
 
   m_tabs.insert(tabId, tab);
+  m_tabOrder.append(tabId);
   addWidget(tab);
 
-  if (m_tabs.size() == 1) {
+  if (activate && m_tabs.size() == 1) {
     activateTab(tabId);
   }
 
@@ -130,15 +131,18 @@ void BrowserWorkspace::removeTab(BrowserTab* tab, const QString& tabId) {
   }
 
   bool wasCurrent = (m_currentTabId == tabId);
+  const int removedIndex = m_tabOrder.indexOf(tabId);
 
   m_tabs.remove(tabId);
+  m_tabOrder.removeAll(tabId);
   removeWidget(tab);
   tab->deleteLater();
 
   if (wasCurrent) {
     m_currentTabId.clear();
-    if (!m_tabs.isEmpty()) {
-      activateTab(m_tabs.constBegin().key());
+    if (!m_tabOrder.isEmpty()) {
+      const int nextIndex = qBound(0, removedIndex, m_tabOrder.size() - 1);
+      activateTab(m_tabOrder.at(nextIndex));
     } else {
       setCurrentWidget(m_emptyStateWidget);
     }
@@ -146,6 +150,22 @@ void BrowserWorkspace::removeTab(BrowserTab* tab, const QString& tabId) {
 
   updateEmptyState();
   emit tabRemoved(tabId);
+}
+
+bool BrowserWorkspace::moveTab(const QString& tabId, int newIndex) {
+  const int oldIndex = m_tabOrder.indexOf(tabId);
+  if (oldIndex < 0) {
+    return false;
+  }
+
+  const int target = qBound(0, newIndex, m_tabOrder.size() - 1);
+  if (oldIndex == target) {
+    return false;
+  }
+
+  m_tabOrder.move(oldIndex, target);
+  emit tabOrderChanged();
+  return true;
 }
 
 void BrowserWorkspace::activateTab(const QString& tabId) {

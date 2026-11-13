@@ -1,7 +1,6 @@
 #pragma once
 
 #include <QMainWindow>
-#include <QToolButton>
 
 #include "lifecycle/TabMetadata.h"
 #include "core/SettingsManager.h"
@@ -10,7 +9,6 @@
 class BrowserTab;
 class BrowserWorkspace;
 class QSplitter;
-class QToolBar;
 class QMenu;
 class QLabel;
 class QHBoxLayout;
@@ -47,9 +45,6 @@ private slots:
   void onTabAdded(BrowserTab* tab, const QString& tabId);
   void onTabRemoved(const QString& tabId);
 
-  void onWorkspaceReload();
-  void onWorkspaceOpenExternal();
-
 private:
   void setupMenuBar();
   void setupCentralWidget();
@@ -60,6 +55,7 @@ private:
   void restoreSidebarState();
   void saveSidebarState();
   void restoreTabs();
+  void saveSession();
 
   BrowserTab* createBrowserTab(const QString& providerId, const QString& profileId,
                                const QUrl& url, const QString& title);
@@ -75,17 +71,13 @@ private:
   QHBoxLayout* m_workspaceHeaderLayout;
   QLabel* m_providerIconLabel;
   QLabel* m_providerLabel;
-  QToolButton* m_backButton;
-  QToolButton* m_forwardButton;
-  QToolButton* m_reloadButton;
-  QToolButton* m_openExternalButton;
   QSplitter* m_splitter;
-  QToolBar* m_toolBar;
   QMenu* m_fileMenu;
   QMenu* m_helpMenu;
   QLabel* m_statusTabInfoLabel;
   QLabel* m_statusBadgeLabel;
   int m_tabCounter;
+  bool m_restoringSession;
   BrowserTab* m_currentTab;
 
 public:
@@ -95,10 +87,6 @@ public:
   QWidget* workspaceHeaderForTest() const { return m_workspaceHeader; }
   QLabel* providerIconLabelForTest() const { return m_providerIconLabel; }
   QLabel* providerLabelForTest() const { return m_providerLabel; }
-  QToolButton* backButtonForTest() const { return m_backButton; }
-  QToolButton* forwardButtonForTest() const { return m_forwardButton; }
-  QToolButton* reloadButtonForTest() const { return m_reloadButton; }
-  QToolButton* openExternalButtonForTest() const { return m_openExternalButton; }
   QLabel* statusTabInfoLabelForTest() const { return m_statusTabInfoLabel; }
   QLabel* statusBadgeLabelForTest() const { return m_statusBadgeLabel; }
   BrowserTab* currentTabForTest() const { return m_currentTab; }
@@ -109,4 +97,6 @@ public:
   void expandSidebarForTest() { m_sidebar->setCollapsed(false); }
   void setThemeForTest(const QString& theme) { SettingsManager::instance()->setTheme(theme); applyTheme(); }
   void openProviderForTest(const QString& providerId) { onProviderSelected(providerId); }
+  void saveSessionForTest() { saveSession(); }
+  void selectTabForTest(const QString& tabId) { onTabSelected(tabId); }
 };

@@ -17,7 +17,6 @@
 #include "providers/ProviderRegistry.h"
 #include "lifecycle/LifecycleManager.h"
 #include "core/TabStore.h"
-#include "ui/ToolbarIcons.h"
 
 #include <QAction>
 #include <QApplication>
@@ -27,11 +26,7 @@
 #include <QMessageBox>
 #include <QSplitter>
 #include <QStatusBar>
-#include <QStyle>
-#include <QToolBar>
 #include <QVBoxLayout>
-#include <QDesktopServices>
-#include <QToolButton>
 
 MainWindow::MainWindow(QWidget* parent)
   : QMainWindow(parent)
@@ -41,17 +36,13 @@ MainWindow::MainWindow(QWidget* parent)
   , m_workspaceHeaderLayout(nullptr)
   , m_providerIconLabel(nullptr)
   , m_providerLabel(nullptr)
-  , m_backButton(nullptr)
-  , m_forwardButton(nullptr)
-  , m_reloadButton(nullptr)
-  , m_openExternalButton(nullptr)
   , m_splitter(nullptr)
-  , m_toolBar(nullptr)
   , m_fileMenu(nullptr)
   , m_helpMenu(nullptr)
   , m_statusTabInfoLabel(nullptr)
   , m_statusBadgeLabel(nullptr)
   , m_tabCounter(0)
+  , m_restoringSession(false)
   , m_currentTab(nullptr) {
   setWindowTitle("AI Workspace");
   resize(1200, 800);
@@ -70,6 +61,11 @@ MainWindow::MainWindow(QWidget* parent)
               applyTheme();
             }
           });
+
+  connect(qApp, &QCoreApplication::aboutToQuit, this, [this]() {
+    saveSidebarState();
+    saveSession();
+  });
 
   restoreSidebarState();
   restoreTabs();
@@ -139,52 +135,6 @@ void MainWindow::setupWorkspaceHeader() {
 
   m_workspaceHeaderLayout->addStretch();
 
-  const bool isDark = (SettingsManager::instance()->theme() == "dark");
-
-  // Back / Forward / Reload / Open in external browser
-  m_backButton = new QToolButton(m_workspaceHeader);
-  m_backButton->setObjectName("workspaceBackButton");
-  m_backButton->setIcon(ToolbarIcons::backIcon(isDark));
-  m_backButton->setIconSize(QSize(16, 16));
-  m_backButton->setFixedSize(28, 28);
-  m_backButton->setToolButtonStyle(Qt::ToolButtonIconOnly);
-  m_backButton->setEnabled(false);
-  m_backButton->setToolTip("Back");
-  m_workspaceHeaderLayout->addWidget(m_backButton);
-
-  m_forwardButton = new QToolButton(m_workspaceHeader);
-  m_forwardButton->setObjectName("workspaceForwardButton");
-  m_forwardButton->setIcon(ToolbarIcons::forwardIcon(isDark));
-  m_forwardButton->setIconSize(QSize(16, 16));
-  m_forwardButton->setFixedSize(28, 28);
-  m_forwardButton->setToolButtonStyle(Qt::ToolButtonIconOnly);
-  m_forwardButton->setEnabled(false);
-  m_forwardButton->setToolTip("Forward");
-  m_workspaceHeaderLayout->addWidget(m_forwardButton);
-
-  m_reloadButton = new QToolButton(m_workspaceHeader);
-  m_reloadButton->setObjectName("workspaceReloadButton");
-  m_reloadButton->setIcon(ToolbarIcons::reloadIcon(isDark));
-  m_reloadButton->setIconSize(QSize(16, 16));
-  m_reloadButton->setFixedSize(28, 28);
-  m_reloadButton->setToolButtonStyle(Qt::ToolButtonIconOnly);
-  m_reloadButton->setEnabled(false);
-  m_reloadButton->setToolTip("Reload");
-  connect(m_reloadButton, &QToolButton::clicked, this, &MainWindow::onWorkspaceReload);
-  m_workspaceHeaderLayout->addWidget(m_reloadButton);
-
-  m_openExternalButton = new QToolButton(m_workspaceHeader);
-  m_openExternalButton->setObjectName("workspaceOpenExternalButton");
-  m_openExternalButton->setIcon(ToolbarIcons::openExternalIcon(isDark));
-  m_openExternalButton->setIconSize(QSize(16, 16));
-  m_openExternalButton->setFixedSize(28, 28);
-  m_openExternalButton->setToolButtonStyle(Qt::ToolButtonIconOnly);
-  m_openExternalButton->setEnabled(false);
-  m_openExternalButton->setToolTip("Open in external browser");
-  connect(m_openExternalButton, &QToolButton::clicked, this,
-          &MainWindow::onWorkspaceOpenExternal);
-  m_workspaceHeaderLayout->addWidget(m_openExternalButton);
-
   // Hide header when no tab is active
   m_workspaceHeader->setVisible(false);
 }
@@ -196,10 +146,6 @@ void MainWindow::updateWorkspaceHeader(BrowserTab* tab) {
       m_providerIconLabel->setPixmap(QPixmap());
     }
     m_providerLabel->setText("No provider selected");
-    m_backButton->setEnabled(false);
-    m_forwardButton->setEnabled(false);
-    m_reloadButton->setEnabled(false);
-    m_openExternalButton->setEnabled(false);
     return;
   }
 
@@ -212,27 +158,6 @@ void MainWindow::updateWorkspaceHeader(BrowserTab* tab) {
       m_providerIconLabel->setPixmap(provider->icon().pixmap(24, 24));
     }
   }
-
-  bool hasPage = tab->page() != nullptr;
-  m_backButton->setEnabled(hasPage);
-  m_forwardButton->setEnabled(hasPage);
-  m_reloadButton->setEnabled(hasPage);
-  m_openExternalButton->setEnabled(hasPage);
-}
-
-void MainWindow::onWorkspaceReload() {
-  BrowserTab* tab = m_workspace->currentTab();
-  if (tab) {
-    tab->retry();
-  }
-}
-
-void MainWindow::onWorkspaceOpenExternal() {
-  BrowserTab* tab = m_workspace->currentTab();
-  if (!tab) {
-    return;
-  }
-  QDesktopServices::openUrl(tab->url());
 }
 
 void MainWindow::setupCentralWidget() {
@@ -281,6 +206,7 @@ void MainWindow::setupCentralWidget() {
           &MainWindow::onTabActivated);
   connect(m_workspace, &BrowserWorkspace::tabAdded, this, &MainWindow::onTabAdded);
   connect(m_workspace, &BrowserWorkspace::tabRemoved, this, &MainWindow::onTabRemoved);
+  connect(m_workspace, &BrowserWorkspace::tabOrderChanged, this, &MainWindow::saveSession);
   connect(m_workspace, &BrowserWorkspace::emptyStateProviderRequested, this,
           &MainWindow::onProviderSelected);
 }
@@ -302,19 +228,6 @@ void MainWindow::setupStatusBar() {
 void MainWindow::applyTheme() {
   SettingsManager* settings = SettingsManager::instance();
   Theme::applyTheme(settings->theme());
-  const bool isDark = (settings->theme() == "dark");
-  if (m_backButton) {
-    m_backButton->setIcon(ToolbarIcons::backIcon(isDark));
-  }
-  if (m_forwardButton) {
-    m_forwardButton->setIcon(ToolbarIcons::forwardIcon(isDark));
-  }
-  if (m_reloadButton) {
-    m_reloadButton->setIcon(ToolbarIcons::reloadIcon(isDark));
-  }
-  if (m_openExternalButton) {
-    m_openExternalButton->setIcon(ToolbarIcons::openExternalIcon(isDark));
-  }
   if (m_workspace) {
     m_workspace->updateTheme(settings->theme());
   }
@@ -340,22 +253,33 @@ void MainWindow::saveSidebarState() {
 }
 
 void MainWindow::restoreTabs() {
+  m_restoringSession = true;
+
   const QList<TabMetadata> stored = TabStore::load();
   if (stored.isEmpty()) {
+    m_restoringSession = false;
     return;
   }
 
   ProviderRegistry* registry = ProviderRegistry::instance();
+  ProfileManager* profileManager = ProfileManager::instance();
+
   for (const TabMetadata& metadata : stored) {
     Provider* provider = registry->providerById(metadata.providerId());
     if (!provider) {
       continue;
     }
 
-    QString tabId = nextTabId();
-    BrowserTab* tab =
-        new BrowserTab(metadata.providerId(), metadata.profileId(), metadata.url(),
-                       metadata.lifecycleState(), this);
+    Profile* profile = profileManager->resolveProfile(metadata.providerId(), metadata.profileId());
+    if (!profile) {
+      continue;
+    }
+
+    const QUrl url =
+        provider->isUrlAllowed(metadata.url()) ? metadata.url() : provider->url();
+    const QString tabId = nextTabId();
+    BrowserTab* tab = new BrowserTab(metadata.providerId(), profile->accountId(), url,
+                                     LifecycleState::Unloaded, this);
     tab->setProperty("tabId", tabId);
 
     connect(tab, &BrowserTab::lifecycleStateChanged, this,
@@ -391,28 +315,62 @@ void MainWindow::restoreTabs() {
                 }
               }
             });
+    connect(tab, &BrowserTab::urlChanged, this, [this](const QUrl&) { saveSession(); });
     connect(tab, &BrowserTab::closeRequested, this, [this, tabId]() {
       onTabClosed(tabId);
     });
 
-    QString title = provider->displayName();
-    QIcon icon = providerIcon(metadata.providerId(), metadata.lifecycleState(), false);
-    m_sidebar->addTabRow(tabId, metadata.providerId(), title, icon,
-                         metadata.lifecycleState(), false);
-    m_workspace->addTab(tab, tabId);
+    QIcon icon = providerIcon(metadata.providerId(), LifecycleState::Unloaded, false);
+    m_sidebar->addTabRow(tabId, metadata.providerId(), provider->displayName(), icon,
+                         LifecycleState::Unloaded, false);
+    m_workspace->addTab(tab, tabId, false);
 
     LifecycleManager::instance()->registerTab(tab);
   }
 
-  const QStringList tabIds = m_workspace->tabIds();
-  if (!tabIds.isEmpty()) {
-    const QString firstTabId = tabIds.first();
-    m_workspace->activateTab(firstTabId);
-    m_currentTab = m_workspace->tabById(firstTabId);
-    m_sidebar->selectTabRow(firstTabId);
-    updateStatusDisplay(m_currentTab);
-    updateWorkspaceHeader(m_currentTab);
+  if (!m_workspace->hasTabs()) {
+    m_restoringSession = false;
+    return;
   }
+
+  const QStringList tabIds = m_workspace->tabIds();
+  const int savedIndex = qBound(0, TabStore::currentIndex(), tabIds.size() - 1);
+  const QString tabId = tabIds.at(savedIndex);
+  m_workspace->activateTab(tabId);
+  m_currentTab = m_workspace->tabById(tabId);
+  m_sidebar->selectTabRow(tabId);
+  if (m_currentTab) {
+    m_sidebar->setSelectedProvider(m_currentTab->providerId());
+  }
+  updateStatusDisplay(m_currentTab);
+  updateWorkspaceHeader(m_currentTab);
+
+  m_restoringSession = false;
+}
+
+void MainWindow::saveSession() {
+  if (m_restoringSession || !m_workspace) {
+    return;
+  }
+
+  QList<TabMetadata> tabs;
+  for (const QString& tabId : m_workspace->tabIds()) {
+    BrowserTab* tab = m_workspace->tabById(tabId);
+    if (!tab) {
+      continue;
+    }
+    TabMetadata metadata = tab->metadata();
+    metadata.setTitle(tabDisplayTitle(tab));
+    metadata.setUrl(tab->url());
+    metadata.setLifecycleState(tab->lifecycleState());
+    tabs.append(metadata);
+  }
+
+  int currentIndex = m_workspace->tabIndex(m_workspace->currentTabId());
+  if (currentIndex < 0) {
+    currentIndex = 0;
+  }
+  TabStore::save(tabs, currentIndex);
 }
 
 BrowserTab* MainWindow::createBrowserTab(const QString& providerId,
@@ -456,6 +414,7 @@ BrowserTab* MainWindow::createBrowserTab(const QString& providerId,
               }
             }
           });
+  connect(tab, &BrowserTab::urlChanged, this, [this](const QUrl&) { saveSession(); });
   connect(tab, &BrowserTab::closeRequested, this, [this, tabId]() {
     onTabClosed(tabId);
   });
@@ -480,14 +439,7 @@ QString MainWindow::nextTabId() {
 
 void MainWindow::closeEvent(QCloseEvent* event) {
   saveSidebarState();
-
-  QList<TabMetadata> tabs;
-  // Collect tab metadata from workspace tabs
-  // BrowserWorkspace doesn't expose all tabs directly, so we iterate via sidebar
-  // For now, we save via the sidebar's knowledge
-  // The tabs are saved through the TabStore during lifecycle changes
-  // For now, we save what we can
-
+  saveSession();
   QMainWindow::closeEvent(event);
 }
 
@@ -635,7 +587,10 @@ void MainWindow::onTabSelected(const QString& tabId) {
   m_currentTab = tab;
   m_workspace->activateTab(tabId);
   LifecycleManager::instance()->onTabActivated(tab);
+  m_sidebar->setSelectedProvider(tab->providerId());
   updateStatusDisplay(tab);
+  updateWorkspaceHeader(tab);
+  saveSession();
 }
 
 void MainWindow::onTabClosed(const QString& tabId) {
@@ -654,11 +609,16 @@ void MainWindow::onTabClosed(const QString& tabId) {
   m_sidebar->removeTabRow(tabId);
 
   BrowserTab* nextTab = m_workspace->currentTab();
+  m_currentTab = nextTab;
   updateStatusDisplay(nextTab);
   updateWorkspaceHeader(nextTab);
   if (nextTab) {
+    m_sidebar->setSelectedProvider(nextTab->providerId());
     LifecycleManager::instance()->onTabActivated(nextTab);
+  } else {
+    m_sidebar->setSelectedProvider({});
   }
+  saveSession();
 }
 
 void MainWindow::onTabActionRequested(const QString& tabId, const QString& action) {
@@ -705,6 +665,10 @@ void MainWindow::onTabActivated(BrowserTab* tab, const QString& tabId) {
   updateStatusDisplay(tab);
   updateWorkspaceHeader(tab);
   m_sidebar->selectTabRow(tabId);
+  if (tab) {
+    m_sidebar->setSelectedProvider(tab->providerId());
+  }
+  saveSession();
 }
 
 void MainWindow::onTabAdded(BrowserTab* tab, const QString& tabId) {

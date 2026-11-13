@@ -7,6 +7,7 @@
 #include <QPalette>
 #include <QPixmap>
 #include <QStandardPaths>
+#include <QScrollArea>
 #include <QToolButton>
 #include <QWebEngineView>
 
@@ -20,22 +21,8 @@
 #include "Sidebar.h"
 #include "TabStore.h"
 #include "Theme.h"
-#include "ToolbarIcons.h"
 
 namespace {
-
-int countPixelsWithAlpha(const QPixmap& pixmap) {
-  const QImage image = pixmap.toImage();
-  int count = 0;
-  for (int y = 0; y < image.height(); ++y) {
-    for (int x = 0; x < image.width(); ++x) {
-      if (qAlpha(image.pixel(x, y)) > 24) {
-        ++count;
-      }
-    }
-  }
-  return count;
-}
 
 double lightPixelFraction(const QPixmap& pixmap, int threshold) {
   const QImage image = pixmap.toImage();
@@ -51,10 +38,6 @@ double lightPixelFraction(const QPixmap& pixmap, int threshold) {
     }
   }
   return total == 0 ? 0.0 : static_cast<double>(light) / total;
-}
-
-bool imagesDiffer(const QPixmap& first, const QPixmap& second) {
-  return first.toImage() != second.toImage();
 }
 
 int maxIconLuminance(const QPixmap& pixmap) {
@@ -81,7 +64,9 @@ private slots:
   void init();
 
   void testWorkspaceHeaderShowsProviderIconAndName();
-  void testToolbarIconsRender();
+  void testProviderStripIconsRender();
+  void testProviderStripSelectionRendering();
+  void testWorkspaceHasNoNavigationToolbar();
   void testSidebarLifecycleIndicatorsMatchStatus();
   void testLoadFailureClearsLoading();
   void testNavigationTimeoutClearsLoading();
@@ -134,58 +119,134 @@ void TestVisualCorrections::testWorkspaceHeaderShowsProviderIconAndName() {
   }
 }
 
-void TestVisualCorrections::testToolbarIconsRender() {
+void TestVisualCorrections::testProviderStripIconsRender() {
   SettingsManager::instance()->setTheme("light");
   Theme::applyTheme("light");
 
-  MainWindow window;
-  window.show();
+  Sidebar sidebar;
+  sidebar.resize(260, 700);
+  sidebar.show();
   QApplication::processEvents();
 
-  const QList<QPair<QToolButton*, QIcon>> icons{
-      {window.backButtonForTest(), ToolbarIcons::backIcon(false)},
-      {window.forwardButtonForTest(), ToolbarIcons::forwardIcon(false)},
-      {window.reloadButtonForTest(), ToolbarIcons::reloadIcon(false)},
-      {window.openExternalButtonForTest(), ToolbarIcons::openExternalIcon(false)},
-  };
+  const QList<QToolButton*> buttons =
+      sidebar.findChildren<QToolButton*>("providerStripButton");
+  QCOMPARE(buttons.size(), 9);
 
-  for (const auto& entry : icons) {
-    QToolButton* button = entry.first;
-    QVERIFY(button != nullptr);
+  for (QToolButton* button : buttons) {
     QVERIFY(!button->icon().isNull());
     QVERIFY(!button->toolTip().isEmpty());
-
-    const QPixmap normal = button->icon().pixmap(16, 16);
-    const QPixmap disabled = button->icon().pixmap(16, 16, QIcon::Disabled);
-    QVERIFY(!normal.isNull());
-    QVERIFY(!disabled.isNull());
-    QVERIFY(countPixelsWithAlpha(normal) > 0);
-    QVERIFY(imagesDiffer(normal, disabled));
 
     const QPixmap rendered = button->grab();
     QVERIFY(!rendered.isNull());
     QVERIFY2(lightPixelFraction(rendered, 220) < 0.98,
-             "Toolbar button rendered as a flat empty surface without an icon");
+             "Provider button rendered as a flat empty surface without an icon");
   }
-  window.close();
+
+  sidebar.setSelectedProvider("deepseek");
+  QApplication::processEvents();
+  QToolButton* selected = nullptr;
+  QToolButton* other = nullptr;
+  for (QToolButton* button : buttons) {
+    if (button->property("providerId").toString() == "deepseek") {
+      selected = button;
+    } else if (button->property("providerId").toString() == "qwen") {
+      other = button;
+    }
+  }
+  QVERIFY(selected != nullptr);
+  QVERIFY(other != nullptr);
+  QVERIFY(selected->grab().toImage().copy(2, 2, 8, 8) !=
+          other->grab().toImage().copy(2, 2, 8, 8));
+
+  sidebar.close();
   QApplication::processEvents();
 
   SettingsManager::instance()->setTheme("dark");
   Theme::applyTheme("dark");
-  MainWindow darkWindow;
-  darkWindow.show();
+  Sidebar darkSidebar;
+  darkSidebar.resize(260, 700);
+  darkSidebar.show();
   QApplication::processEvents();
 
-  for (QToolButton* button : {darkWindow.backButtonForTest(), darkWindow.forwardButtonForTest(),
-                              darkWindow.reloadButtonForTest(),
-                              darkWindow.openExternalButtonForTest()}) {
-    QVERIFY(button != nullptr);
-    button->setEnabled(true);
+  for (QToolButton* button : darkSidebar.findChildren<QToolButton*>("providerStripButton")) {
     QApplication::processEvents();
     const QPixmap rendered = button->grab();
-    QVERIFY(maxIconLuminance(rendered) > 150);
-    QVERIFY(lightPixelFraction(rendered, 220) < 0.98);
+    QVERIFY(!rendered.isNull());
+    QVERIFY(maxIconLuminance(rendered) > 100);
+    QVERIFY(lightPixelFraction(rendered, 220) < 0.60);
+    QApplication::processEvents();
   }
+}
+
+void TestVisualCorrections::testProviderStripSelectionRendering() {
+  const auto verify = [](const QString& theme) {
+    SettingsManager::instance()->setTheme(theme);
+    Theme::applyTheme(theme);
+
+    Sidebar sidebar;
+    sidebar.resize(260, 700);
+    sidebar.show();
+    QApplication::processEvents();
+
+    QToolButton* selected = nullptr;
+    QToolButton* unselected = nullptr;
+    for (QToolButton* button :
+         sidebar.findChildren<QToolButton*>("providerStripButton")) {
+      if (button->property("providerId").toString() == "chatgpt") {
+        selected = button;
+      } else if (button->property("providerId").toString() == "kimi") {
+        unselected = button;
+      }
+    }
+    QVERIFY(selected != nullptr);
+    QVERIFY(unselected != nullptr);
+
+    sidebar.setSelectedProvider("chatgpt");
+    QApplication::processEvents();
+    QVERIFY(selected->property("selected").toBool());
+    QVERIFY(!unselected->property("selected").toBool());
+
+    const QImage selectedImage = selected->grab().toImage();
+    const QImage unselectedImage = unselected->grab().toImage();
+    QVERIFY2(selectedImage != unselectedImage,
+             qPrintable(QString("Selected provider is indistinguishable in %1 theme")
+                            .arg(theme)));
+
+    sidebar.setSelectedProvider("kimi");
+    QApplication::processEvents();
+    QVERIFY(!selected->property("selected").toBool());
+    QVERIFY(unselected->property("selected").toBool());
+  };
+
+  verify("light");
+  verify("dark");
+
+  SettingsManager::instance()->setTheme("light");
+  Theme::applyTheme("light");
+}
+
+void TestVisualCorrections::testWorkspaceHasNoNavigationToolbar() {
+  MainWindow window;
+  window.show();
+  QApplication::processEvents();
+
+  QWidget* header = window.workspaceHeaderForTest();
+  QVERIFY(header != nullptr);
+  QCOMPARE(header->findChildren<QToolButton*>().size(), 0);
+  QVERIFY(window.findChild<QWidget*>("workspaceNavigationToolbar") == nullptr);
+  QVERIFY(window.findChild<QWidget*>("workspaceBackButton") == nullptr);
+  QVERIFY(window.findChild<QWidget*>("workspaceForwardButton") == nullptr);
+  QVERIFY(window.findChild<QWidget*>("workspaceReloadButton") == nullptr);
+  QVERIFY(window.findChild<QWidget*>("workspaceOpenExternalButton") == nullptr);
+
+  window.resize(1100, 720);
+  QApplication::processEvents();
+  const QRect workspaceRect(window.workspaceForTest()->mapTo(window.centralWidget(),
+                                                             QPoint(0, 0)),
+                            window.workspaceForTest()->size());
+  const QRect headerRect(header->mapTo(window.centralWidget(), QPoint(0, 0)), header->size());
+  QVERIFY(workspaceRect.top() <= headerRect.bottom() + 2);
+  QVERIFY(workspaceRect.height() > 0);
 }
 
 void TestVisualCorrections::testSidebarLifecycleIndicatorsMatchStatus() {
@@ -340,7 +401,7 @@ void TestVisualCorrections::testCollapsedSidebarNavigation() {
   QVERIFY(sidebar.isCollapsed());
   QCOMPARE(sidebar.width(), 60);
   QVERIFY(sidebar.collapsedRailForTest()->isVisible());
-  QVERIFY(!sidebar.providerListForTest()->isVisible());
+  QVERIFY(!sidebar.providerScrollAreaForTest()->isVisible());
   QVERIFY(!sidebar.tabListForTest()->isVisible());
 
   const QList<QToolButton*> providerButtons =

@@ -61,76 +61,6 @@ QPixmap drawForwardPixmap(int size, const QColor& color) {
   return pixmap;
 }
 
-QPixmap drawReloadPixmap(int size, const QColor& color) {
-  QPixmap pixmap(size, size);
-  pixmap.fill(Qt::transparent);
-
-  QPainter painter(&pixmap);
-  painter.setRenderHint(QPainter::Antialiasing, true);
-
-  QPen pen(color);
-  const qreal strokeWidth = qMax(1.5, size * 0.11);
-  pen.setWidthF(strokeWidth);
-  pen.setCapStyle(Qt::RoundCap);
-  pen.setJoinStyle(Qt::RoundJoin);
-  painter.setPen(pen);
-
-  const qreal margin = size * 0.20;
-  const QRectF arcRect(margin, margin, size - 2 * margin, size - 2 * margin);
-
-  // Draw 270-degree arc (from 45 to 315 degrees counter-clockwise)
-  painter.drawArc(arcRect, 45 * 16, 280 * 16);
-
-  // Arrowhead at the top of the arc
-  QPainterPath arrow;
-  const qreal arrowX = arcRect.right() - arcRect.width() * 0.15;
-  const qreal arrowY = arcRect.top();
-  arrow.moveTo(arrowX - size * 0.12, arrowY - size * 0.10);
-  arrow.lineTo(arrowX + size * 0.04, arrowY);
-  arrow.lineTo(arrowX - size * 0.12, arrowY + size * 0.10);
-  painter.drawPath(arrow);
-
-  return pixmap;
-}
-
-QPixmap drawOpenExternalPixmap(int size, const QColor& color) {
-  QPixmap pixmap(size, size);
-  pixmap.fill(Qt::transparent);
-
-  QPainter painter(&pixmap);
-  painter.setRenderHint(QPainter::Antialiasing, true);
-
-  QPen pen(color);
-  pen.setWidthF(qMax(1.5, size * 0.10));
-  pen.setCapStyle(Qt::RoundCap);
-  pen.setJoinStyle(Qt::RoundJoin);
-  painter.setPen(pen);
-
-  // Box (bottom-left)
-  QPainterPath box;
-  box.moveTo(size * 0.45, size * 0.22);
-  box.lineTo(size * 0.22, size * 0.22);
-  box.lineTo(size * 0.22, size * 0.78);
-  box.lineTo(size * 0.78, size * 0.78);
-  box.lineTo(size * 0.78, size * 0.55);
-  painter.drawPath(box);
-
-  // Diagonal arrow pointing to top-right
-  QPainterPath arrow;
-  arrow.moveTo(size * 0.45, size * 0.55);
-  arrow.lineTo(size * 0.78, size * 0.22);
-  painter.drawPath(arrow);
-
-  // Arrowhead
-  QPainterPath head;
-  head.moveTo(size * 0.58, size * 0.22);
-  head.lineTo(size * 0.78, size * 0.22);
-  head.lineTo(size * 0.78, size * 0.42);
-  painter.drawPath(head);
-
-  return pixmap;
-}
-
 QPixmap drawFolderPixmap(int size, const QColor& color) {
   QPixmap pixmap(size, size);
   pixmap.fill(Qt::transparent);
@@ -253,14 +183,6 @@ QIcon backIcon(bool isDark) {
 
 QIcon forwardIcon(bool isDark) {
   return buildIcon(drawForwardPixmap, isDark);
-}
-
-QIcon reloadIcon(bool isDark) {
-  return buildIcon(drawReloadPixmap, isDark);
-}
-
-QIcon openExternalIcon(bool isDark) {
-  return buildIcon(drawOpenExternalPixmap, isDark);
 }
 
 QIcon folderIcon(bool isDark) {
