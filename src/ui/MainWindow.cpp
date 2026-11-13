@@ -26,16 +26,11 @@
 #include <QMessageBox>
 #include <QSplitter>
 #include <QStatusBar>
-#include <QVBoxLayout>
 
 MainWindow::MainWindow(QWidget* parent)
   : QMainWindow(parent)
   , m_sidebar(nullptr)
   , m_workspace(nullptr)
-  , m_workspaceHeader(nullptr)
-  , m_workspaceHeaderLayout(nullptr)
-  , m_providerIconLabel(nullptr)
-  , m_providerLabel(nullptr)
   , m_splitter(nullptr)
   , m_fileMenu(nullptr)
   , m_helpMenu(nullptr)
@@ -50,7 +45,6 @@ MainWindow::MainWindow(QWidget* parent)
   ProfileManager::instance()->loadProfiles();
 
   setupMenuBar();
-  setupWorkspaceHeader();
   setupCentralWidget();
   setupStatusBar();
   applyTheme();
@@ -110,56 +104,6 @@ void MainWindow::setupMenuBar() {
   connect(aboutAction, &QAction::triggered, this, &MainWindow::onAbout);
 }
 
-void MainWindow::setupWorkspaceHeader() {
-  m_workspaceHeader = new QWidget(this);
-  m_workspaceHeader->setObjectName("workspaceHeader");
-  m_workspaceHeader->setFixedHeight(44);
-  m_workspaceHeaderLayout = new QHBoxLayout(m_workspaceHeader);
-  m_workspaceHeaderLayout->setContentsMargins(12, 0, 12, 0);
-  m_workspaceHeaderLayout->setSpacing(8);
-
-  // Provider icon + name
-  m_providerIconLabel = new QLabel(m_workspaceHeader);
-  m_providerIconLabel->setFixedSize(24, 24);
-  m_providerIconLabel->setScaledContents(true);
-  m_providerIconLabel->setObjectName("workspaceProviderIcon");
-  m_workspaceHeaderLayout->addWidget(m_providerIconLabel);
-
-  m_providerLabel = new QLabel("No provider selected", m_workspaceHeader);
-  QFont providerFont = m_providerLabel->font();
-  providerFont.setPointSize(11);
-  providerFont.setBold(true);
-  m_providerLabel->setFont(providerFont);
-  m_providerLabel->setObjectName("workspaceProviderLabel");
-  m_workspaceHeaderLayout->addWidget(m_providerLabel);
-
-  m_workspaceHeaderLayout->addStretch();
-
-  // Hide header when no tab is active
-  m_workspaceHeader->setVisible(false);
-}
-
-void MainWindow::updateWorkspaceHeader(BrowserTab* tab) {
-  if (!tab) {
-    m_workspaceHeader->setVisible(false);
-    if (m_providerIconLabel) {
-      m_providerIconLabel->setPixmap(QPixmap());
-    }
-    m_providerLabel->setText("No provider selected");
-    return;
-  }
-
-  m_workspaceHeader->setVisible(true);
-
-  Provider* provider = ProviderRegistry::instance()->providerById(tab->providerId());
-  if (provider) {
-    m_providerLabel->setText(provider->displayName());
-    if (m_providerIconLabel) {
-      m_providerIconLabel->setPixmap(provider->icon().pixmap(24, 24));
-    }
-  }
-}
-
 void MainWindow::setupCentralWidget() {
   m_splitter = new QSplitter(Qt::Horizontal, this);
   m_splitter->setChildrenCollapsible(false);
@@ -169,17 +113,8 @@ void MainWindow::setupCentralWidget() {
   m_sidebar = new Sidebar(this);
   m_splitter->addWidget(m_sidebar);
 
-  QWidget* workspaceContainer = new QWidget(this);
-  QVBoxLayout* workspaceLayout = new QVBoxLayout(workspaceContainer);
-  workspaceLayout->setContentsMargins(0, 0, 0, 0);
-  workspaceLayout->setSpacing(0);
-
-  workspaceLayout->addWidget(m_workspaceHeader);
-
-  m_workspace = new BrowserWorkspace(workspaceContainer);
-  workspaceLayout->addWidget(m_workspace);
-
-  m_splitter->addWidget(workspaceContainer);
+  m_workspace = new BrowserWorkspace(this);
+  m_splitter->addWidget(m_workspace);
 
   m_splitter->setSizes({260, 940});
 
@@ -289,7 +224,6 @@ void MainWindow::restoreTabs() {
                 m_sidebar->updateTabRow(tabId, tabDisplayTitle(t), state, t->hasError());
                 if (t == m_currentTab) {
                   updateStatusDisplay(t);
-                  updateWorkspaceHeader(t);
                 }
               }
             });
@@ -300,7 +234,6 @@ void MainWindow::restoreTabs() {
                 m_sidebar->updateTabRow(tabId, tabDisplayTitle(t), t->lifecycleState(), hasError);
                 if (t == m_currentTab) {
                   updateStatusDisplay(t);
-                  updateWorkspaceHeader(t);
                 }
               }
             });
@@ -311,7 +244,6 @@ void MainWindow::restoreTabs() {
                 m_sidebar->updateTabRow(tabId, tabDisplayTitle(t), t->lifecycleState(), t->hasError());
                 if (t == m_currentTab) {
                   updateStatusDisplay(t);
-                  updateWorkspaceHeader(t);
                 }
               }
             });
@@ -343,7 +275,6 @@ void MainWindow::restoreTabs() {
     m_sidebar->setSelectedProvider(m_currentTab->providerId());
   }
   updateStatusDisplay(m_currentTab);
-  updateWorkspaceHeader(m_currentTab);
 
   m_restoringSession = false;
 }
@@ -388,7 +319,6 @@ BrowserTab* MainWindow::createBrowserTab(const QString& providerId,
               m_sidebar->updateTabRow(tabId, tabDisplayTitle(t), state, t->hasError());
               if (t == m_currentTab) {
                 updateStatusDisplay(t);
-                updateWorkspaceHeader(t);
               }
             }
           });
@@ -399,7 +329,6 @@ BrowserTab* MainWindow::createBrowserTab(const QString& providerId,
               m_sidebar->updateTabRow(tabId, tabDisplayTitle(t), t->lifecycleState(), hasError);
               if (t == m_currentTab) {
                 updateStatusDisplay(t);
-                updateWorkspaceHeader(t);
               }
             }
           });
@@ -410,7 +339,6 @@ BrowserTab* MainWindow::createBrowserTab(const QString& providerId,
               m_sidebar->updateTabRow(tabId, tabDisplayTitle(t), t->lifecycleState(), t->hasError());
               if (t == m_currentTab) {
                 updateStatusDisplay(t);
-                updateWorkspaceHeader(t);
               }
             }
           });
@@ -589,7 +517,6 @@ void MainWindow::onTabSelected(const QString& tabId) {
   LifecycleManager::instance()->onTabActivated(tab);
   m_sidebar->setSelectedProvider(tab->providerId());
   updateStatusDisplay(tab);
-  updateWorkspaceHeader(tab);
   saveSession();
 }
 
@@ -611,7 +538,6 @@ void MainWindow::onTabClosed(const QString& tabId) {
   BrowserTab* nextTab = m_workspace->currentTab();
   m_currentTab = nextTab;
   updateStatusDisplay(nextTab);
-  updateWorkspaceHeader(nextTab);
   if (nextTab) {
     m_sidebar->setSelectedProvider(nextTab->providerId());
     LifecycleManager::instance()->onTabActivated(nextTab);
@@ -663,7 +589,6 @@ void MainWindow::onTabActivated(BrowserTab* tab, const QString& tabId) {
   m_currentTab = tab;
   LifecycleManager::instance()->onTabActivated(tab);
   updateStatusDisplay(tab);
-  updateWorkspaceHeader(tab);
   m_sidebar->selectTabRow(tabId);
   if (tab) {
     m_sidebar->setSelectedProvider(tab->providerId());

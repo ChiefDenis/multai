@@ -1,6 +1,5 @@
 #include "ProviderRegistry.h"
 #include "Provider.h"
-#include "ProviderIcons.h"
 
 ProviderRegistry::ProviderRegistry(QObject* parent)
   : QObject(parent) {
@@ -38,10 +37,6 @@ void ProviderRegistry::initializeProviders() {
   m_providers["perplexity"]->setAllowedDomains({"perplexity.ai"});
   m_providers["chatgpt"]->setAllowedDomains({"chatgpt.com", "openai.com"});
   m_providers["kimi"]->setAllowedDomains({"kimi.ai", "kimi.com", "moonshot.cn"});
-
-  for (Provider* provider : m_providers) {
-    provider->setIcon(providerIcon(provider->id()));
-  }
 }
 
 QList<Provider*> ProviderRegistry::providers() const {

@@ -206,20 +206,6 @@ const char* kLightStyleSheet = R"(
   #sidebarCollapseButton:pressed, #sidebarSettingsButton:pressed {
     background-color: #dee2e6;
   }
-  /* Workspace header */
-  #workspaceHeader {
-    background-color: #ffffff;
-    border-bottom: 1px solid #dee2e6;
-  }
-  #workspaceProviderLabel {
-    color: #212529;
-    background: transparent;
-    border: none;
-  }
-  #workspaceProviderIcon {
-    background: transparent;
-    border: none;
-  }
   /* Empty state */
   #emptyState {
     background-color: #f8f9fa;
@@ -627,20 +613,6 @@ const char* kDarkStyleSheet = R"(
   }
   #sidebarCollapseButton:pressed, #sidebarSettingsButton:pressed {
     background-color: #333333;
-  }
-  /* Workspace header */
-  #workspaceHeader {
-    background-color: #1e1e1e;
-    border-bottom: 1px solid #333333;
-  }
-  #workspaceProviderLabel {
-    color: #e0e0e0;
-    background: transparent;
-    border: none;
-  }
-  #workspaceProviderIcon {
-    background: transparent;
-    border: none;
   }
   /* Empty state */
   #emptyState {

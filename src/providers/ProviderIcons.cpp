@@ -1,91 +1,126 @@
 #include "ProviderIcons.h"
 
-#include <QFont>
+#include <QDebug>
+#include <QGuiApplication>
+#include <QHash>
+#include <QImage>
+#include <QImageReader>
 #include <QPainter>
-#include <QPainterPath>
+#include <QPalette>
 #include <QPixmap>
-#include <QRectF>
+
+void aiWorkspaceInitProviderLogos();
 
 namespace {
 
-struct BrandColour {
-  const char* id;
-  const char* colour;
-  const char* initial;
-};
+constexpr int kLogoInsetPercent = 8;
+const int kIconSizes[] = {16, 20, 24, 28, 32, 42, 48, 64, 128};
 
-const BrandColour kBrands[] = {
-    {"deepseek", "#4D6BFE", "D"},
-    {"qwen", "#615CED", "Q"},
-    {"glm", "#1F6FEB", "G"},
-    {"copilot", "#0078D4", "C"},
-    {"gemini", "#4285F4", "G"},
-    {"claude", "#D97757", "C"},
-    {"perplexity", "#20808D", "P"},
-    {"chatgpt", "#10A37F", "C"},
-    {"kimi", "#333333", "K"},
-};
+const QHash<QString, QString>& logoFiles() {
+  static const QHash<QString, QString> files{
+      {"deepseek", "deepseek.svg"},
+      {"qwen", "qwen.svg"},
+      {"glm", "glm.svg"},
+      {"copilot", "copilot.svg"},
+      {"gemini", "gemini.svg"},
+      {"claude", "claude.svg"},
+      {"perplexity", "perplexity.svg"},
+      {"chatgpt", "chatgpt.svg"},
+      {"kimi", "kimi.svg"},
+  };
+  return files;
+}
 
-const BrandColour* findBrand(const QString& providerId) {
-  for (const BrandColour& brand : kBrands) {
-    if (providerId == QLatin1String(brand.id)) {
-      return &brand;
-    }
+bool isMonochrome(const QString& providerId) {
+  return providerId == "chatgpt" || providerId == "claude" || providerId == "kimi";
+}
+
+bool isDarkTheme() {
+  return QGuiApplication::palette().color(QPalette::Window).lightness() < 128;
+}
+
+void ensureLogosRegistered() {
+  static const bool registered = []() {
+    aiWorkspaceInitProviderLogos();
+    return true;
+  }();
+  Q_UNUSED(registered)
+}
+
+QString logoPath(const QString& providerId) {
+  const QString file = logoFiles().value(providerId);
+  return file.isEmpty() ? QString() : QStringLiteral(":/provider-logos/") + file;
+}
+
+QImage renderLogo(const QString& providerId, int boxSize, bool dark) {
+  ensureLogosRegistered();
+
+  const QString path = logoPath(providerId);
+  if (path.isEmpty()) {
+    qWarning() << "[ProviderIcons] No logo asset registered for provider:" << providerId;
+    return {};
   }
-  return nullptr;
+
+  QImageReader reader(path);
+  reader.setAutoTransform(true);
+  const QSize intrinsic = reader.size();
+  if (!intrinsic.isValid() || intrinsic.isEmpty()) {
+    qWarning() << "[ProviderIcons] Cannot read logo dimensions for provider:" << providerId
+               << reader.errorString();
+    return {};
+  }
+
+  const int inset = qMax(1, boxSize * kLogoInsetPercent / 100);
+  const int content = qMax(1, boxSize - 2 * inset);
+  const QSize scaled = intrinsic.scaled(content, content, Qt::KeepAspectRatio);
+  reader.setScaledSize(scaled);
+
+  QImage image = reader.read();
+  if (image.isNull()) {
+    qWarning() << "[ProviderIcons] Failed to render logo for provider:" << providerId
+               << reader.errorString();
+    return {};
+  }
+  image = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+
+  if (isMonochrome(providerId)) {
+    QPainter painter(&image);
+    painter.setCompositionMode(QPainter::CompositionMode_SourceIn);
+    painter.fillRect(image.rect(), dark ? QColor("#f2f2f2") : QColor("#161616"));
+  }
+
+  return image;
 }
 
 }  // namespace
 
-QColor providerColor(const QString& providerId) {
-  const BrandColour* brand = findBrand(providerId);
-  if (brand) {
-    return QColor(QLatin1String(brand->colour));
-  }
-  return QColor(QString("#6E6E6E"));
-}
-
-QString providerInitial(const QString& providerId) {
-  const BrandColour* brand = findBrand(providerId);
-  if (brand) {
-    return QLatin1String(brand->initial);
-  }
-  return providerId.isEmpty() ? QString("?") : providerId.left(1).toUpper();
-}
-
-QPixmap providerPixmap(const QString& providerId, int size, LifecycleState state, bool hasError) {
+QPixmap providerPixmap(const QString& providerId, int size, LifecycleState state,
+                       bool hasError) {
+  Q_UNUSED(state)
   Q_UNUSED(hasError)
+
   QPixmap pixmap(size, size);
   pixmap.fill(Qt::transparent);
 
-  QPainter painter(&pixmap);
-  painter.setRenderHint(QPainter::Antialiasing, true);
-
-  if (state == LifecycleState::Discarded) {
-    painter.setOpacity(0.60);
+  const QImage logo = renderLogo(providerId, size, isDarkTheme());
+  if (logo.isNull()) {
+    return pixmap;
   }
 
-  QPainterPath path;
-  const qreal radius = size * 0.25;
-  path.addRoundedRect(QRectF(0, 0, size, size), radius, radius);
-  painter.fillPath(path, providerColor(providerId));
-
-  QFont font = painter.font();
-  font.setPixelSize(qMax(1, static_cast<int>(size * 0.55)));
-  font.setBold(true);
-  painter.setFont(font);
-  painter.setPen(Qt::white);
-  painter.drawText(QRectF(0, 0, size, size), Qt::AlignCenter, providerInitial(providerId));
-
-  painter.setOpacity(1.0);
-  painter.end();
+  QPainter painter(&pixmap);
+  painter.setRenderHint(QPainter::SmoothPixmapTransform, true);
+  painter.drawImage((size - logo.width()) / 2, (size - logo.height()) / 2, logo);
   return pixmap;
 }
 
 QIcon providerIcon(const QString& providerId, LifecycleState state, bool hasError) {
   QIcon icon;
-  for (int size : {16, 24, 32, 48, 64, 128}) {
+  for (int size : kIconSizes) {
     icon.addPixmap(providerPixmap(providerId, size, state, hasError));
+
+    QPixmap highDpi = providerPixmap(providerId, size * 2, state, hasError);
+    highDpi.setDevicePixelRatio(2.0);
+    icon.addPixmap(highDpi);
   }
   return icon;
 }

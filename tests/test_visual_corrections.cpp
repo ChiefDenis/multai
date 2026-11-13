@@ -54,6 +54,19 @@ int maxIconLuminance(const QPixmap& pixmap) {
   return maximum;
 }
 
+int opaquePixelCount(const QPixmap& pixmap) {
+  const QImage image = pixmap.toImage();
+  int count = 0;
+  for (int y = 0; y < image.height(); ++y) {
+    for (int x = 0; x < image.width(); ++x) {
+      if (image.pixelColor(x, y).alpha() > 24) {
+        ++count;
+      }
+    }
+  }
+  return count;
+}
+
 }  // namespace
 
 class TestVisualCorrections : public QObject {
@@ -63,7 +76,7 @@ private slots:
   void initTestCase();
   void init();
 
-  void testWorkspaceHeaderShowsProviderIconAndName();
+  void testWorkspaceHasNoProviderHeader();
   void testProviderStripIconsRender();
   void testProviderStripSelectionRendering();
   void testWorkspaceHasNoNavigationToolbar();
@@ -91,7 +104,7 @@ void TestVisualCorrections::init() {
   Theme::applyTheme("light");
 }
 
-void TestVisualCorrections::testWorkspaceHeaderShowsProviderIconAndName() {
+void TestVisualCorrections::testWorkspaceHasNoProviderHeader() {
   SettingsManager::instance()->setTheme("light");
   Theme::applyTheme("light");
 
@@ -101,21 +114,16 @@ void TestVisualCorrections::testWorkspaceHeaderShowsProviderIconAndName() {
   const QList<Provider*> providers = ProviderRegistry::instance()->providers();
   QCOMPARE(providers.size(), 9);
 
+  QVERIFY(window.findChild<QWidget*>("workspaceHeader") == nullptr);
+  QVERIFY(window.findChild<QWidget*>("workspaceProviderIcon") == nullptr);
+  QVERIFY(window.findChild<QWidget*>("workspaceProviderLabel") == nullptr);
+
   for (Provider* provider : providers) {
-    BrowserTab tab(provider->id(), "default", provider->url(), LifecycleState::Unloaded);
-    window.updateWorkspaceHeaderForTest(&tab);
-
-    QLabel* nameLabel = window.providerLabelForTest();
-    QLabel* iconLabel = window.providerIconLabelForTest();
-    QVERIFY(nameLabel != nullptr);
-    QVERIFY(iconLabel != nullptr);
-
-    QCOMPARE(nameLabel->text(), provider->displayName());
-    QVERIFY2(nameLabel->pixmap().isNull(),
-             "The provider name label must not be used as an icon container");
-    QVERIFY2(!iconLabel->pixmap().isNull(),
+    const QPixmap icon = provider->icon().pixmap(24, 24);
+    QVERIFY2(!icon.isNull(),
              qPrintable(QString("Missing provider icon for %1").arg(provider->id())));
-    QVERIFY(window.workspaceHeaderForTest()->isVisible());
+    QVERIFY2(opaquePixelCount(icon) > 20,
+             qPrintable(QString("Provider icon is blank for %1").arg(provider->id())));
   }
 }
 
@@ -230,9 +238,7 @@ void TestVisualCorrections::testWorkspaceHasNoNavigationToolbar() {
   window.show();
   QApplication::processEvents();
 
-  QWidget* header = window.workspaceHeaderForTest();
-  QVERIFY(header != nullptr);
-  QCOMPARE(header->findChildren<QToolButton*>().size(), 0);
+  QVERIFY(window.findChild<QWidget*>("workspaceHeader") == nullptr);
   QVERIFY(window.findChild<QWidget*>("workspaceNavigationToolbar") == nullptr);
   QVERIFY(window.findChild<QWidget*>("workspaceBackButton") == nullptr);
   QVERIFY(window.findChild<QWidget*>("workspaceForwardButton") == nullptr);
@@ -241,12 +247,15 @@ void TestVisualCorrections::testWorkspaceHasNoNavigationToolbar() {
 
   window.resize(1100, 720);
   QApplication::processEvents();
-  const QRect workspaceRect(window.workspaceForTest()->mapTo(window.centralWidget(),
-                                                             QPoint(0, 0)),
-                            window.workspaceForTest()->size());
-  const QRect headerRect(header->mapTo(window.centralWidget(), QPoint(0, 0)), header->size());
-  QVERIFY(workspaceRect.top() <= headerRect.bottom() + 2);
+  QWidget* central = window.centralWidget();
+  QVERIFY(central != nullptr);
+  QWidget* workspace = window.workspaceForTest();
+  QVERIFY(workspace != nullptr);
+  const QRect workspaceRect(workspace->mapTo(central, QPoint(0, 0)), workspace->size());
+  QCOMPARE(workspaceRect.top(), central->rect().top());
+  QCOMPARE(workspaceRect.bottom(), central->rect().bottom());
   QVERIFY(workspaceRect.height() > 0);
+  QVERIFY(workspaceRect.width() > 0);
 }
 
 void TestVisualCorrections::testSidebarLifecycleIndicatorsMatchStatus() {

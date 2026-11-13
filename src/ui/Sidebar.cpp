@@ -780,6 +780,27 @@ void Sidebar::updateTheme(const QString& theme) {
   if (m_settingsButton) {
     m_settingsButton->setIcon(ToolbarIcons::settingsIcon(isDark));
   }
+
+  ProviderRegistry* registry = ProviderRegistry::instance();
+  for (auto it = m_providerButtons.begin(); it != m_providerButtons.end(); ++it) {
+    if (Provider* provider = registry->providerById(it.key())) {
+      it.value()->setIcon(provider->icon());
+    }
+  }
+  for (auto it = m_collapsedProviderButtons.begin(); it != m_collapsedProviderButtons.end(); ++it) {
+    if (Provider* provider = registry->providerById(it.key())) {
+      it.value()->setIcon(provider->icon());
+    }
+  }
+  for (auto it = m_tabIdToProviderId.begin(); it != m_tabIdToProviderId.end(); ++it) {
+    QListWidgetItem* item = m_tabItems.value(it.key());
+    QWidget* widget = item ? m_tabList->itemWidget(item) : nullptr;
+    QLabel* iconLabel = widget ? widget->findChild<QLabel*>("tabIconLabel") : nullptr;
+    Provider* provider = registry->providerById(it.value());
+    if (iconLabel && provider) {
+      iconLabel->setPixmap(provider->icon().pixmap(28, 28));
+    }
+  }
   for (QWidget* widget : m_tabList->findChildren<QWidget*>("tabRowWidget")) {
     QToolButton* closeButton = widget->findChild<QToolButton*>("tabCloseButton");
     if (closeButton) {

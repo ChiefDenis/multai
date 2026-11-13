@@ -125,7 +125,7 @@ void TestSessionRestore::testRestoreOrderProfilesUrlsAndActiveTab() {
     QCOMPARE(profiles->profileById("deepseek:work")->path(), deepseekWork->path());
     QCOMPARE(profiles->profileById("qwen:work")->path(), qwenWork->path());
 
-    QVERIFY(window.providerLabelForTest()->text() == "Qwen");
+    QCOMPARE(window.workspaceForTest()->currentTab()->providerId(), QString("qwen"));
     window.close();
     QApplication::processEvents();
   }

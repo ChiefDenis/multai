@@ -589,3 +589,42 @@ target_include_directories(test_session_restore PRIVATE ${TEST_INCLUDE_DIRS})
 
 add_test(NAME test_session_restore COMMAND test_session_restore)
 set_property(TEST test_session_restore PROPERTY LABELS "integration")
+
+# Provider logo assets and navigation rendering regression test
+qt_add_executable(test_provider_logos
+  test_provider_logos.cpp
+)
+
+target_link_libraries(test_provider_logos PRIVATE
+  ai-workspace-lib
+  Qt6::Core
+  Qt6::Test
+  Qt6::Widgets
+  Qt6::WebEngineWidgets
+)
+
+target_include_directories(test_provider_logos PRIVATE ${TEST_INCLUDE_DIRS})
+
+add_test(NAME test_provider_logos COMMAND test_provider_logos)
+set_property(TEST test_provider_logos PROPERTY LABELS "integration")
+
+# Tests that compile ProviderIcons.cpp directly need the bundled SVG resources.
+set(PROVIDER_LOGO_TEST_TARGETS
+  test_providerregistry
+  test_tabstore
+  test_recovery
+  test_ui_polish
+  test_sidebar
+  test_browserworkspace
+  test_lifecycle_integration
+  test_persistence
+  test_browser_integration
+  test_memory_usage
+  test_tab_timings
+  test_auto_default_profile
+  test_empty_state
+)
+
+foreach(target IN LISTS PROVIDER_LOGO_TEST_TARGETS)
+  target_link_libraries(${target} PRIVATE provider-logos)
+endforeach()

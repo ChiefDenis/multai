@@ -1014,6 +1014,82 @@ are deleted. Existing menu actions and status indicators remain.
 
 **Related Decisions**: Decision 023 (painted toolbar icons)
 **Related Issues**: 0.4.0 toolbar-removal requirement
+**Superseded in part by**: Decision 032 (the remaining provider header was removed)
+
+---
+
+### Decision 031: Bundle Authentic Provider SVG Logos and Render Them as Theme-Aware Icons
+
+**Date**: 2026-11-13
+**Status**: Accepted
+**Context**: The painted monogram icons in the provider strip, collapsed rail, Open Tabs
+and empty state were placeholders. Users need to recognise the nine AI providers at a
+glance, in both light and dark themes, without introducing a new rendering dependency.
+
+**Alternatives Considered**:
+- Keep painted monograms: not authentic and easily confused
+- Download logos at runtime: adds network activity and failure modes
+- Link `Qt6::Svg`: requires the uninstalled `qt6-qtsvg-devel` package for headers
+- Bundle SVG files and read them through Qt's existing SVG image-format plugin
+
+**Decision**: Store one authentic SVG per provider under `assets/providers/`, ship them in
+a `provider-logos` static resource library, and render them with `QImageReader` through
+the qsvg image plugin. Scale each mark aspect-preservingly inside an 8% inset on a
+transparent square pixmap. Tint only the monochrome OpenAI, Anthropic and Kimi marks to
+the current foreground colour; keep every coloured mark in its original brand colours.
+Expose `Provider::icon()` as a live render so theme changes refresh the strip, rail, tab
+rows and empty-state grid.
+
+**Rationale**:
+- Authentic paths and proportions preserve brand recognition
+- The qsvg plugin is already present with the Qt WebEngine runtime
+- Theme-aware monochrome marks stay legible without recolouring distinctive artwork
+- Bundling avoids runtime downloads and keeps the application self-contained
+
+**Consequences**:
+- Positive: Consistent, sharp logos from 16 px to 42 px and above
+- Positive: No new package or link dependency
+- Positive: Light and dark themes both remain legible
+- Negative: Logo assets must be kept with attribution and updated deliberately
+- Negative: `Provider::icon()` re-renders instead of returning a cached pixmap
+
+**Related Decisions**: Decision 019 (runtime icons), Decision 023 (painted application
+icons)
+**Related Issues**: Provider brand-logo requirement
+
+---
+
+### Decision 032: Remove the Remaining Workspace Provider Header
+
+**Date**: 2026-11-13
+**Status**: Accepted
+**Context**: After the navigation toolbar removal, a 44 px header still displayed the
+provider icon and name above the embedded page. It duplicated the sidebar selection and
+reduced the browser's usable height.
+
+**Alternatives Considered**:
+- Hide only the labels: leaves the container, margins and reserved space
+- Keep a slim title row: still duplicates sidebar identity
+- Remove the header widget, layout, members, callbacks and test hooks entirely
+
+**Decision**: `BrowserWorkspace` is added directly to the main splitter. No header,
+container, layout, separator or reserved top gap remains. The menu bar, sidebar, status
+bar, session restoration and lifecycle indicators are unchanged.
+
+**Rationale**:
+- The sidebar already identifies the selected provider
+- Provider pages render their own titles and navigation
+- The embedded page receives the full available workspace area
+- Deleting the whole path avoids dead hooks and hidden layout cost
+
+**Consequences**:
+- Positive: Maximum browser height and no duplicated identity chrome
+- Positive: Fewer widgets, callbacks and stylesheet rules
+- Negative: Provider identity above the page is available only in the sidebar and status
+  bar, not in a workspace title row
+
+**Related Decisions**: Decision 030 (navigation toolbar removal)
+**Related Issues**: Workspace header-removal requirement
 
 ---
 
@@ -1077,6 +1153,8 @@ UI/UX design choices:
 - Decision 026: Provider Display Names as Tab Titles
 - Decision 029: Horizontal Provider Strip with Painted Buttons
 - Decision 030: Remove the Workspace Navigation Toolbar
+- Decision 031: Bundle Authentic Provider SVG Logos and Render Them as Theme-Aware Icons
+- Decision 032: Remove the Remaining Workspace Provider Header
 
 ### Implementation Decisions
 

@@ -223,6 +223,13 @@ void BrowserWorkspace::updateTheme(const QString& theme) {
   if (m_emptyStateFolderIconLabel) {
     m_emptyStateFolderIconLabel->setPixmap(ToolbarIcons::folderIcon(isDark).pixmap(48, 48));
   }
+  ProviderRegistry* registry = ProviderRegistry::instance();
+  for (QToolButton* button : findChildren<QToolButton*>("emptyStateProviderButton")) {
+    Provider* provider = registry->providerById(button->property("providerId").toString());
+    if (provider) {
+      button->setIcon(provider->icon());
+    }
+  }
   for (BrowserTab* tab : m_tabs) {
     if (tab) {
       tab->updateTheme(theme);

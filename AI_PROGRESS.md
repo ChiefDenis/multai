@@ -5,7 +5,7 @@
 - **Purpose**: Authoritative progress ledger for AI Workspace project
 - **Status**: Active
 - **Last Updated**: 2026-11-13
-- **Current Stage**: Release 0.4.0 - complete
+- **Current Stage**: Provider brand logos and chrome-free workspace - complete
 
 ## Progress Summary
 
@@ -25,6 +25,7 @@
 | Stage 10: Documentation and Packaging | ✅ Complete | 2026-11-05 | RPM spec, desktop file, icon, documentation updated |
 | Visual QA Corrections | ✅ Complete | 2026-11-12 | 25/25 tests; 12-state screenshot archive and contact sheet |
 | Release 0.4.0 | ✅ Complete | 2026-11-13 | Persistent sessions, horizontal provider strip, toolbar removal; 26/26 tests; 16-state restarted-session QA |
+| Provider Logos and Header Removal | ✅ Complete | 2026-11-13 | Authentic SVG brand logos in every provider surface; workspace header deleted; 27/27 tests; 16-state real-session QA |
 
 Stages 2-6 were delivered together in one work phase because the browser engine,
 profile manager and lifecycle state machine are mutually dependent. That phase is
@@ -1316,3 +1317,88 @@ left the other two `Unloaded` with no page.
   paint Qt WebEngine content.
 - Restored sessions store URLs, not page DOM or form state; sites may redirect on reload.
 - The 50-tab cap is a defensive bound; larger sessions are truncated oldest-last.
+
+---
+
+## Provider Brand Logos and Chrome-Free Workspace (2026-11-13)
+
+**Version**: 0.4.0 (unchanged)
+**Status**: ✅ Complete
+
+### Stage 1: Authentic Provider Logos
+
+- Replaced the painted monogram artwork in `src/providers/ProviderIcons.cpp` with the
+  bundled SVG brand marks in `assets/providers/`.
+- Sources: OpenAI 2025 symbol (Wikimedia Commons, public domain), Anthropic
+  (Simple Icons, CC0 1.0), Microsoft Copilot 2026 (Wikimedia Commons / seeklogo,
+  public domain), DeepSeek, Google Gemini, Kimi, Perplexity and Qwen (Simple Icons,
+  CC0 1.0), Z.ai company logo (Wikimedia Commons, public domain). Full source links and
+  licensing notes are in `assets/providers/ATTRIBUTION.md`.
+- Added a `provider-logos` static resource library (`resources/ProviderLogos.cpp` plus
+  `qt_add_resources`) and linked it into `ai-workspace-lib` and every test target that
+  compiles `ProviderIcons.cpp` directly.
+- Logos are read with `QImageReader` through Qt's existing SVG image plugin, so no
+  `Qt6::Svg` link dependency or new package is required. Each mark is scaled
+  aspect-preservingly inside an 8% inset and centred on a transparent square pixmap.
+- `chatgpt`, `claude` and `kimi` are monochrome marks tinted to the current foreground
+  (`#161616` light, `#f2f2f2` dark). Coloured marks keep their original brand colours.
+- `Provider::icon()` now renders from the current theme instead of caching a single
+  pixmap. `Sidebar::updateTheme` refreshes the expanded strip, collapsed rail and Open
+  Tabs rows; `BrowserWorkspace::updateTheme` refreshes the empty-state provider grid.
+- Lifecycle and error badges remain separate siblings and never overlay logo artwork.
+
+### Stage 2: Workspace Header Removal
+
+- Deleted `setupWorkspaceHeader`, `updateWorkspaceHeader`, the header widget, layout,
+  provider icon label, provider name label and all test hooks from `MainWindow`.
+- `BrowserWorkspace` is now added directly to the horizontal splitter; no container,
+  layout, margins or header-sized gap remains between the window chrome and WebEngine.
+- Removed the `#workspaceHeader`, `#workspaceProviderLabel` and
+  `#workspaceProviderIcon` rules from both theme stylesheets.
+- Sidebar, menu bar, status bar, session restoration, provider switching, lazy loading
+  and lifecycle automation are unchanged.
+
+### Stage 3: Regression Tests
+
+- Added `tests/test_provider_logos.cpp` (7 cases): all nine assets render at 16, 20, 24,
+  32 and 42 px; transparent corners and aspect ratios; light/dark rendering and
+  monochrome tinting; strip/rail/Open Tabs identity; selection and lifecycle badges do
+  not obscure logos; runtime theme switching refreshes icons.
+- Updated `test_ui_regression`, `test_visual_corrections`, `test_empty_state_ui` and
+  `test_session_restore`: the header object no longer exists, the workspace occupies the
+  full central-widget height, and restored selection is asserted through the active tab.
+- Existing rendered-pixel assertions for strip selection, dark sidebar contrast and
+  lifecycle badges were kept.
+
+### Build and Test Results
+
+- Clean configure and build:
+  `cmake -S . -B /tmp/opencode/qa-build -DCMAKE_BUILD_TYPE=Debug`,
+  `cmake --build /tmp/opencode/qa-build -j4` — success.
+- Full suite: **27/27 passed** with
+  `ctest --test-dir /tmp/opencode/qa-build --output-on-failure` (88.6 s; 12 integration,
+  3 performance).
+
+### Real-Session Visual QA
+
+- Ran `BUILD_DIR=/tmp/opencode/qa-build systemd-inhibit ... bash tests/visual-qa/capture-all.sh`
+  under Wayland.
+- Captured 8 states x light/dark = 16 images plus `contact-sheet.png` in
+  `artifacts/visual-qa/`.
+- Inspected the contact sheet and full-size `01-initial-*`, `02-active-workspace-dark`,
+  `03-multiple-tabs-light`, `04-sidebar-collapsed-light`, `06-account-management-light`,
+  `07-provider-strip-end-light` and `08-restored-session-dark`.
+- Confirmed: no provider header or navigation toolbar above the page; content starts at
+  the top of the available workspace; all nine logos are sharp and recognisable; dark
+  theme tints monochrome marks; selected rows and lifecycle badges stay separate and
+  legible; restored DeepSeek/Qwen/ChatGPT tabs keep their order and `Unloaded` state.
+- The expanded strip is 260 px wide and scrolls horizontally; state 0 shows the first
+  providers and state 6 the last. The collapsed rail shows all nine logos at once. No
+  single expanded-strip window capture shows all nine simultaneously.
+
+### Remaining Known Limitations
+
+- Logo usage is nominative provider identification only; trademarks remain with their
+  owners.
+- The expanded strip still requires horizontal scrolling to reach all nine providers.
+- Live provider pages remain subject to network, consent and bot-detection variability.

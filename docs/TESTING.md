@@ -11,6 +11,33 @@
 
 This document describes the testing strategy for the AI Workspace project, including unit tests, integration tests, performance tests, and manual testing procedures.
 
+## Provider Logos and Chrome-Free Workspace (0.4.0)
+
+**Automated coverage**:
+
+- `tests/test_provider_logos.cpp` verifies all nine bundled SVG assets through
+  `ProviderIcons`/`Provider::icon()` at 16, 20, 24, 32 and 42 px, transparent corners,
+  aspect-ratio preservation, light/dark rendering, monochrome tinting, strip/rail/Open
+  Tabs identity, non-overlapping lifecycle badges, and runtime theme refresh.
+- `tests/test_ui_regression.cpp`, `tests/test_visual_corrections.cpp` and
+  `tests/test_empty_state_ui.cpp` assert that no `workspaceHeader`,
+  `workspaceProviderIcon`, `workspaceProviderLabel` or navigation toolbar exists, and
+  that `BrowserWorkspace` spans the full height of the central widget.
+- `tests/test_session_restore.cpp` asserts the restored active provider through the
+  active tab instead of the removed header label.
+
+**Real-session QA**:
+
+- `tests/visual-qa/capture-all.sh` captures eight states in light and dark (16 images)
+  plus `contact-sheet.png` under `artifacts/visual-qa/`.
+- States 0 and 6 cover the expanded horizontal strip at both scroll ends because the
+  260 px strip scrolls; state 3 covers the collapsed rail, which shows all nine logos at
+  once. State 5 covers the account-management dialog with a provider logo. State 7
+  restores a three-provider session in a fresh process.
+- Review the actual images for logo legibility, aspect ratios, selection contrast,
+  lifecycle badge separation and the absence of any header or blank top strip. Generating
+  screenshots is not sufficient evidence on its own.
+
 ## Testing Philosophy
 
 ### Principles

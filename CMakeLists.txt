@@ -38,6 +38,27 @@ set(LIB_SOURCES
     src/lifecycle/TestClock.cpp
 )
 
+qt_add_library(provider-logos STATIC
+    resources/ProviderLogos.cpp
+)
+
+qt_add_resources(provider-logos "providerlogos"
+    PREFIX "/provider-logos"
+    BASE "assets/providers"
+    FILES
+        assets/providers/chatgpt.svg
+        assets/providers/claude.svg
+        assets/providers/copilot.svg
+        assets/providers/deepseek.svg
+        assets/providers/gemini.svg
+        assets/providers/glm.svg
+        assets/providers/kimi.svg
+        assets/providers/perplexity.svg
+        assets/providers/qwen.svg
+)
+
+target_link_libraries(provider-logos PRIVATE Qt6::Core)
+
 set(PROJECT_HEADERS
     src/core/Application.h
     src/core/SettingsManager.h
@@ -90,6 +111,7 @@ target_link_libraries(ai-workspace-lib PRIVATE
     Qt6::Core
     Qt6::Widgets
     Qt6::WebEngineWidgets
+    provider-logos
 )
 
 qt_add_executable(ai-workspace

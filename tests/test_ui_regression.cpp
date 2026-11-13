@@ -23,7 +23,7 @@ private slots:
   void testSidebarExpandedByDefault();
   void testSidebarAllNineProvidersVisible();
   void testSidebarCollapsibleWithoutHeightChange();
-  void testWorkspaceHeaderHasNoNavigationToolbar();
+  void testWorkspaceHasNoProviderHeader();
   void testEmptyStateHasProviderShortcuts();
   void testThemeSwitchingUpdatesTheme();
   void testDarkThemeSidebarBackground();
@@ -83,28 +83,29 @@ void TestUIRegression::testSidebarCollapsibleWithoutHeightChange() {
   QCOMPARE(sidebar.height(), initialHeight);  // Height unchanged
 }
 
-void TestUIRegression::testWorkspaceHeaderHasNoNavigationToolbar() {
+void TestUIRegression::testWorkspaceHasNoProviderHeader() {
   MainWindow window;
+  window.resize(1100, 720);
   window.show();
   QApplication::processEvents();
 
-  QWidget* header = window.workspaceHeaderForTest();
-  QVERIFY(header != nullptr);
-
-  QCOMPARE(header->findChildren<QToolButton*>().size(), 0);
-  QVERIFY(window.providerIconLabelForTest() != nullptr);
-  QVERIFY(window.providerLabelForTest() != nullptr);
+  QVERIFY(window.findChild<QWidget*>("workspaceHeader") == nullptr);
+  QVERIFY(window.findChild<QWidget*>("workspaceProviderIcon") == nullptr);
+  QVERIFY(window.findChild<QWidget*>("workspaceProviderLabel") == nullptr);
   QVERIFY(window.findChild<QWidget*>("workspaceNavigationToolbar") == nullptr);
 
-  // The workspace must be the direct neighbour of the header, with no toolbar row between them.
   QWidget* central = window.centralWidget();
   QVERIFY(central != nullptr);
-  QVERIFY(window.workspaceForTest() != nullptr);
-  const QRect headerRect(header->mapTo(central, QPoint(0, 0)), header->size());
-  const QRect workspaceRect(window.workspaceForTest()->mapTo(central, QPoint(0, 0)),
-                            window.workspaceForTest()->size());
-  QVERIFY2(workspaceRect.top() <= headerRect.bottom() + 2,
-           "The browser workspace must begin directly beneath the header");
+  QWidget* workspace = window.workspaceForTest();
+  QVERIFY(workspace != nullptr);
+  QVERIFY(workspace->parentWidget() != nullptr);
+
+  const QRect centralRect = central->rect();
+  const QRect workspaceRect(workspace->mapTo(central, QPoint(0, 0)), workspace->size());
+  QCOMPARE(workspaceRect.top(), centralRect.top());
+  QCOMPARE(workspaceRect.bottom(), centralRect.bottom());
+  QVERIFY(workspaceRect.height() > 0);
+  QVERIFY(workspaceRect.width() > 0);
 }
 
 void TestUIRegression::testEmptyStateHasProviderShortcuts() {

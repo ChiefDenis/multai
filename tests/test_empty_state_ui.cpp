@@ -14,7 +14,7 @@ private slots:
   void testEmptyStateHasProviderShortcuts();
   void testAllNineProvidersHaveShortcutButtons();
   void testProviderButtonsHaveVisibleContrast();
-  void testWorkspaceHeaderExists();
+  void testWorkspaceHasNoProviderHeader();
 };
 
 void TestEmptyState::initTestCase() {
@@ -51,9 +51,11 @@ void TestEmptyState::testProviderButtonsHaveVisibleContrast() {
   }
 }
 
-void TestEmptyState::testWorkspaceHeaderExists() {
+void TestEmptyState::testWorkspaceHasNoProviderHeader() {
   MainWindow window;
-  QVERIFY(window.workspaceHeaderForTest() != nullptr);
+  QVERIFY(window.findChild<QWidget*>("workspaceHeader") == nullptr);
+  QVERIFY(window.findChild<QWidget*>("workspaceProviderIcon") == nullptr);
+  QVERIFY(window.findChild<QWidget*>("workspaceProviderLabel") == nullptr);
 }
 
 QTEST_MAIN(TestEmptyState)

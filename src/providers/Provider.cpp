@@ -1,4 +1,5 @@
 #include "Provider.h"
+#include "ProviderIcons.h"
 
 #include <QRegularExpression>
 
@@ -10,6 +11,10 @@ Provider::Provider(const QString& id, const QString& displayName, const QUrl& ur
   if (!url.host().isEmpty()) {
     m_allowedDomains.append(url.host());
   }
+}
+
+QIcon Provider::icon() const {
+  return providerIcon(m_id);
 }
 
 bool Provider::isUrlAllowed(const QUrl& url) const {

@@ -11,7 +11,6 @@ class BrowserWorkspace;
 class QSplitter;
 class QMenu;
 class QLabel;
-class QHBoxLayout;
 
 class Sidebar;
 
@@ -48,8 +47,6 @@ private slots:
 private:
   void setupMenuBar();
   void setupCentralWidget();
-  void setupWorkspaceHeader();
-  void updateWorkspaceHeader(BrowserTab* tab);
   void setupStatusBar();
   void applyTheme();
   void restoreSidebarState();
@@ -67,10 +64,6 @@ private:
 
   Sidebar* m_sidebar;
   BrowserWorkspace* m_workspace;
-  QWidget* m_workspaceHeader;
-  QHBoxLayout* m_workspaceHeaderLayout;
-  QLabel* m_providerIconLabel;
-  QLabel* m_providerLabel;
   QSplitter* m_splitter;
   QMenu* m_fileMenu;
   QMenu* m_helpMenu;
@@ -84,13 +77,9 @@ public:
   // Visual QA test hooks
   Sidebar* sidebarForTest() const { return m_sidebar; }
   BrowserWorkspace* workspaceForTest() const { return m_workspace; }
-  QWidget* workspaceHeaderForTest() const { return m_workspaceHeader; }
-  QLabel* providerIconLabelForTest() const { return m_providerIconLabel; }
-  QLabel* providerLabelForTest() const { return m_providerLabel; }
   QLabel* statusTabInfoLabelForTest() const { return m_statusTabInfoLabel; }
   QLabel* statusBadgeLabelForTest() const { return m_statusBadgeLabel; }
   BrowserTab* currentTabForTest() const { return m_currentTab; }
-  void updateWorkspaceHeaderForTest(BrowserTab* tab) { updateWorkspaceHeader(tab); }
   void updateStatusDisplayForTest(BrowserTab* tab) { updateStatusDisplay(tab); }
   QString tabDisplayTitleForTest(BrowserTab* tab) const { return tabDisplayTitle(tab); }
   void collapseSidebarForTest() { m_sidebar->setCollapsed(true); }
