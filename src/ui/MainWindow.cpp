@@ -627,7 +627,8 @@ void MainWindow::onAbout() {
   QMessageBox::about(this, "About AI Workspace",
                      QString("<b>AI Workspace %1</b><br><br>"
                              "A resource-conscious, multi-provider AI desktop application.<br>"
-                             "Provider web interfaces are embedded with Qt WebEngine.")
+                             "Provider web interfaces are embedded with Qt WebEngine.<br><br>"
+                             "<a href=\"https://github.com/ChiefDenis/\">GitHub</a>")
                          .arg(QApplication::applicationVersion()));
 }
 

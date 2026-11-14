@@ -3,12 +3,13 @@
 
 #include <QGuiApplication>
 #include <QIcon>
+#include "version.h"
 
 Application::Application(int& argc, char** argv)
   : QApplication(argc, argv)
   , m_mainWindow(nullptr) {
   setApplicationName("AI Workspace");
-  setApplicationVersion("0.4.1");
+  setApplicationVersion(AI_WORKSPACE_VERSION);
   setOrganizationName("ai-workspace");
   setOrganizationDomain("ai-workspace.local");
   QGuiApplication::setDesktopFileName("ai-workspace");

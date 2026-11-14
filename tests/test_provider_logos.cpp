@@ -214,23 +214,56 @@ void TestProviderLogos::testProviderNavigationUsesRealLogos() {
              qPrintable(QString("Provider strip icon mismatch for %1").arg(providerId)));
   }
 
-  const QList<QToolButton*> railButtons =
-      sidebar.findChildren<QToolButton*>("collapsedProviderButton");
-  QCOMPARE(railButtons.size(), 9);
-  for (QToolButton* button : railButtons) {
-    const QString providerId = button->property("providerId").toString();
-    Provider* provider = registry->providerById(providerId);
-    QVERIFY(provider != nullptr);
-    QVERIFY2(button->icon().pixmap(26, 26).toImage() ==
-                 provider->icon().pixmap(26, 26).toImage(),
-             qPrintable(QString("Collapsed rail icon mismatch for %1").arg(providerId)));
-  }
+  // Collapsed rail now shows open tabs, not permanent provider shortcuts
+  sidebar.setCollapsed(true);
+  QApplication::processEvents();
 
+  // With no tabs, collapsed rail should be empty
+  const QMap<QString, QToolButton*>& tabButtonsEmpty = sidebar.collapsedTabButtonsForTest();
+  QCOMPARE(tabButtonsEmpty.size(), 0);
+
+  // Add a tab and verify its provider logo appears in collapsed rail
   Provider* deepseek = registry->providerById("deepseek");
   QVERIFY(deepseek != nullptr);
   sidebar.addTabRow("tab-deepseek", "deepseek", "DeepSeek", deepseek->icon(),
                     LifecycleState::Unloaded, false);
   QApplication::processEvents();
+
+  const QMap<QString, QToolButton*>& tabButtons = sidebar.collapsedTabButtonsForTest();
+  QCOMPARE(tabButtons.size(), 1);
+  QVERIFY(tabButtons.contains("tab-deepseek"));
+  QToolButton* railButton = tabButtons["tab-deepseek"];
+  QVERIFY2(railButton->icon().pixmap(26, 26).toImage() ==
+               deepseek->icon().pixmap(26, 26).toImage(),
+           "Collapsed rail tab icon does not use the provider logo");
+
+  // Add another tab from a different provider
+  Provider* qwen = registry->providerById("qwen");
+  QVERIFY(qwen != nullptr);
+  sidebar.addTabRow("tab-qwen", "qwen", "Qwen", qwen->icon(),
+                    LifecycleState::Unloaded, false);
+  QApplication::processEvents();
+
+  const QMap<QString, QToolButton*>& tabButtons2 = sidebar.collapsedTabButtonsForTest();
+  QCOMPARE(tabButtons2.size(), 2);
+  QVERIFY(tabButtons2.contains("tab-qwen"));
+  QToolButton* railButton2 = tabButtons2["tab-qwen"];
+  QVERIFY2(railButton2->icon().pixmap(26, 26).toImage() ==
+               qwen->icon().pixmap(26, 26).toImage(),
+           "Collapsed rail tab icon does not use the provider logo");
+
+  // Add a second tab from the same provider - should create separate icon
+  sidebar.addTabRow("tab-deepseek-2", "deepseek", "DeepSeek 2", deepseek->icon(),
+                    LifecycleState::Unloaded, false);
+  QApplication::processEvents();
+
+  const QMap<QString, QToolButton*>& tabButtons3 = sidebar.collapsedTabButtonsForTest();
+  QCOMPARE(tabButtons3.size(), 3);
+  QVERIFY(tabButtons3.contains("tab-deepseek-2"));
+  QToolButton* railButton3 = tabButtons3["tab-deepseek-2"];
+  QVERIFY2(railButton3->icon().pixmap(26, 26).toImage() ==
+               deepseek->icon().pixmap(26, 26).toImage(),
+           "Collapsed rail duplicate provider tab icon does not use the provider logo");
 
   QListWidgetItem* item = sidebar.tabListForTest()->item(0);
   QVERIFY(item != nullptr);

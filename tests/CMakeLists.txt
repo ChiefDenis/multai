@@ -1,6 +1,7 @@
 find_package(Qt6 REQUIRED COMPONENTS Test WebEngineWidgets)
 
 set(TEST_INCLUDE_DIRS
+  ${CMAKE_BINARY_DIR}/src/core
   ${CMAKE_CURRENT_SOURCE_DIR}/../src/core
   ${CMAKE_CURRENT_SOURCE_DIR}/../src/ui
   ${CMAKE_CURRENT_SOURCE_DIR}/../src/providers

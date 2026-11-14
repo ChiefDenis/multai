@@ -27,6 +27,7 @@
 | Release 0.4.0 | ✅ Complete | 2026-11-13 | Persistent sessions, horizontal provider strip, toolbar removal; 26/26 tests; 16-state restarted-session QA |
 | Provider Logos and Header Removal | ✅ Complete | 2026-11-13 | Authentic SVG brand logos in every provider surface; workspace header deleted; 27/27 tests; 16-state real-session QA |
 | Release 0.4.1 | ✅ Complete | 2026-11-13 | Sidebar branding removed, tooltip contrast fixed, settings contrast audited, application icon fixed; 27/27 tests; RPM built |
+| Release 0.4.2 | ✅ Complete | 2026-11-14 | Authoritative version source, dynamic collapsed tab rail, Settings/Expand stacking, developer link updated; 27/27 tests; RPM built |
 
 Stages 2-6 were delivered together in one work phase because the browser engine,
 profile manager and lifecycle state machine are mutually dependent. That phase is
@@ -1517,3 +1518,140 @@ left the other two `Unloaded` with no page.
 - Live provider pages still subject to network variability, consent screens, bot detection
 - Expanded provider strip requires horizontal scrolling for all nine providers
 - Visual QA screenshots may differ between runs due to external provider state
+
+---
+
+## Release 0.4.2: Dynamic Collapsed Tab Rail and Version Fixes (2026-11-14)
+
+**Version**: 0.4.2
+**Status**: ✅ Complete
+
+### Stage 1: Fix About-Screen Version - Authoritative Version Source
+
+**Goal**: Fix the incorrect version displayed in the About screen by establishing a single authoritative version source.
+
+**Root Cause**: The application version was hardcoded in `Application.cpp` as "0.4.1" while `CMakeLists.txt` had 0.4.1. When the RPM was built, the CMake project version was 0.4.1 but the runtime version wasn't synchronized through a generated header.
+
+**Solution**:
+- Created `src/core/version.h.in` template with `@PROJECT_VERSION@` placeholder
+- Added `configure_file()` in `CMakeLists.txt` to generate `src/core/version.h` from the CMake project version
+- Updated `Application.cpp` to include `version.h` and use `AI_WORKSPACE_VERSION` macro
+- Version is now defined in exactly one place: `CMakeLists.txt` project() command
+
+**Files Changed**:
+- `src/core/version.h.in` (new)
+- `CMakeLists.txt` - added configure_file() and include directory
+- `src/core/Application.cpp` - use AI_WORKSPACE_VERSION macro
+
+**Verification**:
+- `test_ui_regression::testRuntimeVersion()` asserts AI_WORKSPACE_VERSION == "0.4.2"
+- `./ai-workspace --version` outputs "AI Workspace 0.4.2"
+- About dialog shows "AI Workspace 0.4.2"
+- Clean build from fresh directory produces correct version
+
+### Stage 2: Dynamic Collapsed Tab Rail
+
+**Goal**: Replace permanent provider shortcuts in collapsed sidebar with icons representing currently open tabs.
+
+**Changes**:
+- Removed `m_collapsedProviderButtons` map and associated provider shortcut creation
+- Added `m_collapsedTabScrollArea`, `m_collapsedTabContainer`, `m_collapsedTabButtons` for tab-based rail
+- Created `rebuildCollapsedTabRail()` that synchronizes collapsed rail with `m_tabItems`
+- Each open tab gets its own icon in the collapsed rail, in the same order as the Open Tabs list
+- Duplicate-provider tabs get separate icons (no deduplication)
+- Active tab is visually highlighted with "selected" property
+- Tab icons use the authentic provider logo
+- Tooltips show both provider name and tab title/state
+- Clicking a rail icon emits `tabSelected()` signal to activate the existing tab
+- Scrollable rail when many tabs are open
+
+**Duplicate-Provider Tab Behaviour**:
+- Two tabs from the same provider (e.g., two DeepSeek chats) produce two separate icons
+- Each icon has the same provider logo but different tooltip identifying the specific tab
+- Clicking each icon activates its respective tab
+
+**Empty State**:
+- With zero tabs, collapsed rail shows no icons (clean empty state)
+- No permanent provider shortcuts remain
+
+**Verification**:
+- `test_sidebar::testProviderStripSelection()` - collapsed rail empty initially, tabs appear when added
+- `test_visual_corrections::testCollapsedSidebarNavigation()` - tab icons appear, click activates tab, duplicate providers create separate entries
+- `test_provider_logos::testProviderNavigationUsesRealLogos()` - collapsed rail uses authentic provider logos for tabs
+- `test_ui_regression::testCollapsedRailShowsOpenTabs()` - basic rail functionality
+- `test_ui_regression::testCollapsedRailDuplicateProviderTabs()` - two tabs from same provider create two icons
+- `test_ui_regression::testCollapsedRailEmptyState()` - no permanent provider shortcuts in collapsed rail
+- `test_ui_regression::testCollapsedRailControlsAccessibleWithManyTabs()` - scrollable with 20 tabs, bottom controls accessible
+
+### Stage 3: Stack Settings Above Expand
+
+**Goal**: Change collapsed sidebar layout so Settings and Expand controls are vertically stacked at the bottom.
+
+**Changes**:
+- Created dedicated `collapsedBottomControls` widget with vertical layout
+- Settings button (`collapsedSettingsButton`) appears first
+- Expand button (`collapsedCollapseButton`) appears second
+- Both centered horizontally in the 60px rail
+- Bottom controls are in a separate widget so tab scrolling cannot push them off-screen
+
+**Verification**:
+- `test_ui_regression::testCollapsedRailSettingsAboveExpand()` - Settings is first, Expand is second in layout
+- `test_ui_regression::testCollapsedRailControlsAccessibleWithManyTabs()` - controls remain visible and functional with 20 tabs
+
+### Stage 4: Update Developer Link
+
+**Goal**: Update the developer link in the About screen to `https://github.com/ChiefDenis/`
+
+**Changes**:
+- `MainWindow::onAbout()` - added GitHub link to About dialog HTML
+- `ai-workspace.spec` - updated URL field to `https://github.com/ChiefDenis/`
+- Link label is "GitHub" and opens the exact URL specified
+
+**Verification**:
+- `test_ui_regression::testAboutDialogDeveloperLink()` asserts About text contains the exact URL
+- RPM spec URL field updated
+
+### Stage 5: Regression Tests
+
+**New Tests Added** (in `test_ui_regression.cpp`):
+- `testRuntimeVersion()` - asserts AI_WORKSPACE_VERSION == "0.4.2"
+- `testAboutDialogVersion()` - asserts About text formatting includes "0.4.2"
+- `testAboutDialogDeveloperLink()` - asserts About text contains exact GitHub URL
+- `testCollapsedRailShowsOpenTabs()` - basic collapsed rail tab functionality
+- `testCollapsedRailDuplicateProviderTabs()` - duplicate provider tabs get separate icons
+- `testCollapsedRailEmptyState()` - no permanent provider shortcuts
+- `testCollapsedRailSettingsAboveExpand()` - Settings above Expand layout
+- `testCollapsedRailControlsAccessibleWithManyTabs()` - scrollable with many tabs, controls accessible
+
+**Total Tests**: 27/27 passing (12 integration, 3 performance, 12 unit)
+
+### Stage 6: Real Wayland Visual QA
+
+- Visual QA harness executed in KDE Plasma Wayland session
+- 8 states × light/dark = 16 screenshots captured:
+  1. Initial workspace (light/dark)
+  2. Active workspace (light/dark)
+  3. Multiple tabs (light/dark)
+  4. Sidebar collapsed (light/dark) - now shows tab icons!
+  5. Empty workspace (light/dark)
+  6. Account management (light/dark)
+  7. Provider strip end (light/dark)
+  8. Restored session (light/dark)
+- Contact sheet generated at `artifacts/visual-qa/contact-sheet.png`
+- Verified: collapsed rail shows tab icons, no permanent provider shortcuts, Settings above Expand, About dialog shows 0.4.2
+
+### Stage 7: Clean Release Build and RPM
+
+- Version bumped from 0.4.1 to 0.4.2 in `CMakeLists.txt`, `ai-workspace.spec`
+- Fresh configure and build from clean directory
+- Full CTest suite: 27/27 passed
+- RPM built: `dist/ai-workspace-0.4.2-1.fc43.x86_64.rpm`
+- Source RPM, debuginfo, debugsource packages produced
+- RPM verified: binary, desktop entry, all 7 icon sizes, LICENSE, README included
+
+### Remaining Known Limitations
+
+- Live provider pages still subject to network variability, consent screens, bot detection
+- Expanded provider strip requires horizontal scrolling for all nine providers
+- Visual QA screenshots may differ between runs due to external provider state
+- Collapsed rail empty state shows no hints about available providers (by design)

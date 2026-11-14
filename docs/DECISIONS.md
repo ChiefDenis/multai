@@ -1227,6 +1227,160 @@ taskbar grouping and launcher display.
 
 ---
 
+### Decision 037: Authoritative Application Version Source
+
+**Date**: 2026-11-14
+**Status**: Accepted
+**Context**: The application version was hardcoded in `Application.cpp` while `CMakeLists.txt` had the project version. This led to inconsistencies where the RPM package version differed from the About screen version. There was no single authoritative source.
+
+**Alternatives Considered**:
+- Keep hardcoded version in Application.cpp: simple but error-prone
+- Use Git tags to derive version: requires git at build time, complex
+- Generate version header from CMake project version: single source of truth
+
+**Decision**: 
+- Create `src/core/version.h.in` template with `@PROJECT_VERSION@` placeholder
+- Add `configure_file()` in `CMakeLists.txt` to generate `src/core/version.h` from CMake project version
+- Update `Application.cpp` to include `version.h` and use `AI_WORKSPACE_VERSION` macro
+- Version is now defined in exactly one place: `CMakeLists.txt` project() command
+
+**Rationale**:
+- Single authoritative version source eliminates drift
+- CMake project version drives RPM spec, runtime version, About dialog, and `--version` flag
+- Clean build from fresh directory always produces correct version
+- No manual synchronization needed
+
+**Consequences**:
+- Positive: Version consistency guaranteed across RPM, runtime, About dialog
+- Positive: No stale version strings in runtime-facing metadata
+- Positive: Build system enforces version synchronization
+- Negative: Requires CMake configure step to generate header (standard practice)
+
+**Related Decisions**: Decision 027 (Versioned Session Schema)
+**Related Issues**: Stage 1 of 0.4.2 release
+
+---
+
+### Decision 038: Collapsed Sidebar Represents Open Tabs
+
+**Date**: 2026-11-14
+**Status**: Accepted
+**Context**: The collapsed sidebar previously displayed permanent provider shortcuts (9 icons for 9 providers). Once tabs were opened, this was not useful because the user couldn't see which providers their open tabs belonged to.
+
+**Alternatives Considered**:
+- Keep permanent provider shortcuts: simple but not useful with open tabs
+- Show both provider shortcuts and tab icons: cluttered, redundant
+- Replace with open tab icons: most useful, shows actual state
+
+**Decision**: Replace permanent provider shortcuts with icons representing currently open tabs. Each open tab gets its own icon in the collapsed rail, in the same order as the Open Tabs list.
+
+**Rationale**:
+- User sees exactly what tabs are open at a glance
+- No redundant provider shortcuts when tabs exist
+- Collapsed rail becomes a functional tab switcher
+- Consistent with expanded sidebar where Open Tabs list shows actual tabs
+
+**Consequences**:
+- Positive: Collapsed sidebar shows actionable information (open tabs)
+- Positive: No duplicate provider identity when tabs are open
+- Negative: Empty state shows no provider shortcuts (user must expand to see all providers)
+- Negative: Must open a tab before its provider appears in collapsed rail
+
+**Related Decisions**: Decision 029 (Horizontal Provider Strip), Decision 032 (Workspace Header Removal)
+**Related Issues**: Stage 2 of 0.4.2 release
+
+---
+
+### Decision 039: Duplicate-Provider Tabs Receive Separate Rail Entries
+
+**Date**: 2026-11-14
+**Status**: Accepted
+**Context**: When multiple tabs belong to the same provider (e.g., two DeepSeek chats), the collapsed rail could either deduplicate them into one icon or show separate icons for each tab.
+
+**Alternatives Considered**:
+- Deduplicate by provider: one icon per provider, click shows menu of tabs
+- Separate icon per tab: each tab gets its own icon, even if same provider
+
+**Decision**: Each tab gets its own icon in the collapsed rail. No deduplication by provider.
+
+**Rationale**:
+- Direct one-click activation of any tab without intermediate menu
+- Visual position corresponds to tab order
+- Tooltip identifies both provider and specific tab
+- Consistent with expanded Open Tabs list where each tab is a separate row
+
+**Consequences**:
+- Positive: Fastest possible tab switching (single click)
+- Positive: Visual tab count matches actual tab count
+- Positive: No hidden menus or extra clicks
+- Negative: Can have many icons from same provider (uses more vertical space)
+- Negative: Provider identity alone doesn't distinguish tabs in rail (rely on tooltip)
+
+**Related Decisions**: Decision 038 (Collapsed Sidebar Represents Open Tabs)
+**Related Issues**: Stage 2 of 0.4.2 release
+
+---
+
+### Decision 040: Fixed Bottom Control Section in Collapsed Rail
+
+**Date**: 2026-11-14
+**Status**: Accepted
+**Context**: The collapsed sidebar needs Settings and Expand controls. Previously they were at the bottom of a growing list of provider shortcuts, which could push them off-screen with many tabs.
+
+**Alternatives Considered**:
+- Controls at bottom of scrollable rail: could be pushed off-screen
+- Controls in fixed overlay: visually disconnected from rail
+- Dedicated bottom control section outside scroll area: always accessible
+
+**Decision**: Create a dedicated `collapsedBottomControls` widget with vertical layout (Settings above Expand) that sits outside the scrollable tab rail area. The tab rail is in a scroll area that takes remaining space; bottom controls are in a fixed-position widget at the bottom of the collapsed rail.
+
+**Rationale**:
+- Settings and Expand are always accessible regardless of tab count
+- Vertical stacking (Settings above Expand) fits the narrow 60px rail
+- Controls don't overlap with tab icons
+- Clean visual separation between dynamic tab rail and permanent controls
+
+**Consequences**:
+- Positive: Controls always visible and clickable
+- Positive: No scrolling needed to reach Settings or Expand
+- Negative: Slightly less space for tab icons (bottom ~80px reserved for controls)
+- Negative: Two-widget layout adds minor complexity
+
+**Related Decisions**: Decision 038 (Collapsed Sidebar Represents Open Tabs)
+**Related Issues**: Stage 3 of 0.4.2 release
+
+---
+
+### Decision 041: Developer Profile URL Policy
+
+**Date**: 2026-11-14
+**Status**: Accepted
+**Context**: The application needs a developer link in the About screen. The project has not been published on GitHub yet, but the developer has a GitHub profile at `https://github.com/ChiefDenis/`.
+
+**Alternatives Considered**:
+- Link to non-existent repository: misleading
+- No developer link: misses attribution opportunity
+- Link to developer profile: accurate, honest about publication status
+
+**Decision**: Use the developer's GitHub profile URL (`https://github.com/ChiefDenis/`) with label "GitHub" in the About dialog. Update RPM spec URL field to match. Do not invent a repository URL or claim the project is published on GitHub.
+
+**Rationale**:
+- Honest about publication status (profile ≠ repository)
+- Provides a way to contact/find the developer
+- Consistent across About dialog and RPM metadata
+- Avoids misleading users about project hosting
+
+**Consequences**:
+- Positive: Accurate developer attribution
+- Positive: No false claims about GitHub repository
+- Negative: Users expecting a repository will find a profile instead
+- Negative: Must update if/when project is published to a repository
+
+**Related Decisions**: Decision 036 (Application Icon Identity)
+**Related Issues**: Stage 4 of 0.4.2 release
+
+---
+
 ## Decision Review Process
 
 ### When to Review Decisions
@@ -1289,6 +1443,15 @@ UI/UX design choices:
 - Decision 030: Remove the Workspace Navigation Toolbar
 - Decision 031: Bundle Authentic Provider SVG Logos and Render Them as Theme-Aware Icons
 - Decision 032: Remove the Remaining Workspace Provider Header
+- Decision 033: Remove Sidebar Branding Header
+- Decision 034: Application-Wide Tooltip Palette
+- Decision 035: Settings Screen Contrast Audit and Refinement
+- Decision 036: Application Icon Identity for Wayland/KDE
+- Decision 037: Authoritative Application Version Source
+- Decision 038: Collapsed Sidebar Represents Open Tabs
+- Decision 039: Duplicate-Provider Tabs Receive Separate Rail Entries
+- Decision 040: Fixed Bottom Control Section in Collapsed Rail
+- Decision 041: Developer Profile URL Policy
 
 ### Implementation Decisions
 

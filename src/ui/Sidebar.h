@@ -40,12 +40,14 @@ public:
   void setSelectedProvider(const QString& providerId);
   QString selectedProvider() const { return m_selectedProviderId; }
 
-  // Test accessors
+// Test accessors
   QScrollArea* providerScrollAreaForTest() const { return m_providerScrollArea; }
   QWidget* providerStripForTest() const { return m_providerStrip; }
   QListWidget* tabListForTest() const { return m_tabList; }
   QWidget* collapsedRailForTest() const { return m_collapsedRail; }
-  QToolButton* collapsedTabsButtonForTest() const { return m_collapsedTabsButton; }
+  QScrollArea* collapsedTabScrollAreaForTest() const { return m_collapsedTabScrollArea; }
+  QWidget* collapsedTabContainerForTest() const { return m_collapsedTabContainer; }
+  const QMap<QString, QToolButton*>& collapsedTabButtonsForTest() const { return m_collapsedTabButtons; }
   QToolButton* collapseButtonForTest() const { return m_collapseButton; }
   QToolButton* settingsButtonForTest() const { return m_settingsButton; }
   QWidget* expandedContainerForTest() const { return m_expandedContainer; }
@@ -70,6 +72,7 @@ private:
   void updateCollapsedTabsButton();
   void showCollapsedTabsMenu();
   void applySelectedProvider(QToolButton* button, const QString& providerId);
+  void rebuildCollapsedTabRail();
 
 private:
   void updateTabItemWidget(QListWidgetItem* item, const QString& title,
@@ -81,6 +84,8 @@ private:
 
   QWidget* m_expandedContainer;
   QWidget* m_collapsedRail;
+  QScrollArea* m_collapsedTabScrollArea;
+  QWidget* m_collapsedTabContainer;
   QToolButton* m_collapsedTabsButton;
   QScrollArea* m_providerScrollArea;
   QWidget* m_providerStrip;
@@ -91,7 +96,7 @@ private:
   QMap<QString, QListWidgetItem*> m_tabItems;
   QMap<QString, QString> m_tabIdToProviderId;
   QMap<QString, QToolButton*> m_providerButtons;
-  QMap<QString, QToolButton*> m_collapsedProviderButtons;
+  QMap<QString, QToolButton*> m_collapsedTabButtons;
   QString m_selectedProviderId;
   int m_sidebarWidth;
   bool m_collapsed;

@@ -155,15 +155,22 @@ void TestSidebar::testProviderStripSelection() {
   sidebar.setSelectedProvider("qwen");
   QVERIFY(!chatgpt->property("selected").toBool());
 
-  const QList<QToolButton*> collapsed =
-      sidebar.collapsedRailForTest()->findChildren<QToolButton*>("collapsedProviderButton");
-  bool collapsedQwenSelected = false;
-  for (QToolButton* button : collapsed) {
-    if (button->property("providerId").toString() == "qwen") {
-      collapsedQwenSelected = button->property("selected").toBool();
-    }
-  }
-  QVERIFY(collapsedQwenSelected);
+  // Collapsed rail now shows open tabs, not provider shortcuts
+  sidebar.setCollapsed(true);
+  QApplication::processEvents();
+
+  // With no tabs open, collapsed rail should have no tab buttons
+  const QMap<QString, QToolButton*>& tabButtons = sidebar.collapsedTabButtonsForTest();
+  QCOMPARE(tabButtons.size(), 0);
+
+  // Add a tab and verify it appears in collapsed rail
+  sidebar.addTabRow("tab-1", "qwen", "Qwen Tab", QIcon(), LifecycleState::Active, false);
+  QApplication::processEvents();
+
+  const QMap<QString, QToolButton*>& tabButtons2 = sidebar.collapsedTabButtonsForTest();
+  QCOMPARE(tabButtons2.size(), 1);
+  QVERIFY(tabButtons2.contains("tab-1"));
+  QCOMPARE(tabButtons2["tab-1"]->property("tabId").toString(), QString("tab-1"));
 }
 
 void TestSidebar::testAddAndRemoveTabRow() {

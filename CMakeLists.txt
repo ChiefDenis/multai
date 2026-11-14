@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.31)
-project(ai-workspace VERSION 0.4.1 LANGUAGES CXX)
+project(ai-workspace VERSION 0.4.2 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -8,6 +8,9 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# Generate version header from CMake project version
+configure_file(src/core/version.h.in src/core/version.h @ONLY)
 
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets WebEngineWidgets)
 
@@ -99,6 +102,7 @@ qt_add_resources(ai-workspace-lib "appicon"
 )
 
 target_include_directories(ai-workspace-lib PRIVATE
+    ${CMAKE_CURRENT_BINARY_DIR}/src/core
     ${CMAKE_CURRENT_SOURCE_DIR}/src/core
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ui
     ${CMAKE_CURRENT_SOURCE_DIR}/src/providers

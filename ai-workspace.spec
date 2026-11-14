@@ -1,10 +1,10 @@
 Name:           ai-workspace
-Version:        0.4.1
+Version:        0.4.2
 Release:        1%{?dist}
 Summary:        Resource-conscious multi-provider AI desktop application
 
 License:        GPL-3.0-or-later
-URL:            https://github.com/Kilo-Org/ai-workspace
+URL:            https://github.com/ChiefDenis/
 Source0:        %{name}-%{version}.tar.gz
 
 BuildArch:      x86_64

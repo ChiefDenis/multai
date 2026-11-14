@@ -413,24 +413,34 @@ void TestVisualCorrections::testCollapsedSidebarNavigation() {
   QVERIFY(!sidebar.providerScrollAreaForTest()->isVisible());
   QVERIFY(!sidebar.tabListForTest()->isVisible());
 
-  const QList<QToolButton*> providerButtons =
-      sidebar.collapsedRailForTest()->findChildren<QToolButton*>("collapsedProviderButton");
-  QCOMPARE(providerButtons.size(), 9);
-  for (QToolButton* button : providerButtons) {
-    QVERIFY(!button->toolTip().isEmpty());
-    QVERIFY(!button->icon().isNull());
-  }
+  // Collapsed rail now shows open tabs, not permanent provider shortcuts
+  // With no tabs, the rail should be empty (no permanent provider shortcuts)
+  const QMap<QString, QToolButton*>& tabButtons = sidebar.collapsedTabButtonsForTest();
+  QCOMPARE(tabButtons.size(), 0);
 
-  QSignalSpy providerSpy(&sidebar, &Sidebar::providerSelected);
-  providerButtons.first()->click();
-  QCOMPARE(providerSpy.count(), 1);
-  QCOMPARE(providerSpy.first().first().toString(), providerButtons.first()->property("providerId").toString());
+  // Add a tab and verify it appears in collapsed rail
+  sidebar.addTabRow("tab-1", "deepseek", "DeepSeek Tab", QIcon(), LifecycleState::Active, false);
+  QApplication::processEvents();
 
-  QToolButton* tabsButton = sidebar.collapsedTabsButtonForTest();
-  QVERIFY(tabsButton != nullptr);
-  QVERIFY(tabsButton->isVisible());
-  QVERIFY(!tabsButton->icon().isNull());
-  QVERIFY(tabsButton->toolTip().contains("Open Tabs"));
+  const QMap<QString, QToolButton*>& tabButtons2 = sidebar.collapsedTabButtonsForTest();
+  QCOMPARE(tabButtons2.size(), 1);
+  QVERIFY(tabButtons2.contains("tab-1"));
+  QVERIFY(!tabButtons2["tab-1"]->toolTip().isEmpty());
+  QVERIFY(!tabButtons2["tab-1"]->icon().isNull());
+
+  // Click the tab button should select the tab
+  QSignalSpy tabSpy(&sidebar, &Sidebar::tabSelected);
+  tabButtons2["tab-1"]->click();
+  QCOMPARE(tabSpy.count(), 1);
+  QCOMPARE(tabSpy.first().first().toString(), QString("tab-1"));
+
+  // Add another tab from same provider - should create separate icon
+  sidebar.addTabRow("tab-2", "deepseek", "DeepSeek Tab 2", QIcon(), LifecycleState::Active, false);
+  QApplication::processEvents();
+
+  const QMap<QString, QToolButton*>& tabButtons3 = sidebar.collapsedTabButtonsForTest();
+  QCOMPARE(tabButtons3.size(), 2);
+  QVERIFY(tabButtons3.contains("tab-2"));
 }
 
 void TestVisualCorrections::testCollapsedSidebarPreservesWindowSize() {

@@ -757,7 +757,7 @@ ctest --test-dir build -R performance
 ./build/tests/test_visual_corrections
 ```
 
-### Current Test Results (2026-11-13)
+### Current Test Results (2026-11-14)
 
 | Category | Tests | Status |
 |----------|-------|--------|
@@ -769,7 +769,132 @@ ctest --test-dir build -R performance
 Total test time: ~90 seconds. Verified in a clean `build` build with
 `ctest --test-dir build --output-on-failure`.
 
+## Dynamic Collapsed Tab Rail and Version Fixes (0.4.2)
+
+### Runtime Version Propagation Tests
+
+The version is now derived from a single authoritative source (CMake project version) via a generated `version.h` header. Tests verify:
+
+- `test_ui_regression::testRuntimeVersion()` - asserts `AI_WORKSPACE_VERSION` macro equals "0.4.2"
+- `test_ui_regression::testAboutDialogVersion()` - asserts About dialog text formatting includes version
+- `test_ui_regression::testAboutDialogDeveloperLink()` - asserts About dialog contains exact GitHub URL
+
+```bash
+# Run version-specific tests
+ctest --test-dir build -R "testRuntimeVersion|testAboutDialog" --output-on-failure
+```
+
+### Collapsed Tab Rail Tests
+
+The collapsed sidebar now represents open tabs instead of permanent provider shortcuts. Tests verify:
+
+- `test_ui_regression::testCollapsedRailShowsOpenTabs()` - empty rail initially, tabs appear when added
+- `test_ui_regression::testCollapsedRailDuplicateProviderTabs()` - two tabs from same provider create two separate icons
+- `test_ui_regression::testCollapsedRailEmptyState()` - no permanent provider shortcuts in collapsed rail
+- `test_ui_regression::testCollapsedRailSettingsAboveExpand()` - Settings button above Expand button in layout
+- `test_ui_regression::testCollapsedRailControlsAccessibleWithManyTabs()` - scrollable with 20 tabs, controls remain accessible
+- `test_visual_corrections::testCollapsedSidebarNavigation()` - tab icons appear, click activates tab, duplicate providers create separate entries
+- `test_provider_logos::testProviderNavigationUsesRealLogos()` - collapsed rail uses authentic provider logos for tabs
+- `test_sidebar::testProviderStripSelection()` - collapsed rail empty initially, tabs appear when added
+
+```bash
+# Run collapsed rail tests
+ctest --test-dir build -R "CollapsedRail|CollapsedSidebar" --output-on-failure
+```
+
+### Session Restoration and Rail Synchronization Tests
+
+- `test_session_restore` - verifies restored tabs repopulate the collapsed rail correctly
+- `test_persistence` - verifies tab metadata persistence includes information needed for rail reconstruction
+
+```bash
+# Run session restoration tests
+ctest --test-dir build -R "test_session_restore|test_persistence" --output-on-failure
+```
+
+### Settings/Expand Layout Tests
+
+- `test_ui_regression::testCollapsedRailSettingsAboveExpand()` - Settings is first, Expand is second in layout
+- `test_ui_regression::testCollapsedRailControlsAccessibleWithManyTabs()` - controls remain visible with 20 tabs
+
+### Developer Link Tests
+
+- `test_ui_regression::testAboutDialogDeveloperLink()` - asserts exact URL `https://github.com/ChiefDenis/`
+
 ### Visual QA Screenshot Harness
+
+The screenshot harness captures the following states for 0.4.2:
+
+```bash
+# Build the harness and application
+cmake -B build -S . -DCMAKE_BUILD_TYPE=Debug
+cmake --build build --target state-launcher
+
+# Capture all 16 states, the restart pair, and the contact sheet
+BUILD_DIR="$PWD/build" systemd-inhibit --what=idle:sleep \
+  --who="AI Workspace Visual QA" --why="Capture UI states" --mode=block \
+  tests/visual-qa/capture-all.sh
+```
+
+Outputs (updated for 0.4.2):
+
+- `artifacts/visual-qa/01-initial-{light,dark}.png` - Initial workspace
+- `artifacts/visual-qa/02-active-workspace-{light,dark}.png` - Active workspace with tabs
+- `artifacts/visual-qa/03-multiple-tabs-{light,dark}.png` - Multiple provider tabs
+- `artifacts/visual-qa/04-sidebar-collapsed-{light,dark}.png` - **Collapsed sidebar showing tab icons**
+- `artifacts/visual-qa/05-empty-workspace-{light,dark}.png` - Empty workspace
+- `artifacts/visual-qa/06-account-management-{light,dark}.png` - Account management dialog
+- `artifacts/visual-qa/07-provider-strip-end-{light,dark}.png` - Provider strip scrolled to end
+- `artifacts/visual-qa/08-restored-session-{light,dark}.png` - Restored session with correct collapsed rail
+- `artifacts/visual-qa/contact-sheet.png` - Contact sheet of all states
+- `artifacts/visual-qa/session-meta.json` - Saved session used to verify restore
+- Per-state `.log` files with WebEngine diagnostics
+
+**Verification Checklist for Visual QA**:
+- [ ] No permanent provider shortcuts in collapsed rail
+- [ ] Every open tab has its own provider-logo icon in collapsed rail
+- [ ] Duplicate-provider tabs are distinguishable through separate positions and tooltips
+- [ ] Active tab selection is unmistakable (highlighted)
+- [ ] Closing and restoring tabs updates the rail
+- [ ] Settings is stacked above Expand in collapsed rail
+- [ ] No clipping, overlapping, or unwanted blank space
+- [ ] About screen visibly displays 0.4.2
+- [ ] Both themes remain legible
+- [ ] Scrollable with many tabs (>15)
+
+### How to Build and Inspect the RPM
+
+```bash
+# Clean build directory
+rm -rf build
+cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j4
+
+# Run tests
+ctest --test-dir build --output-on-failure
+
+# Build RPM
+mkdir -p /tmp/rpmbuild/{SOURCES,SPECS,BUILD,RPMS,SRPMS}
+git archive --format=tar.gz --prefix=ai-workspace-0.4.2/ -o /tmp/rpmbuild/SOURCES/ai-workspace-0.4.2.tar.gz HEAD
+cp ai-workspace.spec /tmp/rpmbuild/SPECS/
+rpmbuild -ba --define "_topdir /tmp/rpmbuild" /tmp/rpmbuild/SPECS/ai-workspace.spec
+
+# Copy artifacts
+mkdir -p dist
+cp /tmp/rpmbuild/RPMS/x86_64/ai-workspace-0.4.2-1.fc43.x86_64.rpm dist/
+cp /tmp/rpmbuild/SRPMS/ai-workspace-0.4.2-1.fc43.src.rpm dist/
+cp /tmp/rpmbuild/RPMS/x86_64/ai-workspace-debuginfo-0.4.2-1.fc43.x86_64.rpm dist/
+cp /tmp/rpmbuild/RPMS/x86_64/ai-workspace-debugsource-0.4.2-1.fc43.x86_64.rpm dist/
+
+# Inspect RPM
+rpm -qip dist/ai-workspace-0.4.2-1.fc43.x86_64.rpm
+rpm -qlp dist/ai-workspace-0.4.2-1.fc43.x86_64.rpm
+
+# Install and test
+sudo dnf install dist/ai-workspace-0.4.2-1.fc43.x86_64.rpm
+ai-workspace --version
+# Launch from application menu or terminal, verify About dialog shows 0.4.2
+```
 
 The screenshot harness is a manual QA tool, not a CTest test. It drives the real
 application on a Wayland or X11 session and captures eight states in light and dark

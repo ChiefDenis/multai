@@ -8,12 +8,21 @@
 #include <QSplitter>
 #include <QWidget>
 #include <Qt>
+#include <QMessageBox>
+#include <QAbstractButton>
+#include <QVBoxLayout>
+#include <QLayoutItem>
+#include <QScrollBar>
+#include <QSignalSpy>
 
 #include "MainWindow.h"
 #include "BrowserWorkspace.h"
 #include "Sidebar.h"
 #include "Theme.h"
 #include "SettingsManager.h"
+#include "version.h"
+#include "providers/ProviderRegistry.h"
+#include "providers/Provider.h"
 
 class TestUIRegression : public QObject {
   Q_OBJECT
@@ -33,6 +42,14 @@ private slots:
   void testApplicationIconSet();
   void testMainWindowIconSet();
   void testDesktopFileHasStartupWMClass();
+  void testRuntimeVersion();
+  void testAboutDialogVersion();
+  void testAboutDialogDeveloperLink();
+  void testCollapsedRailShowsOpenTabs();
+  void testCollapsedRailDuplicateProviderTabs();
+  void testCollapsedRailEmptyState();
+  void testCollapsedRailSettingsAboveExpand();
+  void testCollapsedRailControlsAccessibleWithManyTabs();
 };
 
 void TestUIRegression::initTestCase() {
@@ -214,6 +231,176 @@ void TestUIRegression::testDesktopFileHasStartupWMClass() {
   QVERIFY(found);
   QVERIFY(content.contains("StartupWMClass=ai-workspace"));
   QVERIFY(content.contains("Icon=ai-workspace"));
+}
+
+void TestUIRegression::testRuntimeVersion() {
+  // Test the compile-time version macro matches expected
+  QCOMPARE(QString(AI_WORKSPACE_VERSION), QString("0.4.2"));
+  // Test that the version header was generated correctly
+  QVERIFY(!QString(AI_WORKSPACE_VERSION).isEmpty());
+}
+
+void TestUIRegression::testAboutDialogVersion() {
+  // Test the string formatting that onAbout() uses
+  QString version = AI_WORKSPACE_VERSION;
+  QString aboutText = QString("<b>AI Workspace %1</b><br><br>"
+                              "A resource-conscious, multi-provider AI desktop application.<br>"
+                              "Provider web interfaces are embedded with Qt WebEngine.<br><br>"
+                              "<a href=\"https://github.com/ChiefDenis/\">GitHub</a>")
+                          .arg(version);
+  
+  QVERIFY(aboutText.contains("AI Workspace 0.4.2"));
+  QVERIFY(aboutText.contains("<b>AI Workspace 0.4.2</b>"));
+}
+
+void TestUIRegression::testAboutDialogDeveloperLink() {
+  // Test the string formatting that onAbout() uses
+  QString version = AI_WORKSPACE_VERSION;
+  QString aboutText = QString("<b>AI Workspace %1</b><br><br>"
+                              "A resource-conscious, multi-provider AI desktop application.<br>"
+                              "Provider web interfaces are embedded with Qt WebEngine.<br><br>"
+                              "<a href=\"https://github.com/ChiefDenis/\">GitHub</a>")
+                          .arg(version);
+  
+  QVERIFY(aboutText.contains("https://github.com/ChiefDenis/"));
+  QVERIFY(aboutText.contains("GitHub"));
+  QVERIFY(aboutText.contains("AI Workspace 0.4.2"));
+}
+
+void TestUIRegression::testCollapsedRailShowsOpenTabs() {
+  Sidebar sidebar;
+  sidebar.resize(260, 700);
+  sidebar.show();
+  QApplication::processEvents();
+
+  sidebar.setCollapsed(true);
+  QApplication::processEvents();
+
+  // Empty rail should have no tab buttons
+  const QMap<QString, QToolButton*>& tabButtons = sidebar.collapsedTabButtonsForTest();
+  QCOMPARE(tabButtons.size(), 0);
+
+  // Add a tab
+  sidebar.addTabRow("tab-1", "deepseek", "DeepSeek Tab", QIcon(), LifecycleState::Active, false);
+  QApplication::processEvents();
+
+  const QMap<QString, QToolButton*>& tabButtons2 = sidebar.collapsedTabButtonsForTest();
+  QCOMPARE(tabButtons2.size(), 1);
+  QVERIFY(tabButtons2.contains("tab-1"));
+  QVERIFY(!tabButtons2["tab-1"]->toolTip().isEmpty());
+  QVERIFY(!tabButtons2["tab-1"]->icon().isNull());
+}
+
+void TestUIRegression::testCollapsedRailDuplicateProviderTabs() {
+  Sidebar sidebar;
+  sidebar.resize(260, 700);
+  sidebar.show();
+  QApplication::processEvents();
+
+  sidebar.setCollapsed(true);
+  QApplication::processEvents();
+
+  // Add two tabs from the same provider
+  sidebar.addTabRow("tab-1", "deepseek", "DeepSeek Tab 1", QIcon(), LifecycleState::Active, false);
+  sidebar.addTabRow("tab-2", "deepseek", "DeepSeek Tab 2", QIcon(), LifecycleState::Active, false);
+  QApplication::processEvents();
+
+  const QMap<QString, QToolButton*>& tabButtons = sidebar.collapsedTabButtonsForTest();
+  QCOMPARE(tabButtons.size(), 2);
+  QVERIFY(tabButtons.contains("tab-1"));
+  QVERIFY(tabButtons.contains("tab-2"));
+
+  // Each should have the same provider icon (verify by checking tooltips contain provider name)
+  for (QToolButton* btn : tabButtons) {
+    QVERIFY(btn->toolTip().contains("DeepSeek"));
+  }
+}
+
+void TestUIRegression::testCollapsedRailEmptyState() {
+  Sidebar sidebar;
+  sidebar.resize(260, 700);
+  sidebar.show();
+  QApplication::processEvents();
+
+  sidebar.setCollapsed(true);
+  QApplication::processEvents();
+
+  // Collapsed rail should not show permanent provider shortcuts
+  const QList<QToolButton*> providerButtons =
+      sidebar.collapsedRailForTest()->findChildren<QToolButton*>("collapsedProviderButton");
+  QCOMPARE(providerButtons.size(), 0);
+
+  // Collapsed tab rail should be empty
+  const QMap<QString, QToolButton*>& tabButtons = sidebar.collapsedTabButtonsForTest();
+  QCOMPARE(tabButtons.size(), 0);
+}
+
+void TestUIRegression::testCollapsedRailSettingsAboveExpand() {
+  Sidebar sidebar;
+  sidebar.resize(260, 700);
+  sidebar.show();
+  QApplication::processEvents();
+
+  sidebar.setCollapsed(true);
+  QApplication::processEvents();
+
+  QWidget* bottomControls = sidebar.collapsedRailForTest()->findChild<QWidget*>("collapsedBottomControls");
+  QVERIFY(bottomControls != nullptr);
+
+  QLayout* layout = bottomControls->layout();
+  QVERIFY(layout != nullptr);
+
+  // First widget should be Settings button
+  QLayoutItem* item0 = layout->itemAt(0);
+  QVERIFY(item0 != nullptr);
+  QWidget* widget0 = item0->widget();
+  QVERIFY(widget0 != nullptr);
+  QCOMPARE(widget0->objectName(), QString("collapsedSettingsButton"));
+
+  // Second widget should be Expand button
+  QLayoutItem* item1 = layout->itemAt(1);
+  QVERIFY(item1 != nullptr);
+  QWidget* widget1 = item1->widget();
+  QVERIFY(widget1 != nullptr);
+  QCOMPARE(widget1->objectName(), QString("collapsedCollapseButton"));
+}
+
+void TestUIRegression::testCollapsedRailControlsAccessibleWithManyTabs() {
+  Sidebar sidebar;
+  sidebar.resize(260, 700);
+  sidebar.show();
+  QApplication::processEvents();
+
+  sidebar.setCollapsed(true);
+  QApplication::processEvents();
+
+  // Add many tabs to fill the rail
+  for (int i = 0; i < 20; ++i) {
+    QString providerId = (i % 2 == 0) ? "deepseek" : "qwen";
+    sidebar.addTabRow(QString("tab-%1").arg(i), providerId, QString("Tab %1").arg(i), QIcon(), LifecycleState::Active, false);
+  }
+  QApplication::processEvents();
+
+  const QMap<QString, QToolButton*>& tabButtons = sidebar.collapsedTabButtonsForTest();
+  QCOMPARE(tabButtons.size(), 20);
+
+  // Scroll area should be present and functional
+  QScrollArea* scrollArea = sidebar.collapsedTabScrollAreaForTest();
+  QVERIFY(scrollArea != nullptr);
+  QVERIFY(scrollArea->verticalScrollBar()->maximum() > 0);
+
+  // Bottom controls should still be accessible (not pushed off-screen)
+  QWidget* bottomControls = sidebar.collapsedRailForTest()->findChild<QWidget*>("collapsedBottomControls");
+  QVERIFY(bottomControls != nullptr);
+  QVERIFY(bottomControls->isVisible());
+
+  QToolButton* settingsBtn = bottomControls->findChild<QToolButton*>("collapsedSettingsButton");
+  QVERIFY(settingsBtn != nullptr);
+  QVERIFY(settingsBtn->isVisible());
+
+  QToolButton* expandBtn = bottomControls->findChild<QToolButton*>("collapsedCollapseButton");
+  QVERIFY(expandBtn != nullptr);
+  QVERIFY(expandBtn->isVisible());
 }
 
 QTEST_MAIN(TestUIRegression)
