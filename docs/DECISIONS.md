@@ -1476,6 +1476,41 @@ taskbar grouping and launcher display.
 
 ---
 
+### Decision 045: KDE Icon Cache Update via hicolor-icon-theme Transfiletriggers
+
+**Date**: 2026-11-14
+**Status**: Accepted
+**Context**: The 0.4.3 RPM correctly installed all icon files and desktop entry, but the installed application still showed a generic icon in KDE Plasma. The hicolor icon theme cache (`.icon-theme.cache`) was not being created after RPM installation, so KDE couldn't find the icon by name.
+
+**Alternatives Considered**:
+- Add manual `gtk-update-icon-cache` call in RPM `%post`: works but duplicates what hicolor-icon-theme transfiletriggers already do
+- Rely on hicolor-icon-theme transfiletriggers: standard mechanism but requires the package to be installed and triggers to fire
+- Add `--force` flag to `gtk-update-icon-cache` in RPM `%post`: ensures cache is rebuilt even if timestamps are unusual
+
+**Decision**:
+- Keep CMake install rules for desktop file and icons (single source of truth)
+- Rely on hicolor-icon-theme transfiletriggers for automatic icon cache updates
+- Add `--force` flag to `gtk-update-icon-cache` in RPM `%post`/`%postun` for robustness
+- Add explicit `Requires: hicolor-icon-theme` to ensure transfiletriggers are available
+- Remove redundant manual icon installation from RPM spec (use CMake install only)
+
+**Rationale**:
+- Transfiletriggers are the standard Fedora mechanism for icon cache updates
+- `--force` flag handles edge cases where file timestamps don't trigger rebuild
+- Explicit `Requires: hicolor-icon-theme` guarantees trigger availability
+- Single installation path (CMake) eliminates duplication and conflicts
+
+**Consequences**:
+- Positive: Automatic icon cache updates via standard mechanism
+- Positive: Robust cache rebuild with `--force` flag
+- Positive: Cleaner spec file with single installation path
+- Negative: Requires hicolor-icon-theme package to be installed (standard on Fedora)
+
+**Related Decisions**: Decision 036 (Application Icon Identity), Decision 043 (RPM Build Pipeline), Decision 044 (KDE Application Icon Installation)
+**Related Issues**: Stage 5 of 0.4.4 release
+
+---
+
 ## Decision Review Process
 
 ### When to Review Decisions
@@ -1550,6 +1585,7 @@ UI/UX design choices:
 - Decision 042: Canonical Collapsed Sidebar Bottom Controls
 - Decision 043: Reproducible RPM Build Pipeline with Explicit Asset Installation
 - Decision 044: KDE Application Icon Installation and Desktop Identity
+- Decision 045: KDE Icon Cache Update via hicolor-icon-theme Transfiletriggers
 
 ### Implementation Decisions
 

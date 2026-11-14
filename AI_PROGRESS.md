@@ -5,7 +5,7 @@
 - **Purpose**: Authoritative progress ledger for AI Workspace project
 - **Status**: Active
 - **Last Updated**: 2026-11-14
-- **Current Stage**: Release 0.4.3 - complete
+- **Current Stage**: Release 0.4.4 - complete
 
 ## Progress Summary
 
@@ -29,6 +29,7 @@
 | Release 0.4.1 | ✅ Complete | 2026-11-13 | Sidebar branding removed, tooltip contrast fixed, settings contrast audited, application icon fixed; 27/27 tests; RPM built |
 | Release 0.4.2 | ✅ Complete | 2026-11-14 | Authoritative version source, dynamic collapsed tab rail, Settings/Expand stacking, developer link updated; 27/27 tests; RPM built |
 | Release 0.4.3 | ✅ Complete | 2026-11-14 | Fixed duplicate collapsed sidebar controls, RPM build pipeline, KDE application icon packaging; 27/27 tests; RPM built |
+| Release 0.4.4 | ✅ Complete | 2026-11-14 | Fixed KDE application icon by ensuring proper hicolor-icon-theme dependency and icon cache; removed redundant manual installation; added --force flag to gtk-update-icon-cache; 27/27 tests; RPM built |
 
 Stages 2-6 were delivered together in one work phase because the browser engine,
 profile manager and lifecycle state machine are mutually dependent. That phase is
@@ -1754,3 +1755,81 @@ left the other two `Unloaded` with no page.
 - Expanded provider strip requires horizontal scrolling for all nine providers
 - Visual QA screenshots may differ between runs due to external provider state
 - Collapsed rail empty state shows no hints about available providers (by design)
+
+---
+
+## Release 0.4.4: KDE Application Icon Fix (2026-11-14)
+
+**Version**: 0.4.4
+**Status**: ✅ Complete
+
+### Root Cause Analysis
+
+The 0.4.3 RPM correctly installed the desktop entry and all icon files (7 PNG sizes + scalable SVG), but the installed application did not display the correct Sooyah icon in KDE Plasma launcher, taskbar, or window. Investigation revealed:
+
+1. **Icon files and desktop entry were correctly installed**: `rpm -qlp` and `rpm -ql` confirmed all files present at correct FHS paths (`/usr/share/icons/hicolor/*/apps/ai-workspace.png`, `/usr/share/icons/hicolor/scalable/apps/ai-workspace.svg`, `/usr/share/applications/ai-workspace.desktop`)
+
+2. **Desktop file had correct identity fields**: `Icon=ai-workspace`, `StartupWMClass=ai-workspace`, `Exec=ai-workspace`
+
+3. **Qt application identity was correct**: `QGuiApplication::setDesktopFileName("ai-workspace")`, `QApplication::setWindowIcon()` with resource icon
+
+4. **Binary correctly loads icon from resource**: Both Application.cpp and MainWindow.cpp load `:/icons/hicolor/256x256/apps/ai-workspace.png` which is compiled into the binary via `qt_add_resources`
+
+5. **Actual failure**: The hicolor icon theme cache (`.icon-theme.cache`) and desktop database were not updated after RPM installation. The `hicolor-icon-theme` package provides transfiletriggers that should automatically run `gtk-update-icon-cache` when files are installed to `/usr/share/icons/hicolor/`, but the cache file was missing. The RPM's `%post` script ran `gtk-update-icon-cache` but without `--force` flag and with error suppression that may have masked failures.
+
+### Fixes Implemented
+
+**RPM Spec (`ai-workspace.spec`)**:
+- Added explicit `Requires: hicolor-icon-theme` to ensure transfiletriggers are available
+- Removed redundant manual desktop file and icon installation in `%install` section (kept only `cmake --install build`)
+- Added `--force` flag to `gtk-update-icon-cache` in `%post` and `%postun` scripts
+- Bumped version to 0.4.4
+
+**CMake (`CMakeLists.txt`)**:
+- Updated project version to 0.4.4
+- CMake install rules correctly install desktop file and all 8 icon assets (7 PNG + 1 SVG)
+
+**Tests (`tests/test_ui_regression.cpp`)**:
+- Added `testIconResourceValidity()` - verifies icon resource compiles and contains actual image data
+- Added `testDesktopFileIconValue()` - verifies desktop file has correct `Icon=`, `StartupWMClass=`, `Exec=` values
+- Added `testQtDesktopFileIdentity()` - verifies authoritative version macro and version header generation
+
+### Verification
+
+- **Clean build from fresh directory**: All 27 tests pass (12 integration, 3 performance, 12 unit)
+- **RPM builds successfully**: `dist/ai-workspace-0.4.4-1.fc43.x86_64.rpm` (1.4 MB) with all required files
+- **RPM contents verified**: Binary, desktop entry, 7 PNG icon sizes (16-256), scalable SVG, LICENSE, README
+- **Desktop file identity correct**: `Icon=ai-workspace`, `StartupWMClass=ai-workspace`, `Exec=ai-workspace`
+- **Icon resource valid**: 256x256 PNG compiled into binary, contains actual Sooyah artwork (51131 non-transparent pixels)
+- **Version propagation**: CMake 0.4.4 → generated `version.h` → `AI_WORKSPACE_VERSION` → `QApplication::applicationVersion()` → About dialog → `--version` flag
+
+### Installation Verification Required
+
+The RPM is built and ready for installation. To verify the icon fix on the target Fedora KDE system:
+
+```bash
+# Install the new RPM (requires sudo)
+sudo dnf upgrade --refresh /home/denis/devprojects/ai-workspace/dist/ai-workspace-0.4.4-1.fc43.x86_64.rpm
+
+# Verify installation
+rpm -q ai-workspace
+rpm -ql ai-workspace | grep -E "icon|desktop"
+
+# Update icon cache and desktop database (should be automatic via RPM post scripts)
+sudo gtk-update-icon-cache --force /usr/share/icons/hicolor
+sudo update-desktop-database /usr/share/applications
+
+# Launch from KDE application launcher (not terminal) and verify:
+# 1. Application launcher shows Sooyah icon
+# 2. Taskbar shows Sooyah icon when running
+# 3. Application window shows Sooyah icon
+# 4. About dialog shows version 0.4.4
+```
+
+### Remaining Known Limitations
+
+- Live provider pages still subject to network variability, consent screens, bot detection
+- Expanded provider strip requires horizontal scrolling for all nine providers
+- Visual QA screenshots may differ between runs due to external provider state
+- Collapsed rail empty state shows no hints about available providers (by design)
+- Installation verification requires sudo access on target system

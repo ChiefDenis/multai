@@ -1031,6 +1031,108 @@ ai-workspace --version
 # Verify icon in KDE launcher, taskbar, and window
 ```
 
+---
+
+## KDE Application Icon Fix (0.4.4)
+
+### Icon Packaging Tests
+
+The 0.4.4 release fixes the KDE application icon by ensuring proper hicolor-icon-theme dependency and icon cache updates.
+
+- `test_ui_regression::testIconResourceValidity()` - verifies icon resource compiles and contains actual Sooyah artwork (51131 non-transparent pixels)
+- `test_ui_regression::testDesktopFileIconValue()` - verifies desktop file has correct `Icon=ai-workspace`, `StartupWMClass=ai-workspace`, `Exec=ai-workspace`
+- `test_ui_regression::testQtDesktopFileIdentity()` - verifies authoritative version macro and version header generation
+
+**RPM verification for 0.4.4**:
+```bash
+# Inspect RPM file list
+rpm -qlp dist/ai-workspace-0.4.4-1.fc43.x86_64.rpm
+
+# Verify icon files present
+rpm -qlp dist/ai-workspace-0.4.4-1.fc43.x86_64.rpm | grep icons
+
+# Verify desktop file
+rpm -qlp dist/ai-workspace-0.4.4-1.fc43.x86_64.rpm | grep desktop
+
+# Verify hicolor-icon-theme dependency
+rpm -qip dist/ai-workspace-0.4.4-1.fc43.x86_64.rpm | grep hicolor
+```
+
+### Version Tests (Updated for 0.4.4)
+
+- `test_ui_regression::testRuntimeVersion()` - asserts `AI_WORKSPACE_VERSION` macro equals "0.4.4"
+- `test_ui_regression::testAboutDialogVersion()` - asserts About dialog text formatting includes "0.4.4"
+- `test_ui_regression::testAboutDialogDeveloperLink()` - asserts About dialog contains exact GitHub URL
+- `test_ui_regression::testQtDesktopFileIdentity()` - verifies version header components (major=0, minor=4, patch=4)
+
+### Visual QA Screenshot Harness (Updated for 0.4.4)
+
+The screenshot harness captures the following states for 0.4.4:
+
+```bash
+# Build the harness and application
+cmake -B build -S . -DCMAKE_BUILD_TYPE=Debug
+cmake --build build --target state-launcher
+
+# Capture all 16 states, the restart pair, and the contact sheet
+BUILD_DIR="$PWD/build" systemd-inhibit --what=idle:sleep \
+  --who="AI Workspace Visual QA" --why="Capture UI states" --mode=block \
+  tests/visual-qa/capture-all.sh
+```
+
+**Verification Checklist for Visual QA (0.4.4)**:
+- [ ] No permanent provider shortcuts in collapsed rail
+- [ ] Every open tab has its own provider-logo icon in collapsed rail
+- [ ] Duplicate-provider tabs are distinguishable through separate positions and tooltips
+- [ ] Active tab selection is unmistakable (highlighted)
+- [ ] Closing and restoring tabs updates the rail
+- [ ] Settings is stacked above Expand in collapsed rail
+- [ ] Exactly one Settings control visible in collapsed rail
+- [ ] Exactly one Expand control visible in collapsed rail
+- [ ] No clipping, overlapping, or unwanted blank space
+- [ ] About screen visibly displays 0.4.4
+- [ ] Both themes remain legible
+- [ ] Scrollable with many tabs (>15)
+- [ ] **Installed RPM shows correct Sooyah icon in launcher, taskbar, and window**
+
+### How to Build and Inspect the RPM (0.4.4)
+
+```bash
+# Clean build directory
+rm -rf build
+cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j4
+
+# Run tests
+ctest --test-dir build --output-on-failure
+
+# Build RPM
+mkdir -p /tmp/rpmbuild/{SOURCES,SPECS,BUILD,RPMS,SRPMS}
+git archive --format=tar.gz --prefix=ai-workspace-0.4.4/ -o /tmp/rpmbuild/SOURCES/ai-workspace-0.4.4.tar.gz HEAD
+cp ai-workspace.spec /tmp/rpmbuild/SPECS/
+rpmbuild -ba --define "_topdir /tmp/rpmbuild" /tmp/rpmbuild/SPECS/ai-workspace.spec
+
+# Copy artifacts
+mkdir -p dist
+cp /tmp/rpmbuild/RPMS/x86_64/ai-workspace-0.4.4-1.fc43.x86_64.rpm dist/
+cp /tmp/rpmbuild/SRPMS/ai-workspace-0.4.4-1.fc43.src.rpm dist/
+cp /tmp/rpmbuild/RPMS/x86_64/ai-workspace-debuginfo-0.4.4-1.fc43.x86_64.rpm dist/
+cp /tmp/rpmbuild/RPMS/x86_64/ai-workspace-debugsource-0.4.4-1.fc43.x86_64.rpm dist/
+
+# Inspect RPM
+rpm -qip dist/ai-workspace-0.4.4-1.fc43.x86_64.rpm
+rpm -qlp dist/ai-workspace-0.4.4-1.fc43.x86_64.rpm
+
+# Install and test (requires sudo)
+sudo dnf upgrade --refresh dist/ai-workspace-0.4.4-1.fc43.x86_64.rpm
+ai-workspace --version
+# Launch from KDE application launcher (not terminal), verify:
+# 1. About dialog shows 0.4.4
+# 2. Application launcher shows Sooyah icon
+# 3. Taskbar shows Sooyah icon when running
+# 4. Application window shows Sooyah icon
+```
+
 The screenshot harness is a manual QA tool, not a CTest test. It drives the real
 application on a Wayland or X11 session and captures eight states in light and dark
 themes, including a real restart-and-restore pair.

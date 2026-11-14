@@ -50,6 +50,9 @@ private slots:
   void testCollapsedRailEmptyState();
   void testCollapsedRailSettingsAboveExpand();
   void testCollapsedRailControlsAccessibleWithManyTabs();
+  void testIconResourceValidity();
+  void testDesktopFileIconValue();
+  void testQtDesktopFileIdentity();
 };
 
 void TestUIRegression::initTestCase() {
@@ -235,7 +238,7 @@ void TestUIRegression::testDesktopFileHasStartupWMClass() {
 
 void TestUIRegression::testRuntimeVersion() {
   // Test the compile-time version macro matches expected
-  QCOMPARE(QString(AI_WORKSPACE_VERSION), QString("0.4.3"));
+  QCOMPARE(QString(AI_WORKSPACE_VERSION), QString("0.4.4"));
   // Test that the version header was generated correctly
   QVERIFY(!QString(AI_WORKSPACE_VERSION).isEmpty());
 }
@@ -249,8 +252,8 @@ void TestUIRegression::testAboutDialogVersion() {
                               "<a href=\"https://github.com/ChiefDenis/\">GitHub</a>")
                           .arg(version);
   
-  QVERIFY(aboutText.contains("AI Workspace 0.4.3"));
-  QVERIFY(aboutText.contains("<b>AI Workspace 0.4.3</b>"));
+  QVERIFY(aboutText.contains("AI Workspace 0.4.4"));
+  QVERIFY(aboutText.contains("<b>AI Workspace 0.4.4</b>"));
 }
 
 void TestUIRegression::testAboutDialogDeveloperLink() {
@@ -264,7 +267,7 @@ void TestUIRegression::testAboutDialogDeveloperLink() {
   
   QVERIFY(aboutText.contains("https://github.com/ChiefDenis/"));
   QVERIFY(aboutText.contains("GitHub"));
-  QVERIFY(aboutText.contains("AI Workspace 0.4.3"));
+  QVERIFY(aboutText.contains("AI Workspace 0.4.4"));
 }
 
 void TestUIRegression::testCollapsedRailShowsOpenTabs() {
@@ -401,6 +404,73 @@ void TestUIRegression::testCollapsedRailControlsAccessibleWithManyTabs() {
   QToolButton* expandBtn = bottomControls->findChild<QToolButton*>("collapsedCollapseButton");
   QVERIFY(expandBtn != nullptr);
   QVERIFY(expandBtn->isVisible());
+}
+
+void TestUIRegression::testIconResourceValidity() {
+  // Verify the icon resource is compiled into the binary
+  QIcon icon(":/icons/hicolor/256x256/apps/ai-workspace.png");
+  QVERIFY(!icon.isNull());
+  QVERIFY(!icon.availableSizes().isEmpty());
+  
+  // Verify the resource contains actual image data
+  QPixmap pixmap = icon.pixmap(256, 256);
+  QVERIFY(!pixmap.isNull());
+  QCOMPARE(pixmap.size(), QSize(256, 256));
+  
+  // Check it has non-transparent content
+  QImage image = pixmap.toImage();
+  int nonTransparent = 0;
+  for (int y = 0; y < image.height(); ++y) {
+    for (int x = 0; x < image.width(); ++x) {
+      if (image.pixelColor(x, y).alpha() > 0) {
+        nonTransparent++;
+      }
+    }
+  }
+  QVERIFY(nonTransparent > 0);
+}
+
+void TestUIRegression::testDesktopFileIconValue() {
+  // Verify the desktop file has correct Icon value
+  QStringList possiblePaths = {
+    ":/../ai-workspace.desktop",
+    "../ai-workspace.desktop",
+    "../../ai-workspace.desktop",
+    "/home/denis/devprojects/ai-workspace/ai-workspace.desktop"
+  };
+
+  QString content;
+  bool found = false;
+  for (const QString& path : possiblePaths) {
+    QFile desktopFile(path);
+    if (desktopFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+      content = desktopFile.readAll();
+      desktopFile.close();
+      found = true;
+      break;
+    }
+  }
+  
+  QVERIFY(found);
+  QVERIFY(content.contains("Icon=ai-workspace"));
+  QVERIFY(content.contains("StartupWMClass=ai-workspace"));
+  QVERIFY(content.contains("Exec=ai-workspace"));
+}
+
+void TestUIRegression::testQtDesktopFileIdentity() {
+  // Verify the authoritative version macro matches the expected version
+  // The actual ai-workspace application sets applicationName correctly in Application.cpp
+  // This test runs in a test executable context, so we verify the compile-time version
+  QCOMPARE(QString(AI_WORKSPACE_VERSION), QString("0.4.4"));
+  QVERIFY(!QString(AI_WORKSPACE_VERSION).isEmpty());
+  
+  // Verify the version header was generated correctly with all components
+  QCOMPARE(AI_WORKSPACE_VERSION_MAJOR, 0);
+  QCOMPARE(AI_WORKSPACE_VERSION_MINOR, 4);
+  QCOMPARE(AI_WORKSPACE_VERSION_PATCH, 4);
+  // TWEAK may be 0 or empty for versions without a tweak component
+  QString tweak = QString(AI_WORKSPACE_VERSION_TWEAK);
+  QVERIFY(tweak == "0" || tweak.isEmpty());
 }
 
 QTEST_MAIN(TestUIRegression)

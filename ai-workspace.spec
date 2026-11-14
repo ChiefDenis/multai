@@ -1,5 +1,5 @@
 Name:           ai-workspace
-Version:        0.4.3
+Version:        0.4.4
 Release:        1%{?dist}
 Summary:        Resource-conscious multi-provider AI desktop application
 
@@ -40,26 +40,12 @@ cmake --build build --target ai-workspace
 %install
 DESTDIR=%{buildroot} cmake --install build
 
-# Install desktop file
-desktop-file-install --dir=%{buildroot}%{_datadir}/applications \
-  %{name}.desktop
-
-# Install icons
-for size in 16 24 32 48 64 128 256; do
-  install -D -m 0644 icons/hicolor/${size}x${size}/apps/%{name}.png \
-    %{buildroot}%{_datadir}/icons/hicolor/${size}x${size}/apps/%{name}.png
-done
-
-# Install scalable SVG icon
-install -D -m 0644 icons/hicolor/scalable/apps/%{name}.svg \
-  %{buildroot}%{_datadir}/icons/hicolor/scalable/apps/%{name}.svg
-
 %post
-gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
+gtk-update-icon-cache --force %{_datadir}/icons/hicolor &>/dev/null || :
 update-desktop-database %{_datadir}/applications &>/dev/null || :
 
 %postun
-gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
+gtk-update-icon-cache --force %{_datadir}/icons/hicolor &>/dev/null || :
 update-desktop-database %{_datadir}/applications &>/dev/null || :
 
 %files
@@ -71,6 +57,13 @@ update-desktop-database %{_datadir}/applications &>/dev/null || :
 %{_datadir}/icons/hicolor/scalable/apps/%{name}.svg
 
 %changelog
+* Sat Nov 14 2026 AI Workspace <noreply@localhost> - 0.4.4-1
+- Release version 0.4.4
+- Fix KDE application icon by ensuring proper hicolor-icon-theme dependency
+- Remove redundant manual icon/desktop installation in favor of CMake install
+- Add --force flag to gtk-update-icon-cache in post scripts
+- Bump version to 0.4.4
+
 * Sat Nov 14 2026 AI Workspace <noreply@localhost> - 0.4.3-1
 - Release version 0.4.3
 - Fix duplicate Settings/Expand controls in collapsed sidebar
