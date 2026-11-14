@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.31)
-project(ai-workspace VERSION 0.4.2 LANGUAGES CXX)
+
+option(BUILD_TESTS "Build tests" ON)
+
+project(ai-workspace VERSION 0.4.3 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -149,6 +152,45 @@ install(TARGETS ai-workspace
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
-enable_testing()
+install(FILES ai-workspace.desktop
+    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/applications
+)
 
-add_subdirectory(tests)
+# Install icons
+install(FILES icons/hicolor/16x16/apps/ai-workspace.png
+    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/16x16/apps
+    RENAME ai-workspace.png
+)
+install(FILES icons/hicolor/24x24/apps/ai-workspace.png
+    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/24x24/apps
+    RENAME ai-workspace.png
+)
+install(FILES icons/hicolor/32x32/apps/ai-workspace.png
+    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/32x32/apps
+    RENAME ai-workspace.png
+)
+install(FILES icons/hicolor/48x48/apps/ai-workspace.png
+    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/48x48/apps
+    RENAME ai-workspace.png
+)
+install(FILES icons/hicolor/64x64/apps/ai-workspace.png
+    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/64x64/apps
+    RENAME ai-workspace.png
+)
+install(FILES icons/hicolor/128x128/apps/ai-workspace.png
+    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/128x128/apps
+    RENAME ai-workspace.png
+)
+install(FILES icons/hicolor/256x256/apps/ai-workspace.png
+    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/256x256/apps
+    RENAME ai-workspace.png
+)
+install(FILES icons/hicolor/scalable/apps/ai-workspace.svg
+    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/scalable/apps
+    RENAME ai-workspace.svg
+)
+
+if(BUILD_TESTS)
+  enable_testing()
+  add_subdirectory(tests)
+endif()

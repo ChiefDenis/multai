@@ -235,7 +235,7 @@ void TestUIRegression::testDesktopFileHasStartupWMClass() {
 
 void TestUIRegression::testRuntimeVersion() {
   // Test the compile-time version macro matches expected
-  QCOMPARE(QString(AI_WORKSPACE_VERSION), QString("0.4.2"));
+  QCOMPARE(QString(AI_WORKSPACE_VERSION), QString("0.4.3"));
   // Test that the version header was generated correctly
   QVERIFY(!QString(AI_WORKSPACE_VERSION).isEmpty());
 }
@@ -249,8 +249,8 @@ void TestUIRegression::testAboutDialogVersion() {
                               "<a href=\"https://github.com/ChiefDenis/\">GitHub</a>")
                           .arg(version);
   
-  QVERIFY(aboutText.contains("AI Workspace 0.4.2"));
-  QVERIFY(aboutText.contains("<b>AI Workspace 0.4.2</b>"));
+  QVERIFY(aboutText.contains("AI Workspace 0.4.3"));
+  QVERIFY(aboutText.contains("<b>AI Workspace 0.4.3</b>"));
 }
 
 void TestUIRegression::testAboutDialogDeveloperLink() {
@@ -264,7 +264,7 @@ void TestUIRegression::testAboutDialogDeveloperLink() {
   
   QVERIFY(aboutText.contains("https://github.com/ChiefDenis/"));
   QVERIFY(aboutText.contains("GitHub"));
-  QVERIFY(aboutText.contains("AI Workspace 0.4.2"));
+  QVERIFY(aboutText.contains("AI Workspace 0.4.3"));
 }
 
 void TestUIRegression::testCollapsedRailShowsOpenTabs() {

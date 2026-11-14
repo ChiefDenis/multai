@@ -1381,6 +1381,101 @@ taskbar grouping and launcher display.
 
 ---
 
+### Decision 042: Canonical Collapsed Sidebar Bottom Controls
+
+**Date**: 2026-11-14
+**Status**: Accepted
+**Context**: The collapsed sidebar had duplicate Settings and Expand controls because `setupBottomSection()` created a bottom section in the main sidebar layout (always visible), while `setupCollapsedRail()` created its own controls inside the collapsed rail.
+
+**Alternatives Considered**:
+- Hide the main bottom section when collapsed: complex visibility management
+- Remove collapsed rail's bottom controls: loses Settings/Expand in collapsed mode
+- Move expanded sidebar's bottom controls inside the expanded container: clean separation
+
+**Decision**: Remove `setupBottomSection()` entirely. Create `setupExpandedBottomSection()` that adds Settings and Collapse buttons inside the expanded container. Keep `setupCollapsedRail()` with its own Settings and Expand buttons inside the collapsed rail.
+
+**Rationale**:
+- Clean separation: expanded sidebar controls only visible when expanded, collapsed rail controls only visible when collapsed
+- No duplicate widgets in widget hierarchy
+- Simpler `setCollapsed()` logic - only needs to toggle container visibility
+- Maintains Settings above Expand layout in both modes
+
+**Consequences**:
+- Positive: No duplicate controls, cleaner widget hierarchy
+- Positive: Simpler collapse/expand logic
+- Negative: Slightly more code (two separate bottom section setups)
+
+**Related Decisions**: Decision 038 (Collapsed Sidebar Represents Open Tabs), Decision 040 (Fixed Bottom Control Section)
+**Related Issues**: Stage 1 of 0.4.3 release
+
+---
+
+### Decision 043: Reproducible RPM Build Pipeline with Explicit Asset Installation
+
+**Date**: 2026-11-14
+**Status**: Accepted
+**Context**: The RPM build was unreliable - it built tests (slow), and CMake install rules for desktop file and icons were not executing in the RPM build environment.
+
+**Alternatives Considered**:
+- Fix CMake install rules: complex, platform-specific issues
+- Build tests in RPM: slow, unnecessary for binary package
+- Explicit installation in RPM spec: reliable, standard practice
+
+**Decision**: 
+- Add `BUILD_TESTS` CMake option (default ON for development, OFF for RPM)
+- RPM spec builds with `-DBUILD_TESTS=OFF` and only targets `ai-workspace`
+- Explicit `desktop-file-install` and icon installation loops in RPM spec `%install` section
+- Include scalable SVG icon
+
+**Rationale**:
+- RPM builds faster (no tests)
+- Explicit installation is reliable and auditable
+- Standard Fedora packaging practice
+- Assets installed to correct FHS locations
+
+**Consequences**:
+- Positive: Faster, reliable RPM builds
+- Positive: Explicit control over installed files
+- Negative: Duplication of install logic (CMake + RPM spec)
+
+**Related Decisions**: Decision 036 (Application Icon Identity), Decision 027 (Versioned Session Schema)
+**Related Issues**: Stage 2 of 0.4.3 release
+
+---
+
+### Decision 044: KDE Application Icon Installation and Desktop Identity
+
+**Date**: 2026-11-14
+**Status**: Accepted
+**Context**: The installed application showed a generic icon in KDE Plasma launcher and taskbar. The desktop file and icons were not reliably installed by CMake in the RPM build.
+
+**Alternatives Considered**:
+- Rely on CMake install rules: wasn't working in RPM build environment
+- Add icon installation to RPM spec: reliable, explicit
+- Use GTK icon cache update: standard freedesktop mechanism
+
+**Decision**:
+- Explicit `desktop-file-install` in RPM spec
+- Explicit icon installation loops for 7 PNG sizes (16-256) + scalable SVG
+- `%post`/`%postun` scripts run `gtk-update-icon-cache` and `update-desktop-database`
+- Desktop file: `Icon=ai-workspace`, `StartupWMClass=ai-workspace`
+- Application: `QGuiApplication::setDesktopFileName("ai-workspace")`, `setWindowIcon()`
+
+**Rationale**:
+- Explicit installation ensures files reach correct FHS locations
+- Standard icon cache update works for both GTK and Qt applications
+- Complete Wayland/KDE application identity
+
+**Consequences**:
+- Positive: Correct icon in launcher, taskbar, window
+- Positive: Reliable across packaging scenarios
+- Negative: More spec file complexity
+
+**Related Decisions**: Decision 036 (Application Icon Identity), Decision 043 (RPM Build Pipeline)
+**Related Issues**: Stage 3 of 0.4.3 release
+
+---
+
 ## Decision Review Process
 
 ### When to Review Decisions
@@ -1452,6 +1547,9 @@ UI/UX design choices:
 - Decision 039: Duplicate-Provider Tabs Receive Separate Rail Entries
 - Decision 040: Fixed Bottom Control Section in Collapsed Rail
 - Decision 041: Developer Profile URL Policy
+- Decision 042: Canonical Collapsed Sidebar Bottom Controls
+- Decision 043: Reproducible RPM Build Pipeline with Explicit Asset Installation
+- Decision 044: KDE Application Icon Installation and Desktop Identity
 
 ### Implementation Decisions
 

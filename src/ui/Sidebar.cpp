@@ -134,15 +134,13 @@ void Sidebar::setupUi() {
 
   setupProviderSection();
   setupTabsSection();
+  setupExpandedBottomSection();
   mainLayout->addWidget(m_expandedContainer);
 
   // Collapsed rail
   setupCollapsedRail();
   mainLayout->addWidget(m_collapsedRail);
   m_collapsedRail->setVisible(false);
-
-  // Bottom section
-  setupBottomSection();
 }
 
 void Sidebar::setupProviderSection() {
@@ -324,8 +322,6 @@ void Sidebar::rebuildCollapsedTabRail() {
     delete item;
   }
 
-  const bool isDark = (SettingsManager::instance()->theme() == "dark");
-
   // Create a button for each open tab in order
   for (int i = 0; i < m_tabList->count(); ++i) {
     QListWidgetItem* item = m_tabList->item(i);
@@ -403,8 +399,8 @@ void Sidebar::applySelectedProvider(QToolButton* button, const QString& provider
   }
 }
 
-void Sidebar::setupBottomSection() {
-  QWidget* bottomSection = new QWidget(this);
+void Sidebar::setupExpandedBottomSection() {
+  QWidget* bottomSection = new QWidget(m_expandedContainer);
   bottomSection->setObjectName("sidebarBottomSection");
   QHBoxLayout* bottomLayout = new QHBoxLayout(bottomSection);
   bottomLayout->setContentsMargins(12, 8, 12, 8);
@@ -412,7 +408,7 @@ void Sidebar::setupBottomSection() {
 
   const bool isDark = (SettingsManager::instance()->theme() == "dark");
 
-  m_collapseButton = new QToolButton(this);
+  m_collapseButton = new QToolButton(bottomSection);
   m_collapseButton->setObjectName("sidebarCollapseButton");
   m_collapseButton->setToolTip("Collapse sidebar");
   m_collapseButton->setIcon(ToolbarIcons::backIcon(isDark));
@@ -427,7 +423,7 @@ void Sidebar::setupBottomSection() {
 
   bottomLayout->addStretch();
 
-  m_settingsButton = new QToolButton(this);
+  m_settingsButton = new QToolButton(bottomSection);
   m_settingsButton->setObjectName("sidebarSettingsButton");
   m_settingsButton->setToolTip("Settings");
   m_settingsButton->setIcon(ToolbarIcons::settingsIcon(isDark));
@@ -437,7 +433,10 @@ void Sidebar::setupBottomSection() {
   connect(m_settingsButton, &QToolButton::clicked, this, &Sidebar::settingsRequested);
   bottomLayout->addWidget(m_settingsButton);
 
-  layout()->addWidget(bottomSection);
+  // Add to expanded container layout
+  if (m_expandedContainer && m_expandedContainer->layout()) {
+    static_cast<QVBoxLayout*>(m_expandedContainer->layout())->addWidget(bottomSection);
+  }
 }
 
 void Sidebar::addProviderRow(const QString& providerId, const QString& displayName,

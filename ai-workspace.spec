@@ -1,5 +1,5 @@
 Name:           ai-workspace
-Version:        0.4.2
+Version:        0.4.3
 Release:        1%{?dist}
 Summary:        Resource-conscious multi-provider AI desktop application
 
@@ -34,7 +34,7 @@ Gemini, Anthropic Claude, Perplexity, ChatGPT, and Kimi.
 %autosetup
 
 %build
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=%{_prefix}
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=%{_prefix} -DBUILD_TESTS=OFF
 cmake --build build --target ai-workspace
 
 %install
@@ -50,6 +50,10 @@ for size in 16 24 32 48 64 128 256; do
     %{buildroot}%{_datadir}/icons/hicolor/${size}x${size}/apps/%{name}.png
 done
 
+# Install scalable SVG icon
+install -D -m 0644 icons/hicolor/scalable/apps/%{name}.svg \
+  %{buildroot}%{_datadir}/icons/hicolor/scalable/apps/%{name}.svg
+
 %post
 gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 update-desktop-database %{_datadir}/applications &>/dev/null || :
@@ -64,8 +68,24 @@ update-desktop-database %{_datadir}/applications &>/dev/null || :
 %{_bindir}/%{name}
 %{_datadir}/applications/%{name}.desktop
 %{_datadir}/icons/hicolor/*/apps/%{name}.png
+%{_datadir}/icons/hicolor/scalable/apps/%{name}.svg
 
 %changelog
+* Sat Nov 14 2026 AI Workspace <noreply@localhost> - 0.4.3-1
+- Release version 0.4.3
+- Fix duplicate Settings/Expand controls in collapsed sidebar
+- Fix RPM build pipeline to ensure clean build
+- Fix KDE application icon installation and desktop identity
+- Update collapsed sidebar to use single bottom control section
+- Bump version to 0.4.3
+
+* Fri Nov 13 2026 AI Workspace <noreply@localhost> - 0.4.2-1
+- Release version 0.4.2
+- Authoritative version source via generated version.h
+- Dynamic collapsed sidebar showing open tabs
+- Settings/Expand stacked in fixed bottom section
+- Developer link updated to https://github.com/ChiefDenis/
+
 * Fri Nov 13 2026 AI Workspace <noreply@localhost> - 0.4.1-1
 - Release version 0.4.1
 - Remove sidebar branding header (app icon and name)

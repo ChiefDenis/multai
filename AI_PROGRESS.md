@@ -4,8 +4,8 @@
 
 - **Purpose**: Authoritative progress ledger for AI Workspace project
 - **Status**: Active
-- **Last Updated**: 2026-11-13
-- **Current Stage**: Release 0.4.1 - complete
+- **Last Updated**: 2026-11-14
+- **Current Stage**: Release 0.4.3 - complete
 
 ## Progress Summary
 
@@ -28,6 +28,7 @@
 | Provider Logos and Header Removal | ✅ Complete | 2026-11-13 | Authentic SVG brand logos in every provider surface; workspace header deleted; 27/27 tests; 16-state real-session QA |
 | Release 0.4.1 | ✅ Complete | 2026-11-13 | Sidebar branding removed, tooltip contrast fixed, settings contrast audited, application icon fixed; 27/27 tests; RPM built |
 | Release 0.4.2 | ✅ Complete | 2026-11-14 | Authoritative version source, dynamic collapsed tab rail, Settings/Expand stacking, developer link updated; 27/27 tests; RPM built |
+| Release 0.4.3 | ✅ Complete | 2026-11-14 | Fixed duplicate collapsed sidebar controls, RPM build pipeline, KDE application icon packaging; 27/27 tests; RPM built |
 
 Stages 2-6 were delivered together in one work phase because the browser engine,
 profile manager and lifecycle state machine are mutually dependent. That phase is
@@ -1648,6 +1649,104 @@ left the other two `Unloaded` with no page.
 - RPM built: `dist/ai-workspace-0.4.2-1.fc43.x86_64.rpm`
 - Source RPM, debuginfo, debugsource packages produced
 - RPM verified: binary, desktop entry, all 7 icon sizes, LICENSE, README included
+
+### Remaining Known Limitations
+
+- Live provider pages still subject to network variability, consent screens, bot detection
+- Expanded provider strip requires horizontal scrolling for all nine providers
+- Visual QA screenshots may differ between runs due to external provider state
+- Collapsed rail empty state shows no hints about available providers (by design)
+
+---
+
+## Release 0.4.3: Collapsed Sidebar Controls, RPM Pipeline, and KDE Icon Fix (2026-11-14)
+
+**Version**: 0.4.3
+**Status**: ✅ Complete
+
+### Stage 1: Fix Duplicate Collapsed Sidebar Controls
+
+**Goal**: Remove duplicate Settings and Expand controls in the collapsed sidebar.
+
+**Root Cause**: The `setupBottomSection()` function created a bottom section with Settings and Collapse buttons that was added to the MAIN sidebar layout (outside the expanded/collapsed containers). This bottom section was ALWAYS visible. Meanwhile, `setupCollapsedRail()` created its own Settings and Expand buttons inside the collapsed rail. When the sidebar was collapsed, both the collapsed rail's bottom controls AND the main bottom section were visible, causing duplicates.
+
+**Changes**:
+- Removed `setupBottomSection()` entirely
+- Created `setupExpandedBottomSection()` that adds Settings and Collapse buttons INSIDE the expanded container (`m_expandedContainer`)
+- Kept `setupCollapsedRail()` with its own Settings and Expand buttons (now correctly inside the collapsed rail)
+- Removed unused `m_collapsedTabsButton` member
+- Removed unused `showCollapsedTabsMenu()` and `updateCollapsedTabsButton()` functions
+
+**Verification**:
+- All 27 tests passing
+- Visual QA confirms single Settings and Expand controls in collapsed mode
+- Expanded sidebar still has Settings and Collapse at bottom
+
+### Stage 2: Fix RPM/Build-Directory Mismatch
+
+**Goal**: Ensure the RPM is built from a clean, verified build pipeline.
+
+**Root Cause**: The RPM spec was building with tests enabled, which increased build time and complexity. The CMake install rules for desktop file and icons were not being executed reliably in the RPM build environment.
+
+**Changes**:
+- Added `BUILD_TESTS` CMake option (default ON for development, OFF for RPM builds)
+- Modified RPM spec to build with `-DBUILD_TESTS=OFF` and only build the `ai-workspace` target
+- Added explicit desktop file and icon installation in RPM spec `%install` section as fallback
+- Added scalable SVG icon installation
+- RPM now builds faster and more reliably
+
+**Verification**:
+- Clean build from fresh directory: all 27 tests pass
+- RPM builds successfully with all required files
+- RPM contains: binary, desktop entry, 7 PNG icon sizes, scalable SVG, LICENSE, README
+
+### Stage 3: Fix KDE Application Icon Packaging and Identity
+
+**Goal**: Ensure the installed application shows the correct icon in KDE Plasma launcher, taskbar, and window.
+
+**Root Cause**: The desktop file and icons were not being reliably installed by CMake in the RPM build environment. The icon theme cache was not being updated properly.
+
+**Changes**:
+- Added explicit desktop file installation via `desktop-file-install` in RPM spec
+- Added explicit icon installation for all 7 PNG sizes (16, 24, 32, 48, 64, 128, 256) plus scalable SVG
+- Added `%post` and `%postun` scripts to update icon cache and desktop database
+- Desktop file uses `Icon=ai-workspace` and `StartupWMClass=ai-workspace`
+- Application sets `QGuiApplication::setDesktopFileName("ai-workspace")` and window icon
+
+**Verification**:
+- RPM file list confirms all icon sizes and desktop file present
+- Desktop file has correct `Icon=`, `Exec=`, `StartupWMClass=` fields
+- Application binary has correct version (0.4.3) and icon resource
+
+### Stage 4: Version Bump to 0.4.3
+
+- Updated `CMakeLists.txt` project version to 0.4.3
+- Updated `ai-workspace.spec` version to 0.4.3
+- Generated `version.h` with AI_WORKSPACE_VERSION = "0.4.3"
+- Updated test expectations to 0.4.3
+- Updated changelog in spec file
+
+### Stage 5: Regression Tests
+
+- All existing 27 tests pass (12 integration, 3 performance, 12 unit)
+- Tests verify: no duplicate controls, collapsed rail functionality, version consistency, icon resources
+
+### Stage 6: Real Wayland Visual QA
+
+- Visual QA harness executed in KDE Plasma Wayland session
+- 8 states × light/dark = 16 screenshots captured
+- Contact sheet: `artifacts/visual-qa/contact-sheet.png`
+- Verified: single Settings/Expand controls, collapsed tab rail works, correct icons, About shows 0.4.3
+
+### Stage 7: Clean Release Build and RPM
+
+- Fresh configure and build from clean directory
+- Full CTest suite: 27/27 passed
+- **Main RPM**: `dist/ai-workspace-0.4.3-1.fc43.x86_64.rpm` (1.4 MB)
+- **Source RPM**: `dist/ai-workspace-0.4.3-1.fc43.src.rpm` (3.6 MB)
+- **Debuginfo**: `dist/ai-workspace-debuginfo-0.4.3-1.fc43.x86_64.rpm` (3.0 MB)
+- **Debugsource**: `dist/ai-workspace-debugsource-0.4.3-1.fc43.x86_64.rpm` (139 KB)
+- RPM verified: binary, desktop entry, 7 PNG icon sizes + scalable SVG, LICENSE, README
 
 ### Remaining Known Limitations
 

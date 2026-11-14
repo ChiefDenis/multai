@@ -68,9 +68,7 @@ private:
   void setupProviderSection();
   void setupTabsSection();
   void setupCollapsedRail();
-  void setupBottomSection();
-  void updateCollapsedTabsButton();
-  void showCollapsedTabsMenu();
+  void setupExpandedBottomSection();
   void applySelectedProvider(QToolButton* button, const QString& providerId);
   void rebuildCollapsedTabRail();
 
@@ -86,7 +84,6 @@ private:
   QWidget* m_collapsedRail;
   QScrollArea* m_collapsedTabScrollArea;
   QWidget* m_collapsedTabContainer;
-  QToolButton* m_collapsedTabsButton;
   QScrollArea* m_providerScrollArea;
   QWidget* m_providerStrip;
   QListWidget* m_tabList;
