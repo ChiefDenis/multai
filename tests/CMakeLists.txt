@@ -547,6 +547,10 @@ target_link_libraries(test_ui_regression PRIVATE
 
 target_include_directories(test_ui_regression PRIVATE ${TEST_INCLUDE_DIRS})
 
+target_compile_definitions(test_ui_regression PRIVATE
+  AI_WORKSPACE_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
+)
+
 add_test(NAME test_ui_regression COMMAND test_ui_regression)
 set_property(TEST test_ui_regression PROPERTY LABELS "integration")
 

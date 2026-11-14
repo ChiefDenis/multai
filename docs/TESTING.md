@@ -1033,11 +1033,121 @@ ai-workspace --version
 
 ---
 
-## KDE Application Icon Fix (0.4.4)
+## KDE Application Icon Root Cause and Verification (0.4.5)
+
+### Actual root cause
+
+KDE's `KIconLoaderPrivate::findMatchingIcon()` (KF6 6.30) walks the icon theme
+tree and, **inside each theme**, strips the last `-`-separated suffix until a
+name matches. It only moves to the next inherited theme after that per-theme
+loop fails. With the Kora theme active, `ai-workspace` had no exact Kora entry,
+so the loader stripped `-workspace`, matched Kora's `ai` mimetype icon (Adobe
+Illustrator), and returned it before ever consulting hicolor's exact
+`ai-workspace.png`. The same lookup is used for the desktop entry icon, the
+Windows/taskbar association on Wayland (`app_id` → desktop file → `Icon=`) and
+`QIcon::fromTheme()` in a KDE session.
+
+Evidence collected on the affected Fedora 43 / KDE Plasma Wayland system:
+
+```bash
+kreadconfig6 --file kdeglobals --group Icons --key Theme   # kora
+kiconfinder6 ai-workspace   # ~/.local/share/icons/kora/mimetypes/scalable/ai.svg
+kiconfinder6 ai_workspace   # empty before install; hicolor PNG after install
+```
+
+A native Qt 6.10.3 + KDE platform-theme probe reported:
+
+```text
+themeName=kora
+--- fromTheme ai-workspace null=0 name=ai
+    pixmap 64x64 center rgba=(111,53,12,255)   # #6f350c, Illustrator brown
+--- fromTheme ai_workspace (installed in isolated data dir) null=0 name=ai_workspace
+    pixmap 64x64 center rgba=(249,123,73,255)  # Sooyah orange
+```
+
+The icon files, desktop entry, Qt resource and cache were all valid. The
+failure was the icon **name**, not packaging or cache state. A stale hicolor
+cache did not prevent `ai_workspace` from resolving in an isolated test.
+
+### Why 0.4.3 and 0.4.4 did not fix it
+
+- 0.4.3 verified that the PNG/SVG files and desktop entry were installed, but
+  did not test KDE's actual name lookup.
+- 0.4.4 added `hicolor-icon-theme`, forced `gtk-update-icon-cache` and embedded
+  the resource, but the desktop entry still used the hyphenated name
+  `ai-workspace`. KIconLoader never reached the hicolor file, so none of those
+  changes could affect the result.
+- The `testIconThemeResolution()` test added in 0.4.4 passed when the lookup
+  returned `nullptr`, so it did not detect the defect.
+
+### Permanent fix (0.4.5)
+
+- Canonical icon name is `ai_workspace` (hyphen-free) in the desktop entry,
+  hicolor files and Qt resource.
+- Desktop file ID / Wayland `app_id` stay `ai-workspace` (via
+  `QGuiApplication::setDesktopFileName`) so taskbar grouping and pinned
+  launchers keep working.
+- `StartupWMClass=ai-workspace` is retained for XWayland.
+- Only the canonical icon name is installed; the legacy hyphenated alias is
+  removed. `hicolor-icon-theme` and `desktop-file-utils` transfiletriggers
+  handle the cache and desktop database, so no duplicate RPM scriptlets.
+
+### Automated regression tests
+
+`tests/test_ui_regression.cpp` now covers the real failure:
+
+- `testIconNameAvoidsKdeHyphenFallback()` — the desktop `Icon=` name must equal
+  `ai_workspace` and must contain no `-`.
+- `testIconThemeResolution()` — if the icon is installed, `QIcon::fromTheme`
+  must return `ai_workspace` with Sooyah-orange center pixels, never `ai` or
+  Illustrator brown.
+- `testMainWindowIconSet()` — the window icon's center pixel must be Sooyah
+  orange, not the Illustrator brown.
+- `testIconSizesAndArtwork()` — all seven PNG sizes and the scalable SVG exist,
+  decode and contain opaque pixels.
+- `testApplicationIdentityMatchesDesktopEntry()` — desktop file basename equals
+  `AppIdentity::kDesktopFileName` and `Icon=` equals `AppIdentity::kIconName`.
+- `testPackagingInstallsCanonicalIcon()` — CMake and the RPM spec package the
+  canonical name and do not package the legacy hyphenated install glob.
+- `testInstalledIconResolvesViaKde()` — runs `kiconfinder6 ai_workspace` when
+  available; skips in an uninstalled development tree, fails if the result is
+  `/ai.svg` or a `/mimetypes/` path.
+- `testInstalledIconIsOutsideBuildDirectory()` — the installed 256 PNG is under
+  `/usr/share` (or `/usr/local/share`), loads, and shows Sooyah artwork.
+
+### Manual KDE visual verification (not fully automatable)
+
+CTest cannot prove what KWin paints. After installing the RPM, verify visually:
+
+```bash
+rpm -q ai-workspace
+rpm -qf "$(command -v ai-workspace)"
+grep -E '^(Name|Exec|Icon|StartupWMClass|Type)=' /usr/share/applications/ai-workspace.desktop
+find /usr/share/icons/hicolor -iname '*ai_workspace*'
+kiconfinder6 ai_workspace          # must be a hicolor ai_workspace path
+```
+
+Then launch from the KDE application launcher (not a terminal) and capture:
+
+1. Launcher entry icon.
+2. Taskbar entry icon while running.
+3. Window/titlebar icon.
+4. Application switcher entry (Alt+Tab), where supported.
+
+Compare the installed `/usr/bin/ai-workspace` with the development build. Also
+repeat with `QT_QPA_PLATFORM=xcb` (XWayland) to confirm `StartupWMClass`.
+
+---
+
+## KDE Application Icon Attempt (0.4.4) — superseded
 
 ### Icon Packaging Tests
 
-The 0.4.4 release fixes the KDE application icon by ensuring proper hicolor-icon-theme dependency and icon cache updates.
+The 0.4.4 release attempted to fix the KDE application icon by ensuring the
+hicolor-icon-theme dependency and icon cache updates. **This conclusion was
+wrong**: the files and cache were fine; the hyphenated icon name was being
+resolved to Kora's `ai` mimetype icon before hicolor was consulted. See the
+0.4.5 root-cause section above.
 
 - `test_ui_regression::testIconResourceValidity()` - verifies icon resource compiles and contains actual Sooyah artwork (51131 non-transparent pixels)
 - `test_ui_regression::testDesktopFileIconValue()` - verifies desktop file has correct `Icon=ai-workspace`, `StartupWMClass=ai-workspace`, `Exec=ai-workspace`

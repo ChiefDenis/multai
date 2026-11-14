@@ -1777,6 +1777,8 @@ The 0.4.3 RPM correctly installed the desktop entry and all icon files (7 PNG si
 
 5. **Actual failure**: The hicolor icon theme cache (`.icon-theme.cache`) and desktop database were not updated after RPM installation. The `hicolor-icon-theme` package provides transfiletriggers that should automatically run `gtk-update-icon-cache` when files are installed to `/usr/share/icons/hicolor/`, but the cache file was missing. The RPM's `%post` script ran `gtk-update-icon-cache` but without `--force` flag and with error suppression that may have masked failures.
 
+> **Correction (0.4.5)**: This conclusion was wrong. The cache and desktop database were not the cause. The installed icon was cached and resolvable by exact name, but KDE's `KIconLoader` strips hyphen suffixes inside the active theme first, so `ai-workspace` resolved to Kora's `ai.svg` (Adobe Illustrator) before hicolor was consulted. See the 0.4.5 section at the end of this file.
+
 ### Fixes Implemented
 
 **RPM Spec (`ai-workspace.spec`)**:
@@ -1833,3 +1835,90 @@ sudo update-desktop-database /usr/share/applications
 - Visual QA screenshots may differ between runs due to external provider state
 - Collapsed rail empty state shows no hints about available providers (by design)
 - Installation verification requires sudo access on target system
+
+---
+
+## Release 0.4.5: KDE Icon Root Cause and Permanent Fix (2026-11-14)
+
+**Version**: 0.4.5
+**Status**: In progress (build/test/install verification recorded below as it is performed)
+
+### Root cause (established from the installed 0.4.4 system)
+
+The installed 0.4.4 package was correct: `/usr/bin/ai-workspace` was RPM-owned, the desktop entry was `Icon=ai-workspace`, and all seven PNG sizes plus the SVG were installed in hicolor. The defect was KDE's icon-name lookup:
+
+- `KIconLoaderPrivate::findMatchingIcon()` in KF6 6.30 walks the theme tree and, within each theme, strips the last `-`-separated suffix until a name matches; it only moves to the next inherited theme after that loop fails.
+- The active theme on this system is Kora (`kreadconfig6 --file kdeglobals --group Icons --key Theme` → `kora`). Kora ships `mimetypes/scalable/ai.svg` for Adobe Illustrator.
+- For `ai-workspace`, Kora had no exact match, so the loader stripped `-workspace`, matched `ai`, and returned `ai.svg` before hicolor's exact `ai-workspace.png` was ever considered.
+
+Evidence:
+
+```text
+kiconfinder6 ai-workspace
+  -> /home/denis/.local/share/icons/kora/mimetypes/scalable/ai.svg
+kiconfinder6 ai-foo
+  -> /home/denis/.local/share/icons/kora/mimetypes/scalable/ai.svg
+kiconfinder6 ai_workspace
+  -> empty (not installed at the time)
+```
+
+Native Qt 6.10.3 + KDE platform-theme probe (real Wayland session):
+
+```text
+themeName=kora
+--- fromTheme ai-workspace null=0 name=ai
+    pixmap 64x64 center rgba=(111,53,12,255)   # #6f350c Illustrator brown
+--- fromTheme ai (not requested by the app)
+    pixmap 64x64 center rgba=(111,53,12,255)
+```
+
+With the same PNG copied into an isolated hicolor data dir:
+
+```text
+--- fromTheme ai_workspace null=0 name=ai_workspace
+    pixmap 64x64 center rgba=(249,123,73,255)  # Sooyah orange
+kiconfinder6 ai_workspace
+  -> /tmp/opencode/icontest/icons/hicolor/256x256/apps/ai_workspace.png
+```
+
+A stale hicolor `icon-theme.cache` did not prevent `ai_workspace` from resolving, so the 0.4.4 cache hypothesis was disproven.
+
+### Why 0.4.3 and 0.4.4 failed
+
+- Both releases kept the hyphenated icon name `ai-workspace`.
+- KIconLoader's per-theme hyphen stripping runs before the hicolor fallback, so the exact hicolor file could never win while Kora contained `ai`.
+- The 0.4.4 `testIconThemeResolution()` passed when `QIcon::fromTheme()` returned null and therefore did not detect the collision.
+
+### Changes
+
+- Added `src/core/AppIdentity.h` as the single source of truth:
+  `kDesktopFileName = "ai-workspace"`, `kIconName = "ai_workspace"`,
+  `kIconResource = ":/icons/hicolor/256x256/apps/ai_workspace.png"`.
+- `Application.cpp` and `MainWindow.cpp` use `AppIdentity` and
+  `QIcon::fromTheme("ai_workspace", resource)`.
+- `ai-workspace.desktop`: `Icon=ai_workspace`; desktop file ID, `Exec` and
+  `StartupWMClass` remain `ai-workspace`.
+- `CMakeLists.txt`: embed only the canonical resource; install only
+  `ai_workspace.png` (16–256) and `ai_workspace.svg`.
+- `ai-workspace.spec`: package only the canonical icon; rely on the
+  `hicolor-icon-theme` and `desktop-file-utils` transfiletriggers instead of
+  duplicate `%post`/`%postun` scriptlets; added `Requires: desktop-file-utils`.
+- Tests: added hyphen-name, artwork, window-icon color, identity, packaging,
+  installed-path and `kiconfinder6` integration checks.
+
+### Verification
+
+- Fresh build directory: `build-0.4.5` (Debug), configured and built successfully.
+- Full CTest suite: **27/27 passed** (12 integration, 3 performance, 12 unit), 0 failed.
+- Staged install (`DESTDIR=/tmp/opencode/stage cmake --install build-0.4.5 --prefix /usr`)
+  contains exactly `/usr/bin/ai-workspace`, the desktop entry, seven
+  `ai_workspace.png` sizes and `ai_workspace.svg`; no legacy `ai-workspace.*`
+  icon files.
+- Isolated lookup with `XDG_DATA_DIRS=/tmp/opencode/stage/usr/share:/usr/share`:
+  `kiconfinder6 ai_workspace` → staged hicolor PNG;
+  `kiconfinder6 ai-workspace` → Kora `ai.svg` (the old defect, still reproducible
+  for the legacy name but no longer referenced).
+- The source artwork files were renamed from `ai-workspace.*` to
+  `ai_workspace.*`; content is unchanged.
+- RPM build, installation and real KDE visual verification: pending (requires
+  sudo; see the final report).

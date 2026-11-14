@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.31)
 
 option(BUILD_TESTS "Build tests" ON)
 
-project(ai-workspace VERSION 0.4.4 LANGUAGES CXX)
+project(ai-workspace VERSION 0.4.5 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -66,6 +66,7 @@ qt_add_resources(provider-logos "providerlogos"
 target_link_libraries(provider-logos PRIVATE Qt6::Core)
 
 set(PROJECT_HEADERS
+    src/core/AppIdentity.h
     src/core/Application.h
     src/core/SettingsManager.h
     src/core/TabStore.h
@@ -101,7 +102,8 @@ qt_add_library(ai-workspace-lib STATIC
 qt_add_resources(ai-workspace-lib "appicon"
     PREFIX "/icons"
     BASE "icons"
-    FILES icons/hicolor/256x256/apps/ai-workspace.png
+    FILES
+        icons/hicolor/256x256/apps/ai_workspace.png
 )
 
 target_include_directories(ai-workspace-lib PRIVATE
@@ -156,38 +158,33 @@ install(FILES ai-workspace.desktop
     DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/applications
 )
 
-# Install icons
-install(FILES icons/hicolor/16x16/apps/ai-workspace.png
+# Install the canonical icon name. It must not contain '-' because KDE's
+# KIconLoader strips hyphen-separated suffixes inside each theme before it
+# consults hicolor, so "ai-workspace" resolves to the "ai" mimetype icon in
+# themes such as Kora.
+install(FILES icons/hicolor/16x16/apps/ai_workspace.png
     DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/16x16/apps
-    RENAME ai-workspace.png
 )
-install(FILES icons/hicolor/24x24/apps/ai-workspace.png
+install(FILES icons/hicolor/24x24/apps/ai_workspace.png
     DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/24x24/apps
-    RENAME ai-workspace.png
 )
-install(FILES icons/hicolor/32x32/apps/ai-workspace.png
+install(FILES icons/hicolor/32x32/apps/ai_workspace.png
     DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/32x32/apps
-    RENAME ai-workspace.png
 )
-install(FILES icons/hicolor/48x48/apps/ai-workspace.png
+install(FILES icons/hicolor/48x48/apps/ai_workspace.png
     DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/48x48/apps
-    RENAME ai-workspace.png
 )
-install(FILES icons/hicolor/64x64/apps/ai-workspace.png
+install(FILES icons/hicolor/64x64/apps/ai_workspace.png
     DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/64x64/apps
-    RENAME ai-workspace.png
 )
-install(FILES icons/hicolor/128x128/apps/ai-workspace.png
+install(FILES icons/hicolor/128x128/apps/ai_workspace.png
     DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/128x128/apps
-    RENAME ai-workspace.png
 )
-install(FILES icons/hicolor/256x256/apps/ai-workspace.png
+install(FILES icons/hicolor/256x256/apps/ai_workspace.png
     DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/256x256/apps
-    RENAME ai-workspace.png
 )
-install(FILES icons/hicolor/scalable/apps/ai-workspace.svg
+install(FILES icons/hicolor/scalable/apps/ai_workspace.svg
     DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/scalable/apps
-    RENAME ai-workspace.svg
 )
 
 if(BUILD_TESTS)

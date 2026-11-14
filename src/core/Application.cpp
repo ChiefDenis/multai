@@ -1,4 +1,5 @@
 #include "Application.h"
+#include "AppIdentity.h"
 #include "MainWindow.h"
 
 #include <QGuiApplication>
@@ -12,6 +13,6 @@ Application::Application(int& argc, char** argv)
   setApplicationVersion(AI_WORKSPACE_VERSION);
   setOrganizationName("ai-workspace");
   setOrganizationDomain("ai-workspace.local");
-  QGuiApplication::setDesktopFileName("ai-workspace");
-  setWindowIcon(QIcon(":/icons/hicolor/256x256/apps/ai-workspace.png"));
+  QGuiApplication::setDesktopFileName(AppIdentity::kDesktopFileName);
+  setWindowIcon(QIcon::fromTheme(AppIdentity::kIconName, QIcon(AppIdentity::kIconResource)));
 }

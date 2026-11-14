@@ -185,12 +185,13 @@ ctest --test-dir build --output-on-failure
   test_visual_corrections, test_session_restore
 - Performance (3): test_memory_usage, test_tab_timings, test_profile_growth
 
-**Version**: 0.4.0
+**Version**: 0.4.5
 
 **Packaging**:
 - RPM spec: `ai-workspace.spec` (Fedora)
 - Desktop entry: `ai-workspace.desktop`
-- Application icon: `icons/hicolor/*/apps/ai-workspace.png`
+- Application icon: `icons/hicolor/*/apps/ai_workspace.png` and `icons/hicolor/scalable/apps/ai_workspace.svg`
+- The icon name deliberately contains no `-`: KDE's KIconLoader strips hyphen-separated suffixes per theme, which can resolve a hyphenated name to an unrelated mimetype icon.
 
 
 Once packaged, installation will be:

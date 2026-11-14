@@ -1,5 +1,5 @@
 Name:           ai-workspace
-Version:        0.4.4
+Version:        0.4.5
 Release:        1%{?dist}
 Summary:        Resource-conscious multi-provider AI desktop application
 
@@ -20,6 +20,7 @@ BuildRequires:  pkgconfig(Qt6WebEngineWidgets)
 Requires:       qt6-qtbase >= 6.10
 Requires:       qt6-qtwebengine >= 6.10
 Requires:       hicolor-icon-theme
+Requires:       desktop-file-utils
 
 %description
 AI Workspace is a resource-conscious, multi-provider AI desktop application
@@ -40,29 +41,32 @@ cmake --build build --target ai-workspace
 %install
 DESTDIR=%{buildroot} cmake --install build
 
-%post
-gtk-update-icon-cache --force %{_datadir}/icons/hicolor &>/dev/null || :
-update-desktop-database %{_datadir}/applications &>/dev/null || :
-
-%postun
-gtk-update-icon-cache --force %{_datadir}/icons/hicolor &>/dev/null || :
-update-desktop-database %{_datadir}/applications &>/dev/null || :
-
 %files
 %license LICENSE
 %doc README.md
 %{_bindir}/%{name}
 %{_datadir}/applications/%{name}.desktop
-%{_datadir}/icons/hicolor/*/apps/%{name}.png
-%{_datadir}/icons/hicolor/scalable/apps/%{name}.svg
+%{_datadir}/icons/hicolor/*/apps/ai_workspace.png
+%{_datadir}/icons/hicolor/scalable/apps/ai_workspace.svg
 
 %changelog
+* Sat Nov 14 2026 AI Workspace <noreply@localhost> - 0.4.5-1
+- Fix KDE icon resolution root cause: KIconLoader strips hyphen-separated suffixes
+  inside each theme before consulting hicolor. With the active Kora theme,
+  "ai-workspace" resolved to the "ai" Adobe Illustrator mimetype icon instead of
+  the installed hicolor application icon, regardless of cache or packaging state.
+- Rename the canonical icon to the hyphen-free "ai_workspace" in the desktop entry,
+  hicolor installation and Qt resource.
+- Install only the canonical icon name; old "ai-workspace" icon aliases are removed.
+- Remove redundant icon-cache/desktop-database scriptlets; hicolor-icon-theme and
+  desktop-file-utils provide the Fedora transfiletriggers.
+- Add regression tests for the hyphen-free icon name, artwork, Qt window icon,
+  desktop-entry identity and installed KDE icon lookup.
+- Bump version to 0.4.5
+
 * Sat Nov 14 2026 AI Workspace <noreply@localhost> - 0.4.4-1
-- Release version 0.4.4
-- Fix KDE application icon by ensuring proper hicolor-icon-theme dependency
-- Remove redundant manual icon/desktop installation in favor of CMake install
-- Add --force flag to gtk-update-icon-cache in post scripts
-- Bump version to 0.4.4
+- Attempted icon fix via hicolor-icon-theme dependency and forced icon-cache updates
+- This did not address the actual KIconLoader hyphen-fallback collision and was superseded by 0.4.5
 
 * Sat Nov 14 2026 AI Workspace <noreply@localhost> - 0.4.3-1
 - Release version 0.4.3

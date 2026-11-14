@@ -1446,7 +1446,7 @@ taskbar grouping and launcher display.
 ### Decision 044: KDE Application Icon Installation and Desktop Identity
 
 **Date**: 2026-11-14
-**Status**: Accepted
+**Status**: Superseded by Decision 046 (icon naming); installation and desktop identity parts remain valid
 **Context**: The installed application showed a generic icon in KDE Plasma launcher and taskbar. The desktop file and icons were not reliably installed by CMake in the RPM build.
 
 **Alternatives Considered**:
@@ -1479,7 +1479,7 @@ taskbar grouping and launcher display.
 ### Decision 045: KDE Icon Cache Update via hicolor-icon-theme Transfiletriggers
 
 **Date**: 2026-11-14
-**Status**: Accepted
+**Status**: Superseded — the cache hypothesis was disproven in 0.4.5; see Decision 046
 **Context**: The 0.4.3 RPM correctly installed all icon files and desktop entry, but the installed application still showed a generic icon in KDE Plasma. The hicolor icon theme cache (`.icon-theme.cache`) was not being created after RPM installation, so KDE couldn't find the icon by name.
 
 **Alternatives Considered**:
@@ -1508,6 +1508,48 @@ taskbar grouping and launcher display.
 
 **Related Decisions**: Decision 036 (Application Icon Identity), Decision 043 (RPM Build Pipeline), Decision 044 (KDE Application Icon Installation)
 **Related Issues**: Stage 5 of 0.4.4 release
+
+---
+
+### Decision 046: Hyphen-Free Application Icon Name for KDE
+
+**Date**: 2026-11-14
+**Status**: Accepted
+**Context**: Releases 0.4.3 and 0.4.4 still showed a generic icon. System inspection of the 0.4.4 installation proved that the files, desktop entry, Qt resource, startup order and icon cache were all correct. The actual defect was in KDE's icon lookup:
+
+- `KIconLoaderPrivate::findMatchingIcon()` (KF6 6.30) loops over icon themes and, within each theme, removes the last `-`-separated suffix until something matches. Only then does it continue to the next inherited theme.
+- The active theme was Kora. Kora ships `mimetypes/scalable/ai.svg` for Adobe Illustrator. For the name `ai-workspace`, Kora had no exact match, so KIconLoader stripped `-workspace` and matched `ai` before it ever consulted hicolor's exact `ai-workspace.png`.
+- `kiconfinder6 ai-workspace` returned `~/.local/share/icons/kora/mimetypes/scalable/ai.svg`; `kiconfinder6 ai_workspace` returned the packaged hicolor PNG when installed in an isolated data dir.
+- A native Qt 6.10.3/KDE Wayland probe confirmed `QIcon::fromTheme("ai-workspace")` returned `name=ai` with center pixel `#6f350c` (the Illustrator icon), while `QIcon::fromTheme("ai_workspace")` returned the orange Sooyah artwork.
+- A stale hicolor cache did not prevent `ai_workspace` from resolving, so the 0.4.4 cache hypothesis was wrong.
+
+**Alternatives Considered**:
+- Rebuild the icon cache again: disproven; the exact hicolor icon was present and cached, but KIconLoader never reached it.
+- Install the icon into every theme: unmaintainable and still theme-dependent.
+- Use an absolute icon path in the desktop entry: brittle and loses theme/HiDPI integration.
+- Use a hyphen-free icon name: matches KDE's lookup rules and keeps normal hicolor lookup.
+
+**Decision**:
+- Canonical application icon name is `ai_workspace` (no `-`).
+- Desktop entry uses `Icon=ai_workspace`; the desktop file ID and Wayland app_id remain `ai-workspace` so grouping and existing launchers keep working.
+- Install `ai_workspace.png` at 16/24/32/48/64/128/256 and `ai_workspace.svg` in hicolor.
+- Install only the canonical name; do not ship the known-broken hyphenated alias.
+- Keep `StartupWMClass=ai-workspace` and `QGuiApplication::setDesktopFileName("ai-workspace")`.
+- Rely on the `hicolor-icon-theme` and `desktop-file-utils` transfiletriggers instead of duplicate RPM scriptlets.
+
+**Rationale**:
+- The icon name is the only thing KIconLoader hyphen-splits; removing the hyphen from that one identifier fixes every KDE surface (launcher, taskbar, window decoration, app switcher) while preserving the app_id.
+- Keeping the desktop file ID avoids breaking pinned launchers and taskbar grouping.
+- Tests can now enforce the invariant that the icon name contains no `-`.
+
+**Consequences**:
+- Positive: launcher, taskbar and window resolve the Sooyah artwork in Kora and other themes.
+- Positive: no dependence on cache state, build directory or theme overrides.
+- Negative: external configurations that referenced the literal icon name `ai-workspace` must use `ai_workspace`.
+- Neutral: the desktop file ID and executable name remain `ai-workspace`.
+
+**Related Decisions**: Decision 036 (Application Icon Identity), Decision 044 (KDE Application Icon Installation), Decision 045 (superseded cache hypothesis)
+**Related Issues**: 0.4.5 icon root-cause fix
 
 ---
 
@@ -1585,7 +1627,8 @@ UI/UX design choices:
 - Decision 042: Canonical Collapsed Sidebar Bottom Controls
 - Decision 043: Reproducible RPM Build Pipeline with Explicit Asset Installation
 - Decision 044: KDE Application Icon Installation and Desktop Identity
-- Decision 045: KDE Icon Cache Update via hicolor-icon-theme Transfiletriggers
+- Decision 045: KDE Icon Cache Update via hicolor-icon-theme Transfiletriggers (superseded)
+- Decision 046: Hyphen-Free Application Icon Name for KDE
 
 ### Implementation Decisions
 

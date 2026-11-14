@@ -1,5 +1,6 @@
 #include "MainWindow.h"
 
+#include "AppIdentity.h"
 #include "LifecycleManager.h"
 #include "Profile.h"
 #include "ProfileManager.h"
@@ -40,7 +41,7 @@ MainWindow::MainWindow(QWidget* parent)
   , m_restoringSession(false)
   , m_currentTab(nullptr) {
   setWindowTitle("AI Workspace");
-  setWindowIcon(QIcon(":/icons/hicolor/256x256/apps/ai-workspace.png"));
+  setWindowIcon(QIcon::fromTheme(AppIdentity::kIconName, QIcon(AppIdentity::kIconResource)));
   resize(1200, 800);
 
   ProfileManager::instance()->loadProfiles();
