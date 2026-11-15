@@ -56,8 +56,8 @@ DESTDIR=%{buildroot} cmake --install build
 * Sun Nov 15 2026 Multai <noreply@localhost> - 0.5.0-1
 - Rebrand the application from AI Workspace to Multai
 - Rename the executable, package, desktop entry, icon and Qt identity to multai
-- Replace the Sooyah artwork with a new Multai chat-bubble icon generated from one
-  canonical SVG source at every PNG size
+- Move the existing icon artwork to the `multai` icon name; only the identifiers
+  change, the artwork itself is unchanged
 - Migrate existing QSettings, profiles, WebEngine storage and cache from the legacy
   ai-workspace locations without overwriting existing Multai data
 - Keep the legacy data in place for rollback; migration is one-time and idempotent

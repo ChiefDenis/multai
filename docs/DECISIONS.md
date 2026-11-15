@@ -1567,7 +1567,8 @@ taskbar grouping and launcher display.
 
 **Decision**:
 - Canonical identity is `Multai` / `multai`; the executable, RPM package, desktop file, Wayland app ID, X11 WM class and icon theme name are all `multai`.
-- The icon name stays hyphen-free; the new artwork is generated from one canonical SVG into every PNG size.
+- The icon name stays hyphen-free; the existing warm-orange speech-bubble artwork
+  is retained under the new `multai` file and theme name.
 - `DataMigration` runs at the start of the `Application` constructor, before `QSettings` or profile access.
 - Per root (config, data, cache), copy the legacy tree into `<new-root>.migrating`, rename `AI Workspace.conf` to `Multai.conf` and `AI Workspace/` to `Multai/`, verify the complete file map and sizes, write `.migration-complete`, then atomically rename the staging directory to the new root.
 - If a Multai root already exists, merge only missing files and QSettings keys into it. Existing Multai entries always win; the legacy tree is never overwritten or deleted.

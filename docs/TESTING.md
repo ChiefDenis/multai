@@ -1387,7 +1387,8 @@ For real-world measurements in a graphical session:
 - The desktop file is `multai.desktop` with `Exec=multai`, `Icon=multai` and
   `StartupWMClass=multai`.
 - The icon name is `multai` (hyphen-free), installed at 16/24/32/48/64/128/256 and as
-  a scalable SVG. All sizes are rendered from `icons/hicolor/scalable/apps/multai.svg`.
+  a scalable SVG. The existing artwork is retained and installed under the new name;
+  `icons/hicolor/scalable/apps/multai.svg` is the canonical source.
 - `tests/test_ui_regression.cpp` verifies the compiled resource, window icon, desktop
   entry, CMake installation rules, RPM spec paths, icon sizes and artwork.
 
@@ -1409,7 +1410,7 @@ ctest --test-dir build -R test_migration --output-on-failure
 ```
 
 **Recorded result**: `test_migration` passed **9/9** (7 test functions plus
-init/cleanup) in 0.03 s. The full serial CTest run passed **28/28 tests in 172.84 s**
+init/cleanup) in 0.03 s. The full serial CTest run passed **28/28 tests in 88.45 s**
 on the Fedora 43 Qt 6.10.3 build (real Wayland session). A parallel run exposed
 pre-existing WebEngine timing contention in `test_session_restore`, which passes
 12/12 when run alone.

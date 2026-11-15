@@ -31,7 +31,7 @@
 | Release 0.4.3 | ✅ Complete | 2026-11-14 | Fixed duplicate collapsed sidebar controls, RPM build pipeline, KDE application icon packaging; 27/27 tests; RPM built |
 | Release 0.4.4 | ✅ Complete | 2026-11-14 | Fixed KDE application icon by ensuring proper hicolor-icon-theme dependency and icon cache; removed redundant manual installation; added --force flag to gtk-update-icon-cache; 27/27 tests; RPM built |
 | Release 0.4.5 | ✅ Complete | 2026-11-14 | KDE icon root cause fixed with hyphen-free `ai_workspace`; installed Wayland/XWayland launcher, taskbar, window and switcher verified |
-| Release 0.5.0 | 🚧 Verification | 2026-11-15 | Complete rebrand to Multai, new icon artwork, non-destructive identity migration; 28/28 tests, real migration and RPM complete; installed verification pending |
+| Release 0.5.0 | 🚧 Verification | 2026-11-15 | Complete rebrand to Multai, existing icon artwork retained under the new name, non-destructive identity migration; 28/28 tests, real migration and RPM complete; installed verification pending |
 
 Stages 2-6 were delivered together in one work phase because the browser engine,
 profile manager and lifecycle state machine are mutually dependent. That phase is
@@ -2035,13 +2035,13 @@ complete; installed package replacement and KDE visual verification pending.
 
 ### Icon artwork
 
-- Removed `sooyah_icon.png`, all `ai_workspace.*` assets and the old root draft.
-- Added one canonical source, `icons/hicolor/scalable/apps/multai.svg`: orange
-  gradient rounded square, cream primary speech bubble with a red-orange M, and a
-  smaller peach secondary bubble.
-- Rendered 16, 24, 32, 48, 64, 128 and 256 px PNGs from that SVG with Inkscape.
-- Validated all seven PNG dimensions. The 256 px center pixel is `rgba(224,64,36,1)`;
-  corners are transparent.
+- Moved the existing Sooyah artwork to the `multai` icon files; the artwork itself is
+  unchanged at the user's request.
+- `icons/hicolor/scalable/apps/multai.svg` embeds the same artwork and remains the
+  canonical source; 16, 24, 32, 48, 64, 128 and 256 px PNGs are installed under the
+  `multai` name.
+- Validated all seven PNG dimensions and transparency. The 256 px center pixel is
+  `rgba(249,119,70,1)`; corners are transparent.
 
 ### Data migration
 
@@ -2069,7 +2069,7 @@ complete; installed package replacement and KDE visual verification pending.
   GCC 15.3.1 and Qt 6.10.3: succeeded.
 - `test_migration`: 9 passed, 0 failed (7 test functions plus init/cleanup), 0.03 s.
 - Full serial CTest run on the real Wayland session:
-  **28/28 passed, 0 failed, 172.84 s** (integration 96.84 s, performance 9.47 s).
+  **28/28 passed, 0 failed, 88.45 s** (integration 60.61 s, performance 5.25 s).
 - `multai --version` -> `Multai 0.5.0` (exit 0) from both the build tree and an
   extracted RPM binary.
 - A parallel full run exposed pre-existing WebEngine timing contention in

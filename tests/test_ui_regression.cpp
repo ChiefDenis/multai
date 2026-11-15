@@ -47,9 +47,12 @@ QString desktopIconName() {
   return {};
 }
 
-bool isMultaiMark(const QColor& color) {
-  return color.red() >= 180 && color.green() >= 40 && color.green() <= 170 &&
-         color.blue() <= 150;
+bool isMultaiArtwork(const QColor& color) {
+  // The rename keeps the existing warm-orange speech-bubble artwork; only the
+  // identifiers changed. Accept the artwork palette while rejecting the brown
+  // Adobe Illustrator fallback.
+  return color.red() >= 200 && color.green() >= 40 && color.green() <= 170 &&
+         color.blue() >= 30 && color.blue() <= 150;
 }
 
 bool isIllustratorBrown(const QColor& color) {
@@ -254,7 +257,7 @@ void TestUIRegression::testApplicationIconSet() {
   QIcon icon(QString::fromLatin1(AppIdentity::kIconResource));
   QVERIFY(!icon.isNull());
   const QColor center = iconCenterColor(icon, 256);
-  QVERIFY2(isMultaiMark(center), qPrintable(QStringLiteral("resource center=%1,%2,%3")
+  QVERIFY2(isMultaiArtwork(center), qPrintable(QStringLiteral("resource center=%1,%2,%3")
                                                   .arg(center.red())
                                                   .arg(center.green())
                                                   .arg(center.blue())));
@@ -268,7 +271,7 @@ void TestUIRegression::testMainWindowIconSet() {
 
   QVERIFY(!window.windowIcon().isNull());
   const QColor center = iconCenterColor(window.windowIcon(), 64);
-  QVERIFY2(isMultaiMark(center),
+  QVERIFY2(isMultaiArtwork(center),
            qPrintable(QStringLiteral("window icon center=%1,%2,%3")
                           .arg(center.red())
                           .arg(center.green())
@@ -474,7 +477,7 @@ void TestUIRegression::testIconResourceValidity() {
   }
   QVERIFY(nonTransparent > 0);
   const QColor center = image.pixelColor(image.width() / 2, image.height() / 2);
-  QVERIFY2(isMultaiMark(center), "compiled resource does not contain the Multai artwork");
+  QVERIFY2(isMultaiArtwork(center), "compiled resource does not contain the Multai artwork");
 }
 
 void TestUIRegression::testDesktopFileIconValue() {
@@ -513,7 +516,7 @@ void TestUIRegression::testIconThemeResolution() {
   QVERIFY2(themeIcon.name() != QStringLiteral("ai"),
            "theme lookup fell back to the Adobe Illustrator mimetype icon");
   const QColor center = iconCenterColor(themeIcon, 64);
-  QVERIFY2(isMultaiMark(center), qPrintable(QStringLiteral("theme icon center=%1,%2,%3")
+  QVERIFY2(isMultaiArtwork(center), qPrintable(QStringLiteral("theme icon center=%1,%2,%3")
                                                   .arg(center.red())
                                                   .arg(center.green())
                                                   .arg(center.blue())));
@@ -643,7 +646,7 @@ void TestUIRegression::testInstalledIconIsOutsideBuildDirectory() {
   QImage image(installed);
   QVERIFY(!image.isNull());
   const QColor center = image.pixelColor(image.width() / 2, image.height() / 2);
-  QVERIFY2(isMultaiMark(center), "installed icon is not the Multai artwork");
+  QVERIFY2(isMultaiArtwork(center), "installed icon is not the Multai artwork");
 }
 
 QTEST_MAIN(TestUIRegression)
