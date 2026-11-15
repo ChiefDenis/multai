@@ -1137,6 +1137,62 @@ Then launch from the KDE application launcher (not a terminal) and capture:
 Compare the installed `/usr/bin/ai-workspace` with the development build. Also
 repeat with `QT_QPA_PLATFORM=xcb` (XWayland) to confirm `StartupWMClass`.
 
+### Recorded 0.4.5 installed-system results
+
+Performed on Fedora 43 / KDE Plasma Wayland with the Kora icon theme, using the
+RPM-installed `/usr/bin/ai-workspace`:
+
+```text
+rpm -q ai-workspace                                  -> ai-workspace-0.4.5-1.fc43.x86_64
+rpm -qf /usr/bin/ai-workspace                        -> ai-workspace-0.4.5-1.fc43.x86_64
+/usr/bin/ai-workspace --version                      -> AI Workspace 0.4.5
+kiconfinder6 ai_workspace                            -> /usr/share/icons/hicolor/48x48/apps/ai_workspace.png
+kiconfinder6 ai-workspace                            -> ~/.local/share/icons/kora/mimetypes/scalable/ai.svg (unused)
+KWin desktopFile/resourceClass/resourceName          -> ai-workspace (caption "AI Workspace")
+XWayland WM_CLASS                                    -> "ai-workspace", "AI Workspace"
+```
+
+Surfaces captured and inspected:
+
+| Surface | Screenshot |
+| --- | --- |
+| KDE launcher (KRunner) | `/tmp/opencode/qa-shots/krunner-result.png` |
+| Taskbar entry (Wayland) | `/tmp/opencode/qa-shots/taskbar-entry-wide.png` |
+| Window titlebar (Wayland) | `/tmp/opencode/qa-shots/titlebar-icon.png` |
+| Application switcher (Alt+Tab) | `/tmp/opencode/qa-shots/switcher-ai-workspace.png` |
+| Taskbar entry (XWayland) | `/tmp/opencode/qa-shots/xcb-taskbar-wide.png` |
+
+The application switcher is transient: invoking the KGlobalAccel shortcut via
+DBus commits immediately and cannot be captured. To photograph it, hold Alt
+with an ephemeral `/dev/uinput` virtual keyboard (QA tooling only, not shipped):
+
+```python
+# /tmp/opencode/switcher.py  (requires access to /dev/uinput and python3-evdev)
+import time
+from evdev import UInput, ecodes as e
+ui = UInput({e.EV_KEY: [e.KEY_LEFTALT, e.KEY_TAB]}, name='qa-tab-switcher', version=1)
+time.sleep(1.5)
+ui.write(e.EV_KEY, e.KEY_LEFTALT, 1); ui.syn()
+time.sleep(0.2)
+ui.write(e.EV_KEY, e.KEY_TAB, 1); ui.syn()
+time.sleep(0.05)
+ui.write(e.EV_KEY, e.KEY_TAB, 0); ui.syn()
+time.sleep(7.0)  # keep Alt held while spectacle captures
+ui.write(e.EV_KEY, e.KEY_LEFTALT, 0); ui.syn()
+ui.close()
+```
+
+Run it in the background, then capture with
+`spectacle -b -n -o switcher.png` about 2.5 s later.
+
+**Automated coverage**: `testIconNameAvoidsKdeHyphenFallback`,
+`testIconThemeResolution`, `testMainWindowIconSet`, `testApplicationIconSet`,
+`testIconSizesAndArtwork`, `testApplicationIdentityMatchesDesktopEntry`,
+`testPackagingInstallsCanonicalIcon`, `testInstalledIconResolvesViaKde` and
+`testInstalledIconIsOutsideBuildDirectory`. After installation all 34
+`test_ui_regression` cases run with **0 skipped**; the full CTest suite is
+**27/27 passed**.
+
 ---
 
 ## KDE Application Icon Attempt (0.4.4) — superseded

@@ -1920,5 +1920,96 @@ A stale hicolor `icon-theme.cache` did not prevent `ai_workspace` from resolving
   for the legacy name but no longer referenced).
 - The source artwork files were renamed from `ai-workspace.*` to
   `ai_workspace.*`; content is unchanged.
-- RPM build, installation and real KDE visual verification: pending (requires
-  sudo; see the final report).
+- RPM built from commit `bb2da52`:
+  `dist/ai-workspace-0.4.5-1.fc43.x86_64.rpm` (1,384,552 bytes) plus SRPM,
+  debuginfo and debugsource.
+- `rpm -qlp` contains only the canonical icons
+  (`/usr/share/icons/hicolor/{16x16,24x24,32x32,48x48,64x64,128x128,256x256}/apps/ai_workspace.png`
+  and `scalable/apps/ai_workspace.svg`), the binary, desktop entry, LICENSE and README.
+- `rpm -qp --scripts` is empty; `rpm -qpR` shows `hicolor-icon-theme`,
+  `desktop-file-utils`, `qt6-qtbase >= 6.10` and `qt6-qtwebengine >= 6.10`.
+
+### Installed system verification (actual)
+
+Installation performed by the user:
+
+```bash
+sudo dnf upgrade --refresh /home/denis/devprojects/ai-workspace/dist/ai-workspace-0.4.5-1.fc43.x86_64.rpm
+```
+
+Confirmed results:
+
+- `rpm -q ai-workspace` → `ai-workspace-0.4.5-1.fc43.x86_64`
+- `command -v ai-workspace` → `/usr/bin/ai-workspace`
+- `rpm -qf /usr/bin/ai-workspace` → `ai-workspace-0.4.5-1.fc43.x86_64` (RPM-owned)
+- `/usr/bin/ai-workspace --version` → `AI Workspace 0.4.5`
+- Installed desktop entry: `Name=AI Workspace`, `Exec=ai-workspace`,
+  `Icon=ai_workspace`, `StartupWMClass=ai-workspace`, `Type=Application`;
+  `desktop-file-validate` exits 0 (only the pre-existing multiple-main-category hint).
+- `/usr/share/icons` contains only the canonical icons:
+  `hicolor/{16x16,24x24,32x32,48x48,64x64,128x128,256x256}/apps/ai_workspace.png`
+  and `hicolor/scalable/apps/ai_workspace.svg`; no `ai-workspace.*` icon files.
+- Installed icon bytes match the repository artwork (md5
+  `21ba5c7a…` for the 256 PNG and `71f9b3c1…` for the SVG).
+- `kiconfinder6 ai_workspace` → `/usr/share/icons/hicolor/48x48/apps/ai_workspace.png`
+  (Kora is still the active theme; the legacy name `ai-workspace` still resolves to
+  Kora's `ai.svg`, but nothing references it any more).
+- `/usr/share/icons/hicolor/icon-theme.cache` was refreshed by the
+  `hicolor-icon-theme` transfiletrigger and contains `ai_workspace`;
+  `gtk-update-icon-cache --validate` passes.
+- Full CTest suite re-run after installation: **27/27 passed**, 0 failed.
+- `test_ui_regression` after installation: **34 passed, 0 failed, 0 skipped**
+  (the three installed-icon tests now execute instead of skipping).
+
+### Real KDE Wayland visual verification
+
+The installed `/usr/bin/ai-workspace` was launched through the KDE service
+(`kstart --application ai-workspace`) with isolated QA state
+(`XDG_CONFIG_HOME=/tmp/opencode/qa-config`,
+`XDG_DATA_HOME=/tmp/opencode/qa-data`).
+
+KWin reported for the running window:
+
+```text
+caption        = 'AI Workspace'
+desktopFile    = 'ai-workspace'
+resourceClass  = 'ai-workspace'
+resourceName   = 'ai-workspace'
+pid            = 262095   (later QA instance: 265220)
+```
+
+Visual results, captured on the live session:
+
+| Surface | Result | Screenshot |
+| --- | --- | --- |
+| KDE application launcher (KRunner “AI Workspace”) | Sooyah orange icon | `/tmp/opencode/qa-shots/krunner-result.png` |
+| Taskbar / task manager entry while running | Sooyah orange icon with running indicator | `/tmp/opencode/qa-shots/taskbar-entry-wide.png` |
+| Application window / titlebar | Sooyah orange icon | `/tmp/opencode/qa-shots/titlebar-icon.png` |
+| Application switcher (Alt+Tab, Breeze) | “AI Workspace” tile with Sooyah orange icon | `/tmp/opencode/qa-shots/switcher-ai-workspace.png` |
+
+Full-screen context captures: `/tmp/opencode/qa-shots/full.png`,
+`/tmp/opencode/qa-shots/full2.png`, `/tmp/opencode/qa-shots/switcher-final2.png`.
+
+The switcher capture required holding Alt, which was done with an ephemeral
+`/dev/uinput` virtual keyboard (a QA-only tool, not part of the application).
+CTest cannot assert what KWin paints; these captures are the visual evidence.
+
+### XWayland verification
+
+The installed binary was also run with `QT_QPA_PLATFORM=xcb` (XWayland):
+
+- `xprop` reports `WM_CLASS = "ai-workspace", "AI Workspace"`, matching
+  `StartupWMClass=ai-workspace`.
+- The titlebar and taskbar entry show the Sooyah icon.
+  Screenshots: `/tmp/opencode/qa-shots/xcb-window.png`,
+  `/tmp/opencode/qa-shots/xcb-taskbar-wide.png`.
+
+The defect therefore affected the icon name lookup on both Wayland and
+XWayland; the fix applies to both because both surfaces resolve the same
+desktop entry `Icon=ai_workspace`.
+
+### Result
+
+The installed 0.4.5 application displays the intended Sooyah icon in the KDE
+launcher, taskbar, window titlebar and application switcher under the Kora icon
+theme, on both Wayland and XWayland. Root cause fixed.
