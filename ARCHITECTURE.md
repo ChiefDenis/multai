@@ -270,7 +270,9 @@ The application follows a layered architecture with clear separation of concerns
   - Resolve legacy and Multai config, data, and cache roots
   - Copy each legacy root into a verified staging directory
   - Rename legacy inner names (`AI Workspace.conf`, `AI Workspace/`)
-  - Move staged data into place without overwriting an existing Multai root
+  - Merge staged data and missing settings keys into an existing Multai root
+    without overwriting any existing Multai entry
+  - Skip a root that already contains `.migration-complete`
   - Leave legacy data untouched for rollback
 - **Key Signals/Slots**:
   - None (called once from the `Application` constructor before settings access)

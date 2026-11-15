@@ -1,9 +1,12 @@
 #include <QtTest/QtTest>
+#include <QStandardPaths>
+
 #include "SettingsManager.h"
 
 class TestSettingsManager : public QObject {
   Q_OBJECT
 private slots:
+  void initTestCase();
   void testInstance();
   void testValue();
   void testSetValue();
@@ -11,6 +14,10 @@ private slots:
   void testTheme();
   void testWindowGeometry();
 };
+
+void TestSettingsManager::initTestCase() {
+  QStandardPaths::setTestModeEnabled(true);
+}
 
 void TestSettingsManager::testInstance() {
   SettingsManager* instance1 = SettingsManager::instance();

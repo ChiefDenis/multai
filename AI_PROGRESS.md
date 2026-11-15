@@ -31,7 +31,7 @@
 | Release 0.4.3 | ✅ Complete | 2026-11-14 | Fixed duplicate collapsed sidebar controls, RPM build pipeline, KDE application icon packaging; 27/27 tests; RPM built |
 | Release 0.4.4 | ✅ Complete | 2026-11-14 | Fixed KDE application icon by ensuring proper hicolor-icon-theme dependency and icon cache; removed redundant manual installation; added --force flag to gtk-update-icon-cache; 27/27 tests; RPM built |
 | Release 0.4.5 | ✅ Complete | 2026-11-14 | KDE icon root cause fixed with hyphen-free `ai_workspace`; installed Wayland/XWayland launcher, taskbar, window and switcher verified |
-| Release 0.5.0 | 🚧 Verification | 2026-11-15 | Complete rebrand to Multai, new icon artwork, identity migration; build, 28/28 tests and RPM complete; installed verification pending |
+| Release 0.5.0 | 🚧 Verification | 2026-11-15 | Complete rebrand to Multai, new icon artwork, non-destructive identity migration; 28/28 tests, real migration and RPM complete; installed verification pending |
 
 Stages 2-6 were delivered together in one work phase because the browser engine,
 profile manager and lifecycle state machine are mutually dependent. That phase is
@@ -2019,8 +2019,8 @@ theme, on both Wayland and XWayland. Root cause fixed.
 ## Release 0.5.0: Complete Rebrand to Multai (2026-11-15)
 
 **Version**: 0.5.0
-**Status**: Build, tests, package and staged install complete; installed-system
-migration and KDE visual verification pending.
+**Status**: Build, 28/28 tests, package, staged install and real user-data migration
+complete; installed package replacement and KDE visual verification pending.
 
 ### Identity changes
 
@@ -2054,19 +2054,22 @@ migration and KDE visual verification pending.
 - Renames `AI Workspace.conf` -> `Multai.conf` and `AI Workspace/` -> `Multai/`.
 - Copies to `<new-root>.migrating`, verifies the complete file map and byte sizes,
   writes `.migration-complete`, then atomically renames into place.
-- Never overwrites an existing Multai root; skips that root.
+- If a Multai root already exists, merges only missing files and QSettings keys;
+  existing Multai entries always win. A root with `.migration-complete` is skipped.
 - Keeps the legacy tree for rollback and discards stale staging directories.
-- Added `tests/test_migration.cpp` with six test functions covering copy fidelity,
-  rename behaviour, rollback data, idempotency, existing-data preservation, stale
-  staging and independent roots.
+- Added `tests/test_migration.cpp` with seven test functions covering copy fidelity,
+  rename behaviour, rollback data, idempotency, merge without overwrite, marker
+  short-circuit, stale staging and independent roots.
+- Isolated `test_settingsmanager` with `QStandardPaths::setTestModeEnabled(true)` so
+  tests no longer create a real `~/.config/multai/Multai.conf`.
 
 ### Build and test results (actual)
 
 - Fresh configure in `/tmp/opencode/multai-build-0.5.0` with CMake 3.31.11,
   GCC 15.3.1 and Qt 6.10.3: succeeded.
-- `test_migration`: 8 passed, 0 failed (6 test functions plus init/cleanup), 0.09 s.
+- `test_migration`: 9 passed, 0 failed (7 test functions plus init/cleanup), 0.03 s.
 - Full serial CTest run on the real Wayland session:
-  **28/28 passed, 0 failed, 99.56 s** (integration 66.68 s, performance 8.04 s).
+  **28/28 passed, 0 failed, 172.84 s** (integration 96.84 s, performance 9.47 s).
 - `multai --version` -> `Multai 0.5.0` (exit 0) from both the build tree and an
   extracted RPM binary.
 - A parallel full run exposed pre-existing WebEngine timing contention in
@@ -2086,19 +2089,30 @@ hint).
 
 ### RPM
 
-- Built `multai-0.5.0-1.fc43.x86_64.rpm` (212 KB), SRPM, debuginfo and
+- Built `multai-0.5.0-1.fc43.x86_64.rpm` (215 KB), SRPM, debuginfo and
   debugsource in `/tmp/opencode/rpmbuild`, copied to `dist/`.
 - Metadata: `multai 0.5.0 1.fc43 GPL-3.0-or-later`.
 - File list contains only `multai` paths; no `ai-workspace` executable, desktop file
   or icon is packaged.
 - `rpm -qp --obsoletes` -> `ai-workspace < 0.5.0`.
 
+### Real migration (actual)
+
+- First run of the packaged binary migrated `~/.local/share/ai-workspace` and
+  `~/.cache/ai-workspace` and wrote both markers. The config root was skipped because
+  an earlier test run had created a minimal `~/.config/multai/Multai.conf`.
+- Fixed migration to merge missing legacy files and settings keys into an existing
+  Multai root instead of skipping it, and isolated the settings test.
+- Second run merged the config root: 9 profiles and 4,753 files copied, existing
+  `theme=system` retained, all missing legacy settings keys added, and
+  `.migration-complete` written.
+- `~/.config/ai-workspace` remains untouched at 197 MB for rollback;
+  `~/.config/multai` is 232 MB.
+
 ### Pending verification
 
 - Install the RPM over the existing `ai-workspace-0.4.5` package.
 - Confirm RPM removes the old package and old desktop/icon files.
-- Run the installed binary and confirm the one-time migration of the real
-  `~/.config/ai-workspace` data (about 197 MB).
-- Confirm accounts, tabs, preferences and WebEngine data; verify old data remains.
+- Launch the installed binary and confirm tabs, profiles and preferences load.
 - Verify KDE launcher, running taskbar, window titlebar and Alt+Tab switcher under
   the Kora theme on Wayland and XWayland.

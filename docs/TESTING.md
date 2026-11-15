@@ -1398,7 +1398,9 @@ For real-world measurements in a graphical session:
 - Verifies file-map and size equality before the staging directory is moved into place.
 - Verifies the legacy tree remains for rollback.
 - Verifies a second run does not overwrite migrated data.
-- Verifies an existing Multai root is preserved and migration is skipped.
+- Verifies an existing Multai root receives missing legacy profiles and settings keys
+  while its existing keys and files win.
+- Verifies `.migration-complete` prevents any later copy or merge.
 - Verifies stale `.migrating` directories are discarded and rebuilt.
 - Verifies config, data and cache roots migrate independently.
 
@@ -1406,10 +1408,18 @@ For real-world measurements in a graphical session:
 ctest --test-dir build -R test_migration --output-on-failure
 ```
 
-**Recorded result**: `test_migration` passed 8/8 test functions in 0.09 s. The full
-serial CTest run passed **28/28 tests in 99.56 s** on the Fedora 43 Qt 6.10.3 build
-(real Wayland session). A parallel run exposed pre-existing WebEngine timing
-contention in `test_session_restore`, which passes 12/12 when run alone.
+**Recorded result**: `test_migration` passed **9/9** (7 test functions plus
+init/cleanup) in 0.03 s. The full serial CTest run passed **28/28 tests in 172.84 s**
+on the Fedora 43 Qt 6.10.3 build (real Wayland session). A parallel run exposed
+pre-existing WebEngine timing contention in `test_session_restore`, which passes
+12/12 when run alone.
+
+**Real migration check**: run the built binary once against the real user paths, then
+confirm `~/.config/multai/Multai/profiles/` contains the same profile count as the
+legacy root and that `~/.config/multai/Multai.conf` contains the legacy keys. The
+Recorded 0.5.0 result was 9 profiles and 4,753 files copied, with existing Multai
+settings retained. `test_settingsmanager` calls `QStandardPaths::setTestModeEnabled(true)`
+so it never writes into the real configuration.
 
 **Packaging checks**:
 

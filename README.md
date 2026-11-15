@@ -237,9 +237,11 @@ Migration rules:
 
 - Each root is copied into a sibling staging directory, verified by file count and
   size, and moved into place with an atomic rename.
-- An existing Multai root is never overwritten. Migration for that root is skipped.
-- The operation is idempotent: once the Multai root exists, later launches do not
-  copy again.
+- An existing Multai entry is never overwritten. If a Multai root already exists,
+  only missing legacy files and settings keys are merged into it; existing Multai
+  values always win.
+- The operation is idempotent: once a root contains `.migration-complete`, later
+  launches do not copy or merge into it again.
 - An interrupted migration leaves only a `.migrating` staging directory, which is
   discarded and rebuilt on the next launch.
 - A `.migration-complete` marker is written inside each migrated root.

@@ -4,6 +4,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QHash>
+#include <QSettings>
 #include <QStandardPaths>
 #include <QtGlobal>
 
@@ -14,6 +15,13 @@ constexpr auto kSettingsFile = "Multai.conf";
 constexpr auto kLegacyAppDir = "AI Workspace";
 constexpr auto kAppDir = "Multai";
 constexpr auto kMarkerFile = ".migration-complete";
+
+struct MergeStats {
+  int copied = 0;
+  int skipped = 0;
+  int conflicts = 0;
+  int settingsMerged = 0;
+};
 
 QString kindName(DataMigration::RootKind kind) {
   switch (kind) {
@@ -138,6 +146,89 @@ bool writeMarker(const QString& stagingRoot, const QString& legacyRoot) {
   return true;
 }
 
+// Copy only entries that do not exist in the destination. Existing Multai data
+// always wins; the legacy tree remains available for rollback.
+bool mergeTree(const QString& source, const QString& target, MergeStats* stats, QString* error) {
+  if (QFileInfo::exists(target) && !QFileInfo(target).isDir()) {
+    ++stats->conflicts;
+    return true;
+  }
+  if (!QFileInfo::exists(target)) {
+    if (!QDir().mkpath(target)) {
+      *error = QStringLiteral("cannot create %1").arg(target);
+      return false;
+    }
+    QFile::setPermissions(target, QFileInfo(source).permissions());
+    ++stats->copied;
+  }
+
+  const QFileInfoList entries =
+      QDir(source).entryInfoList(QDir::NoDotAndDotDot | QDir::AllEntries | QDir::Hidden |
+                                 QDir::System);
+  for (const QFileInfo& entry : entries) {
+    const QString targetPath = target + QLatin1Char('/') + entry.fileName();
+    const QFileInfo targetEntry(targetPath);
+    if (entry.isSymLink()) {
+      if (targetEntry.exists() || targetEntry.isSymLink()) {
+        ++stats->skipped;
+      } else if (!QFile::link(entry.symLinkTarget(), targetPath)) {
+        *error = QStringLiteral("cannot copy symlink %1").arg(entry.absoluteFilePath());
+        return false;
+      } else {
+        ++stats->copied;
+      }
+    } else if (entry.isDir()) {
+      if (targetEntry.exists() && !targetEntry.isDir()) {
+        ++stats->conflicts;
+      } else if (!mergeTree(entry.absoluteFilePath(), targetPath, stats, error)) {
+        return false;
+      }
+    } else if (entry.isFile()) {
+      if (targetEntry.exists() || targetEntry.isSymLink()) {
+        ++stats->skipped;
+        continue;
+      }
+      if (!QFile::copy(entry.absoluteFilePath(), targetPath)) {
+        *error = QStringLiteral("cannot copy %1").arg(entry.absoluteFilePath());
+        return false;
+      }
+      QFile::setPermissions(targetPath, entry.permissions());
+      ++stats->copied;
+    }
+  }
+  return true;
+}
+
+// Merge missing QSettings keys without replacing any existing Multai key.
+bool mergeSettingsFile(const QString& sourceFile, const QString& targetFile, MergeStats* stats,
+                       QString* error) {
+  if (!QFileInfo::exists(targetFile)) return true;
+
+  QSettings source(sourceFile, QSettings::IniFormat);
+  QSettings target(targetFile, QSettings::IniFormat);
+  if (source.status() != QSettings::NoError || target.status() != QSettings::NoError) {
+    ++stats->skipped;
+    return true;
+  }
+
+  bool changed = false;
+  const QStringList keys = source.allKeys();
+  for (const QString& key : keys) {
+    if (!target.contains(key)) {
+      target.setValue(key, source.value(key));
+      changed = true;
+    }
+  }
+  target.sync();
+  if (target.status() != QSettings::NoError) {
+    *error = QStringLiteral("cannot merge settings into %1").arg(targetFile);
+    return false;
+  }
+  if (changed) ++stats->settingsMerged;
+  QFile::remove(sourceFile);
+  return true;
+}
+
 }  // namespace
 
 bool DataMigration::Report::anyMigrated() const {
@@ -205,11 +296,19 @@ DataMigration::RootResult DataMigration::migrateRoot(RootKind kind, const QStrin
     return result;
   }
 
-  if (QFileInfo::exists(newRoot) || QFileInfo(newRoot).isSymLink()) {
-    result.message = QStringLiteral("Multai location already exists; nothing was overwritten");
-    qInfo().noquote() << QStringLiteral("Multai migration (%1): skipped, %2 already exists")
-                             .arg(kindName(kind), newRoot);
-    return result;
+  const bool newExists = QFileInfo::exists(newRoot) || QFileInfo(newRoot).isSymLink();
+  if (newExists) {
+    if (!QFileInfo(newRoot).isDir()) {
+      result.status = Status::Failed;
+      result.message = QStringLiteral("Multai location is not a directory");
+      return result;
+    }
+    if (QFileInfo::exists(newRoot + QLatin1Char('/') + QLatin1String(kMarkerFile))) {
+      result.message = QStringLiteral("already migrated; skipped");
+      qInfo().noquote() << QStringLiteral("Multai migration (%1): skipped, %2 is already migrated")
+                               .arg(kindName(kind), newRoot);
+      return result;
+    }
   }
 
   const QString staging = newRoot + QStringLiteral(".migrating");
@@ -235,28 +334,73 @@ DataMigration::RootResult DataMigration::migrateRoot(RootKind kind, const QStrin
     return result;
   }
 
-  if (!renameTopLevel(staging, &error) || !verifyTree(oldRoot, staging, &error) ||
-      !writeMarker(staging, oldRoot)) {
+  if (!renameTopLevel(staging, &error) || !verifyTree(oldRoot, staging, &error)) {
     QDir(staging).removeRecursively();
     result.status = Status::Failed;
-    result.message = error.isEmpty() ? QStringLiteral("cannot write migration marker") : error;
+    result.message = error;
     qWarning().noquote() << QStringLiteral("Multai migration (%1) failed: %2")
                                 .arg(kindName(kind), result.message);
     return result;
   }
 
-  if (!QDir().rename(staging, newRoot)) {
-    QDir(staging).removeRecursively();
-    result.status = Status::Failed;
-    result.message = QStringLiteral("cannot move staged data into place");
-    qWarning().noquote() << QStringLiteral("Multai migration (%1) failed: %2")
-                                .arg(kindName(kind), result.message);
+  if (!newExists) {
+    if (!writeMarker(staging, oldRoot)) {
+      QDir(staging).removeRecursively();
+      result.status = Status::Failed;
+      result.message = QStringLiteral("cannot write migration marker");
+      return result;
+    }
+    if (!QDir().rename(staging, newRoot)) {
+      QDir(staging).removeRecursively();
+      result.status = Status::Failed;
+      result.message = QStringLiteral("cannot move staged data into place");
+      qWarning().noquote() << QStringLiteral("Multai migration (%1) failed: %2")
+                                  .arg(kindName(kind), result.message);
+      return result;
+    }
+
+    result.status = Status::Migrated;
+    result.message = QStringLiteral("migrated");
+    qInfo().noquote() << QStringLiteral("Multai migration (%1): %2 -> %3")
+                             .arg(kindName(kind), oldRoot, newRoot);
     return result;
   }
 
-  result.status = Status::Migrated;
-  result.message = QStringLiteral("migrated");
-  qInfo().noquote() << QStringLiteral("Multai migration (%1): %2 -> %3")
-                           .arg(kindName(kind), oldRoot, newRoot);
+  MergeStats stats;
+  const QString settingsSource = staging + QLatin1Char('/') + QLatin1String(kSettingsFile);
+  if (QFileInfo::exists(settingsSource) &&
+      !mergeSettingsFile(settingsSource, newRoot + QLatin1Char('/') + QLatin1String(kSettingsFile),
+                         &stats, &error)) {
+    QDir(staging).removeRecursively();
+    result.status = Status::Failed;
+    result.message = error;
+    qWarning().noquote() << QStringLiteral("Multai migration (%1) failed: %2")
+                                .arg(kindName(kind), error);
+    return result;
+  }
+
+  if (!mergeTree(staging, newRoot, &stats, &error)) {
+    QDir(staging).removeRecursively();
+    result.status = Status::Failed;
+    result.message = error;
+    qWarning().noquote() << QStringLiteral("Multai migration (%1) failed: %2")
+                                .arg(kindName(kind), error);
+    return result;
+  }
+  QDir(staging).removeRecursively();
+
+  if (!writeMarker(newRoot, oldRoot)) {
+    qWarning().noquote() << QStringLiteral("Multai migration (%1): cannot write marker in %2")
+                                .arg(kindName(kind), newRoot);
+  }
+
+  result.status =
+      (stats.copied > 0 || stats.settingsMerged > 0) ? Status::Migrated : Status::Skipped;
+  result.message = QStringLiteral("merged %1 entries, skipped %2 existing entries, %3 conflicts")
+                       .arg(stats.copied)
+                       .arg(stats.skipped)
+                       .arg(stats.conflicts);
+  qInfo().noquote() << QStringLiteral("Multai migration (%1): %2")
+                           .arg(kindName(kind), result.message);
   return result;
 }

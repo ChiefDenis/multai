@@ -491,8 +491,10 @@ Use a Libadwaita-inspired visual language:
 - **Cache**: `~/.cache/multai/Multai/`
 - **Migration**: On first launch after 0.5.0, copy legacy `ai-workspace` roots into
   the corresponding `multai` roots through a verified staging directory. Never
-  overwrite an existing Multai root, never delete the legacy data, and skip the
-  copy once the Multai root exists.
+  overwrite an existing Multai entry: merge only missing files and settings keys,
+  with existing Multai values taking precedence. Never delete the legacy data, write
+  `.migration-complete` after a successful merge, and skip a root that already has
+  the marker.
 
 - **Simple preferences**: Use QSettings for:
   - User preferences (theme, delays, thresholds)

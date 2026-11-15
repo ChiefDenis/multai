@@ -1570,9 +1570,10 @@ taskbar grouping and launcher display.
 - The icon name stays hyphen-free; the new artwork is generated from one canonical SVG into every PNG size.
 - `DataMigration` runs at the start of the `Application` constructor, before `QSettings` or profile access.
 - Per root (config, data, cache), copy the legacy tree into `<new-root>.migrating`, rename `AI Workspace.conf` to `Multai.conf` and `AI Workspace/` to `Multai/`, verify the complete file map and sizes, write `.migration-complete`, then atomically rename the staging directory to the new root.
-- Never overwrite an existing Multai root; skip that root and leave the legacy data untouched.
+- If a Multai root already exists, merge only missing files and QSettings keys into it. Existing Multai entries always win; the legacy tree is never overwritten or deleted.
+- Write `.migration-complete` in the Multai root after a successful copy or merge. A root that already has the marker is skipped on later launches.
 - Keep the legacy roots after migration so the user can roll back by removing the new roots.
-- A stale `.migrating` directory is discarded and rebuilt on the next launch; once the new root exists, migration never runs again.
+- A stale `.migrating` directory is discarded and rebuilt on the next launch.
 
 **Rationale**:
 - File-map verification catches truncated or incomplete copies before the new root becomes visible.
@@ -1583,6 +1584,7 @@ taskbar grouping and launcher display.
 **Consequences**:
 - Positive: existing accounts, sessions, tabs, preferences and WebEngine data survive the rename.
 - Positive: migration is idempotent, interruption-safe and never overwrites Multai data.
+- Positive: a partial Multai root created by an early launch or test still receives the missing legacy profiles and settings.
 - Negative: legacy data temporarily occupies disk space until the user removes it manually.
 - Neutral: the repository directory remains `ai-workspace`; that path is not part of the installed product identity.
 
