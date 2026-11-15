@@ -307,6 +307,6 @@ ai-workspace/              # repository directory name is retained
 
 ## Current Status
 
-**Current Status**: Multai 0.5.0 rebrand, migration, build, 28/28 tests and RPM packaging complete; installed-system migration and KDE identity verification pending.
+**Current Status**: Multai 0.5.0 release complete: rebrand, retained original icon artwork, non-destructive data migration, 28/28 tests, RPM packaging and installed-system KDE verification done.
 
-**Next Stage**: Install the RPM over `ai-workspace-0.4.5` and verify migration plus launcher/taskbar/window/switcher identity.
+**Next Stage**: None authorised; maintenance only.

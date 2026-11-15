@@ -5,7 +5,7 @@
 - **Purpose**: Authoritative progress ledger for the Multai project
 - **Status**: Active
 - **Last Updated**: 2026-11-15
-- **Current Stage**: Release 0.5.0 - rebrand and identity migration
+- **Current Stage**: Release 0.5.0 - complete
 
 ## Progress Summary
 
@@ -31,7 +31,7 @@
 | Release 0.4.3 | ✅ Complete | 2026-11-14 | Fixed duplicate collapsed sidebar controls, RPM build pipeline, KDE application icon packaging; 27/27 tests; RPM built |
 | Release 0.4.4 | ✅ Complete | 2026-11-14 | Fixed KDE application icon by ensuring proper hicolor-icon-theme dependency and icon cache; removed redundant manual installation; added --force flag to gtk-update-icon-cache; 27/27 tests; RPM built |
 | Release 0.4.5 | ✅ Complete | 2026-11-14 | KDE icon root cause fixed with hyphen-free `ai_workspace`; installed Wayland/XWayland launcher, taskbar, window and switcher verified |
-| Release 0.5.0 | 🚧 Verification | 2026-11-15 | Complete rebrand to Multai, existing icon artwork retained under the new name, non-destructive identity migration; 28/28 tests, real migration and RPM complete; installed verification pending |
+| Release 0.5.0 | ✅ Complete | 2026-11-15 | Complete rebrand to Multai, existing icon artwork retained under the new name, non-destructive identity migration; 28/28 tests, real migration, RPM and installed-system verification complete |
 
 Stages 2-6 were delivered together in one work phase because the browser engine,
 profile manager and lifecycle state machine are mutually dependent. That phase is
@@ -2111,10 +2111,18 @@ hint).
 - `~/.config/ai-workspace` remains untouched at 197 MB for rollback;
   `~/.config/multai` is 232 MB.
 
-### Pending verification
+### Installed verification (actual)
 
-- Install the RPM over the existing `ai-workspace-0.4.5` package.
-- Confirm RPM removes the old package and old desktop/icon files.
-- Launch the installed binary and confirm tabs, profiles and preferences load.
-- Verify KDE launcher, running taskbar, window titlebar and Alt+Tab switcher under
-  the Kora theme on Wayland and XWayland.
+- Installed `multai-0.5.0-1.fc43.x86_64`; `ai-workspace` is no longer installed.
+- `multai --version` -> `Multai 0.5.0`.
+- `/usr/share/applications/multai.desktop`: `Name=Multai`, `Exec=multai`,
+  `Icon=multai`, `StartupWMClass=multai`.
+- Installed icons at 16/24/32/48/64/128/256 and scalable SVG; the 256 px center is
+  `rgba(249,119,70,1)`, matching the retained original artwork.
+- The legacy package's executable, desktop entry and icons were removed by the
+  `Obsoletes` transaction.
+- After restarting the Plasma shell, the launcher and taskbar resolve the original
+  artwork; the running window uses the same icon.
+- Real user data migrated with all three `.migration-complete` markers; 9 profiles
+  are present under `~/.config/multai/Multai/profiles/`, and the legacy
+  `~/.config/ai-workspace` tree (197 MB) remains for rollback.
