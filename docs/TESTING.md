@@ -1387,8 +1387,10 @@ For real-world measurements in a graphical session:
 - The desktop file is `multai.desktop` with `Exec=multai`, `Icon=multai` and
   `StartupWMClass=multai`.
 - The icon name is `multai` (hyphen-free), installed at 16/24/32/48/64/128/256 and as
-  a scalable SVG. The existing artwork is retained and installed under the new name;
-  `icons/hicolor/scalable/apps/multai.svg` is the canonical source.
+  a scalable SVG. The existing artwork is retained and installed under the new name.
+  `multai_icon.png` at the repository root is the high-resolution source; each PNG is
+  an exact resize of it, and `icons/hicolor/scalable/apps/multai.svg` embeds the same
+  artwork.
 - `tests/test_ui_regression.cpp` verifies the compiled resource, window icon, desktop
   entry, CMake installation rules, RPM spec paths, icon sizes and artwork.
 

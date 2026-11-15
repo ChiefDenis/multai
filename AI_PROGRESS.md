@@ -2037,9 +2037,11 @@ complete; installed package replacement and KDE visual verification pending.
 
 - Moved the existing Sooyah artwork to the `multai` icon files; the artwork itself is
   unchanged at the user's request.
-- `icons/hicolor/scalable/apps/multai.svg` embeds the same artwork and remains the
-  canonical source; 16, 24, 32, 48, 64, 128 and 256 px PNGs are installed under the
-  `multai` name.
+- Restored the high-resolution original at the repository root as `multai_icon.png`
+  (1,254 x 1,254, transparent background); every installed PNG is an exact resize of
+  it (0 differing pixels at 16/24/32/48/64/128/256).
+- `icons/hicolor/scalable/apps/multai.svg` embeds the same artwork; 16, 24, 32, 48,
+  64, 128 and 256 px PNGs are installed under the `multai` name.
 - Validated all seven PNG dimensions and transparency. The 256 px center pixel is
   `rgba(249,119,70,1)`; corners are transparent.
 
