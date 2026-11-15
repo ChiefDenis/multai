@@ -1,11 +1,11 @@
-# AI Workspace - Progress Ledger
+# Multai - Progress Ledger
 
 ## Document Information
 
-- **Purpose**: Authoritative progress ledger for AI Workspace project
+- **Purpose**: Authoritative progress ledger for the Multai project
 - **Status**: Active
-- **Last Updated**: 2026-11-14
-- **Current Stage**: Release 0.4.4 - complete
+- **Last Updated**: 2026-11-15
+- **Current Stage**: Release 0.5.0 - rebrand and identity migration
 
 ## Progress Summary
 
@@ -30,6 +30,8 @@
 | Release 0.4.2 | ✅ Complete | 2026-11-14 | Authoritative version source, dynamic collapsed tab rail, Settings/Expand stacking, developer link updated; 27/27 tests; RPM built |
 | Release 0.4.3 | ✅ Complete | 2026-11-14 | Fixed duplicate collapsed sidebar controls, RPM build pipeline, KDE application icon packaging; 27/27 tests; RPM built |
 | Release 0.4.4 | ✅ Complete | 2026-11-14 | Fixed KDE application icon by ensuring proper hicolor-icon-theme dependency and icon cache; removed redundant manual installation; added --force flag to gtk-update-icon-cache; 27/27 tests; RPM built |
+| Release 0.4.5 | ✅ Complete | 2026-11-14 | KDE icon root cause fixed with hyphen-free `ai_workspace`; installed Wayland/XWayland launcher, taskbar, window and switcher verified |
+| Release 0.5.0 | 🚧 Verification | 2026-11-15 | Complete rebrand to Multai, new icon artwork, identity migration; build, 28/28 tests and RPM complete; installed verification pending |
 
 Stages 2-6 were delivered together in one work phase because the browser engine,
 profile manager and lifecycle state machine are mutually dependent. That phase is
@@ -2013,3 +2015,90 @@ desktop entry `Icon=ai_workspace`.
 The installed 0.4.5 application displays the intended Sooyah icon in the KDE
 launcher, taskbar, window titlebar and application switcher under the Kora icon
 theme, on both Wayland and XWayland. Root cause fixed.
+
+## Release 0.5.0: Complete Rebrand to Multai (2026-11-15)
+
+**Version**: 0.5.0
+**Status**: Build, tests, package and staged install complete; installed-system
+migration and KDE visual verification pending.
+
+### Identity changes
+
+- CMake project `Multai`; executable and package `multai`.
+- Qt application name and display name `Multai`; organization `multai`.
+- Desktop file `multai.desktop`; desktop ID, Wayland app ID, X11 WM class and icon
+  theme name `multai`.
+- Version macros renamed to `MULTAI_VERSION*`; `multai --version` prints exactly
+  `Multai 0.5.0`.
+- RPM `multai-0.5.0-1.fc43.x86_64.rpm`; `Obsoletes: ai-workspace < 0.5.0` and
+  `Provides: ai-workspace = 0.5.0-1.fc43` so the old package is replaced.
+
+### Icon artwork
+
+- Removed `sooyah_icon.png`, all `ai_workspace.*` assets and the old root draft.
+- Added one canonical source, `icons/hicolor/scalable/apps/multai.svg`: orange
+  gradient rounded square, cream primary speech bubble with a red-orange M, and a
+  smaller peach secondary bubble.
+- Rendered 16, 24, 32, 48, 64, 128 and 256 px PNGs from that SVG with Inkscape.
+- Validated all seven PNG dimensions. The 256 px center pixel is `rgba(224,64,36,1)`;
+  corners are transparent.
+
+### Data migration
+
+- Added `src/core/DataMigration.{h,cpp}` and called it first in the `Application`
+  constructor before any `QSettings` or profile access.
+- Migrates config, data and cache roots independently:
+  - `~/.config/ai-workspace` -> `~/.config/multai`
+  - `~/.local/share/ai-workspace` -> `~/.local/share/multai`
+  - `~/.cache/ai-workspace` -> `~/.cache/multai`
+- Renames `AI Workspace.conf` -> `Multai.conf` and `AI Workspace/` -> `Multai/`.
+- Copies to `<new-root>.migrating`, verifies the complete file map and byte sizes,
+  writes `.migration-complete`, then atomically renames into place.
+- Never overwrites an existing Multai root; skips that root.
+- Keeps the legacy tree for rollback and discards stale staging directories.
+- Added `tests/test_migration.cpp` with six test functions covering copy fidelity,
+  rename behaviour, rollback data, idempotency, existing-data preservation, stale
+  staging and independent roots.
+
+### Build and test results (actual)
+
+- Fresh configure in `/tmp/opencode/multai-build-0.5.0` with CMake 3.31.11,
+  GCC 15.3.1 and Qt 6.10.3: succeeded.
+- `test_migration`: 8 passed, 0 failed (6 test functions plus init/cleanup), 0.09 s.
+- Full serial CTest run on the real Wayland session:
+  **28/28 passed, 0 failed, 99.56 s** (integration 66.68 s, performance 8.04 s).
+- `multai --version` -> `Multai 0.5.0` (exit 0) from both the build tree and an
+  extracted RPM binary.
+- A parallel full run exposed pre-existing WebEngine timing contention in
+  `test_session_restore`; the test passes 12/12 alone and in the official serial run.
+
+### Staged install
+
+`DESTDIR=/tmp/opencode/multai-stage cmake --install ... --prefix /usr` installed:
+
+- `/usr/bin/multai`
+- `/usr/share/applications/multai.desktop`
+- `/usr/share/icons/hicolor/{16,24,32,48,64,128,256}x.../apps/multai.png`
+- `/usr/share/icons/hicolor/scalable/apps/multai.svg`
+
+`desktop-file-validate` returned success (one pre-existing multiple-main-category
+hint).
+
+### RPM
+
+- Built `multai-0.5.0-1.fc43.x86_64.rpm` (212 KB), SRPM, debuginfo and
+  debugsource in `/tmp/opencode/rpmbuild`, copied to `dist/`.
+- Metadata: `multai 0.5.0 1.fc43 GPL-3.0-or-later`.
+- File list contains only `multai` paths; no `ai-workspace` executable, desktop file
+  or icon is packaged.
+- `rpm -qp --obsoletes` -> `ai-workspace < 0.5.0`.
+
+### Pending verification
+
+- Install the RPM over the existing `ai-workspace-0.4.5` package.
+- Confirm RPM removes the old package and old desktop/icon files.
+- Run the installed binary and confirm the one-time migration of the real
+  `~/.config/ai-workspace` data (about 197 MB).
+- Confirm accounts, tabs, preferences and WebEngine data; verify old data remains.
+- Verify KDE launcher, running taskbar, window titlebar and Alt+Tab switcher under
+  the Kora theme on Wayland and XWayland.

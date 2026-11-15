@@ -40,7 +40,7 @@ MainWindow::MainWindow(QWidget* parent)
   , m_tabCounter(0)
   , m_restoringSession(false)
   , m_currentTab(nullptr) {
-  setWindowTitle("AI Workspace");
+  setWindowTitle("Multai");
   setWindowIcon(QIcon::fromTheme(AppIdentity::kIconName, QIcon(AppIdentity::kIconResource)));
   resize(1200, 800);
 
@@ -102,7 +102,7 @@ void MainWindow::setupMenuBar() {
   m_helpMenu = menuBar()->addMenu("&Help");
 
   QAction* aboutAction = m_helpMenu->addAction("&About");
-  aboutAction->setStatusTip("About AI Workspace");
+  aboutAction->setStatusTip("About Multai");
   connect(aboutAction, &QAction::triggered, this, &MainWindow::onAbout);
 }
 
@@ -625,8 +625,8 @@ void MainWindow::onSettings() {
 }
 
 void MainWindow::onAbout() {
-  QMessageBox::about(this, "About AI Workspace",
-                     QString("<b>AI Workspace %1</b><br><br>"
+  QMessageBox::about(this, "About Multai",
+                     QString("<b>Multai %1</b><br><br>"
                              "A resource-conscious, multi-provider AI desktop application.<br>"
                              "Provider web interfaces are embedded with Qt WebEngine.<br><br>"
                              "<a href=\"https://github.com/ChiefDenis/\">GitHub</a>")

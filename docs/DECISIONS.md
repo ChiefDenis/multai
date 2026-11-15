@@ -9,7 +9,7 @@
 
 ## Overview
 
-This document records significant technical decisions made during the development of AI Workspace. Each decision includes the context, alternatives considered, the decision made, and the rationale.
+This document records significant technical decisions made during the development of Multai. Each decision includes the context, alternatives considered, the decision made, and the rationale.
 
 ## Decision Template
 
@@ -1550,6 +1550,44 @@ taskbar grouping and launcher display.
 
 **Related Decisions**: Decision 036 (Application Icon Identity), Decision 044 (KDE Application Icon Installation), Decision 045 (superseded cache hypothesis)
 **Related Issues**: 0.4.5 icon root-cause fix
+
+---
+
+### Decision 047: Multai Rebrand and One-Time Legacy Data Migration
+
+**Date**: 2026-11-15
+**Status**: Accepted
+**Context**: Release 0.5.0 renames the product from AI Workspace to Multai, including the executable, package, desktop entry, Qt identity, icons, QSettings organization and profile paths. Existing users already have authentication data, open tabs, preferences and WebEngine storage under `ai-workspace` paths. The rename must not discard or silently orphan that data.
+
+**Alternatives Considered**:
+- Do not migrate and require users to sign in again: unacceptable; loses sessions and tab state.
+- Move the legacy directories into place: simple but loses the rollback path and can leave a half-moved tree after interruption.
+- Copy directly into the new root: risks overwriting an existing Multai installation and is not atomic.
+- Copy into a verified staging directory and atomically rename: preserves the legacy tree, detects partial copies, and is idempotent.
+
+**Decision**:
+- Canonical identity is `Multai` / `multai`; the executable, RPM package, desktop file, Wayland app ID, X11 WM class and icon theme name are all `multai`.
+- The icon name stays hyphen-free; the new artwork is generated from one canonical SVG into every PNG size.
+- `DataMigration` runs at the start of the `Application` constructor, before `QSettings` or profile access.
+- Per root (config, data, cache), copy the legacy tree into `<new-root>.migrating`, rename `AI Workspace.conf` to `Multai.conf` and `AI Workspace/` to `Multai/`, verify the complete file map and sizes, write `.migration-complete`, then atomically rename the staging directory to the new root.
+- Never overwrite an existing Multai root; skip that root and leave the legacy data untouched.
+- Keep the legacy roots after migration so the user can roll back by removing the new roots.
+- A stale `.migrating` directory is discarded and rebuilt on the next launch; once the new root exists, migration never runs again.
+
+**Rationale**:
+- File-map verification catches truncated or incomplete copies before the new root becomes visible.
+- The sibling staging directory allows an atomic rename on the same filesystem.
+- Leaving the legacy data in place is the safest rollback path and avoids destructive migration behaviour.
+- Running before settings access guarantees the new identity never reads an empty configuration first.
+
+**Consequences**:
+- Positive: existing accounts, sessions, tabs, preferences and WebEngine data survive the rename.
+- Positive: migration is idempotent, interruption-safe and never overwrites Multai data.
+- Negative: legacy data temporarily occupies disk space until the user removes it manually.
+- Neutral: the repository directory remains `ai-workspace`; that path is not part of the installed product identity.
+
+**Related Decisions**: Decision 046 (Hyphen-Free Application Icon Name for KDE), Decision 013 (QSettings INI Format for Portability)
+**Related Issues**: 0.5.0 rebrand and identity migration
 
 ---
 

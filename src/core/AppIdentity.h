@@ -1,7 +1,11 @@
 #pragma once
 
 namespace AppIdentity {
-inline constexpr auto kDesktopFileName = "ai-workspace";
-inline constexpr auto kIconName = "ai_workspace";
-inline constexpr auto kIconResource = ":/icons/hicolor/256x256/apps/ai_workspace.png";
+inline constexpr auto kApplicationName = "Multai";
+inline constexpr auto kApplicationDisplayName = "Multai";
+inline constexpr auto kOrganizationName = "multai";
+inline constexpr auto kOrganizationDomain = "multai.local";
+inline constexpr auto kDesktopFileName = "multai";
+inline constexpr auto kIconName = "multai";
+inline constexpr auto kIconResource = ":/icons/hicolor/256x256/apps/multai.png";
 }

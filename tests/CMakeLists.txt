@@ -44,6 +44,22 @@ target_include_directories(test_settingsmanager PRIVATE ${TEST_INCLUDE_DIRS})
 
 add_test(NAME test_settingsmanager COMMAND test_settingsmanager)
 
+# Data migration test
+qt_add_executable(test_migration
+  test_migration.cpp
+  ../src/core/DataMigration.cpp
+)
+
+target_link_libraries(test_migration PRIVATE
+  Qt6::Core
+  Qt6::Test
+)
+
+target_include_directories(test_migration PRIVATE ${TEST_INCLUDE_DIRS})
+
+add_test(NAME test_migration COMMAND test_migration)
+set_property(TEST test_migration PROPERTY LABELS "integration")
+
 # Lifecycle state machine test
 qt_add_executable(test_lifecycle
   test_lifecycle.cpp
@@ -240,7 +256,7 @@ qt_add_executable(test_settingsdialog
 )
 
 target_link_libraries(test_settingsdialog PRIVATE
-  ai-workspace-lib
+  multai-lib
   Qt6::Core
   Qt6::Test
   Qt6::Widgets
@@ -502,7 +518,7 @@ qt_add_executable(test_sidebar_resize
 )
 
 target_link_libraries(test_sidebar_resize PRIVATE
-  ai-workspace-lib
+  multai-lib
   Qt6::Core
   Qt6::Test
   Qt6::Widgets
@@ -520,7 +536,7 @@ qt_add_executable(test_empty_state_ui
 )
 
 target_link_libraries(test_empty_state_ui PRIVATE
-  ai-workspace-lib
+  multai-lib
   Qt6::Core
   Qt6::Test
   Qt6::Widgets
@@ -538,7 +554,7 @@ qt_add_executable(test_ui_regression
 )
 
 target_link_libraries(test_ui_regression PRIVATE
-  ai-workspace-lib
+  multai-lib
   Qt6::Core
   Qt6::Test
   Qt6::Widgets
@@ -548,7 +564,7 @@ target_link_libraries(test_ui_regression PRIVATE
 target_include_directories(test_ui_regression PRIVATE ${TEST_INCLUDE_DIRS})
 
 target_compile_definitions(test_ui_regression PRIVATE
-  AI_WORKSPACE_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
+  MULTAI_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
 )
 
 add_test(NAME test_ui_regression COMMAND test_ui_regression)
@@ -561,7 +577,7 @@ qt_add_executable(test_visual_corrections
 )
 
 target_link_libraries(test_visual_corrections PRIVATE
-  ai-workspace-lib
+  multai-lib
   Qt6::Core
   Qt6::Test
   Qt6::Widgets
@@ -582,7 +598,7 @@ qt_add_executable(test_session_restore
 )
 
 target_link_libraries(test_session_restore PRIVATE
-  ai-workspace-lib
+  multai-lib
   Qt6::Core
   Qt6::Test
   Qt6::Widgets
@@ -600,7 +616,7 @@ qt_add_executable(test_provider_logos
 )
 
 target_link_libraries(test_provider_logos PRIVATE
-  ai-workspace-lib
+  multai-lib
   Qt6::Core
   Qt6::Test
   Qt6::Widgets

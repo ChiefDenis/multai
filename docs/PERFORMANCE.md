@@ -9,7 +9,7 @@
 
 ## Overview
 
-This document defines performance criteria for the AI Workspace project and describes the approach to measuring and verifying these criteria. Performance measurements are critical for validating that the application meets its resource-conscious design goals.
+This document defines performance criteria for the Multai project and describes the approach to measuring and verifying these criteria. Performance measurements are critical for validating that the application meets its resource-conscious design goals.
 
 ## Performance Philosophy
 
@@ -47,10 +47,10 @@ All performance measurements should be performed on a representative system:
 **Measurement Method**:
 ```bash
 # Launch application
-ai-workspace &
+multai &
 
 # Get PID
-PID=$(pgrep ai-workspace)
+PID=$(pgrep multai)
 
 # Measure RSS after 10 seconds (allow startup to complete)
 sleep 10
@@ -73,8 +73,8 @@ grep -E "^VmRSS:" /proc/$PID/status | awk '{print $2}'
 **Measurement Method**:
 ```bash
 # Launch application
-ai-workspace &
-PID=$(pgrep ai-workspace)
+multai &
+PID=$(pgrep multai)
 sleep 10
 
 # Measure baseline
@@ -186,7 +186,7 @@ qDebug() << "Startup time:" << timer.elapsed() << "ms";
 
 Or external measurement:
 ```bash
-time ai-workspace
+time multai
 ```
 
 **Acceptance Criteria**:
@@ -353,13 +353,13 @@ qDebug() << "UI response time:" << timer.elapsed() << "ms";
 **Measurement Method**:
 ```bash
 # Create new profile
-INITIAL_SIZE=$(du -sh ~/.config/ai-workspace/profiles/test-profile | awk '{print $1}')
+INITIAL_SIZE=$(du -sh ~/.config/multai/Multai/profiles/test-profile | awk '{print $1}')
 
 # Simulate 1 week of usage (load pages, store data, etc.)
 # This requires automation or manual testing
 
 # Measure final size
-FINAL_SIZE=$(du -sh ~/.config/ai-workspace/profiles/test-profile | awk '{print $1}')
+FINAL_SIZE=$(du -sh ~/.config/multai/Multai/profiles/test-profile | awk '{print $1}')
 
 # Calculate growth
 echo "Profile growth: $FINAL_SIZE - $INITIAL_SIZE"
@@ -400,13 +400,13 @@ echo "Profile growth: $FINAL_SIZE - $INITIAL_SIZE"
 **Measurement Method**:
 ```bash
 # Measure cache size before cleanup
-BEFORE=$(du -sh ~/.config/ai-workspace/profiles/test-profile/Cache | awk '{print $1}')
+BEFORE=$(du -sh ~/.config/multai/Multai/profiles/test-profile/Cache | awk '{print $1}')
 
 # Run cache cleanup
 # (triggered from application)
 
 # Measure cache size after cleanup
-AFTER=$(du -sh ~/.config/ai-workspace/profiles/test-profile/Cache | awk '{print $1}')
+AFTER=$(du -sh ~/.config/multai/Multai/profiles/test-profile/Cache | awk '{print $1}')
 
 # Calculate reduction
 ```
@@ -429,7 +429,7 @@ AFTER=$(du -sh ~/.config/ai-workspace/profiles/test-profile/Cache | awk '{print 
 **Usage**:
 ```bash
 # Get PID
-PID=$(pgrep ai-workspace)
+PID=$(pgrep multai)
 
 # Read memory status
 cat /proc/$PID/status
@@ -472,7 +472,7 @@ ps -p $PID -o rss,vsz
 
 **Usage**:
 ```bash
-/usr/bin/time -v ai-workspace
+/usr/bin/time -v multai
 ```
 
 **Pros**:
@@ -537,7 +537,7 @@ qint64 elapsed = timer.nsecsElapsed(); // nanoseconds
 
 **Usage**:
 ```bash
-valgrind --leak-check=full --show-leak-kinds=all ./build/ai-workspace
+valgrind --leak-check=full --show-leak-kinds=all ./build/multai
 ```
 
 **Pros**:
@@ -556,7 +556,7 @@ valgrind --leak-check=full --show-leak-kinds=all ./build/ai-workspace
 
 **Usage**:
 ```bash
-valgrind --tool=massif ./build/ai-workspace
+valgrind --tool=massif ./build/multai
 ms_print massif.out.<pid>
 ```
 

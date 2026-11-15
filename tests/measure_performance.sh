@@ -1,5 +1,5 @@
 #!/bin/bash
-# Performance measurement script for AI Workspace
+# Performance measurement script for Multai
 # Run this in a graphical session (not offscreen) for real WebEngine measurements
 #
 # Usage: ./measure_performance.sh [output-file]
@@ -15,13 +15,13 @@
 
 set -euo pipefail
 
-OUTPUT_FILE="${1:-/tmp/ai-workspace-performance.json}"
-BINARY="./build/ai-workspace"
-RESULTS_DIR="/tmp/ai-workspace-perf-results"
+OUTPUT_FILE="${1:-/tmp/multai-performance.json}"
+BINARY="./build/multai"
+RESULTS_DIR="/tmp/multai-perf-results"
 rm -rf "$RESULTS_DIR"
 mkdir -p "$RESULTS_DIR"
 
-echo "=== AI Workspace Performance Measurement ==="
+echo "=== Multai Performance Measurement ==="
 echo "Output: $OUTPUT_FILE"
 echo ""
 
@@ -83,13 +83,13 @@ echo ""
 
 # 2. Measure baseline memory (process tree)
 echo "--- Measuring Baseline Memory ---"
-BASELINE_RSS=$(measure_tree_rss "ai-workspace")
+BASELINE_RSS=$(measure_tree_rss "multai")
 echo "Total process tree RSS: ${BASELINE_RSS} kB"
 echo ""
 
 # 3. Profile storage size
 echo "--- Measuring Profile Storage ---"
-PROFILES_DIR="$HOME/.config/ai-workspace/profiles"
+PROFILES_DIR="$HOME/.config/multai/Multai/profiles"
 if [ -d "$PROFILES_DIR" ]; then
     PROFILE_SIZE=$(du -sb "$PROFILES_DIR" 2>/dev/null | awk '{print $1}' || echo 0)
     PROFILE_SIZE_MB=$((PROFILE_SIZE / 1024 / 1024))
@@ -102,7 +102,7 @@ echo ""
 
 # 4. Cache size
 echo "--- Measuring Cache ---"
-CACHE_DIR="$HOME/.cache/ai-workspace"
+CACHE_DIR="$HOME/.cache/multai/Multai"
 if [ -d "$CACHE_DIR" ]; then
     CACHE_SIZE=$(du -sb "$CACHE_DIR" 2>/dev/null | awk '{print $1}' || echo 0)
     CACHE_SIZE_MB=$((CACHE_SIZE / 1024 / 1024))

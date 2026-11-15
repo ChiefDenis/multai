@@ -456,7 +456,7 @@ void runState(MainWindow* window, int state, ProfileManagementDialog** dialogOut
 int main(int argc, char* argv[]) {
   QApplication app(argc, argv);
   QStandardPaths::setTestModeEnabled(true);
-  app.setApplicationName("AI Workspace Visual QA");
+  app.setApplicationName("Multai Visual QA");
 
   if (argc >= 2 && QString(argv[1]) == "prepare") {
     if (argc < 3) {

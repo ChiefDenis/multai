@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFB46C"/>
+      <stop offset="0.52" stop-color="#FB7A45"/>
+      <stop offset="1" stop-color="#E8452B"/>
+    </linearGradient>
+    <linearGradient id="mark" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F4552F"/>
+      <stop offset="1" stop-color="#D8371F"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="8" y="8" width="240" height="240" rx="54" fill="url(#bg)"/>
+
+  <path d="M 176 132
+           a 26 26 0 0 1 26 -26
+           h 8
+           a 26 26 0 0 1 26 26
+           v 22
+           a 26 26 0 0 1 -26 26
+           h -2
+           l -14 14
+           q -5 5 -5 -3
+           v -12
+           a 26 26 0 0 1 -13 -23
+           z"
+        fill="#FFD8B6" opacity="0.96"/>
+
+  <path d="M 74 50
+           h 104
+           q 32 0 32 32
+           v 52
+           q 0 32 -32 32
+           h -70
+           l -32 24
+           q -6 5 -5 -4
+           l 6 -22
+           q -35 -2 -35 -34
+           v -48
+           q 0 -32 32 -32
+           z"
+        fill="#FFF7EC"/>
+
+  <path d="M 86 146
+           V 96
+           q 0 -6 6 -10
+           q 6 -3 10 2
+           L 128 124
+           L 154 88
+           q 4 -5 10 -2
+           q 6 4 6 10
+           V 146"
+        fill="none" stroke="url(#mark)" stroke-width="21"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

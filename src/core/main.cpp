@@ -8,13 +8,13 @@ int main(int argc, char* argv[]) {
   Application app(argc, argv);
 
   QCommandLineParser parser;
-  parser.setApplicationDescription("AI Workspace - Multi-provider AI desktop application");
+  parser.setApplicationDescription("Multai - Multi-provider AI desktop application");
   parser.addHelpOption();
   parser.addVersionOption();
   parser.process(app);
 
   if (parser.isSet("version")) {
-    std::printf("AI Workspace %s\n", qPrintable(app.applicationVersion()));
+    std::printf("Multai %s\n", qPrintable(app.applicationVersion()));
     return 0;
   }
 

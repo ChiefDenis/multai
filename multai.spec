@@ -1,5 +1,5 @@
-Name:           ai-workspace
-Version:        0.4.5
+Name:           multai
+Version:        0.5.0
 Release:        1%{?dist}
 Summary:        Resource-conscious multi-provider AI desktop application
 
@@ -8,6 +8,9 @@ URL:            https://github.com/ChiefDenis/
 Source0:        %{name}-%{version}.tar.gz
 
 BuildArch:      x86_64
+
+Obsoletes:      ai-workspace < 0.5.0
+Provides:       ai-workspace = %{version}-%{release}
 
 BuildRequires:  cmake >= 3.31
 BuildRequires:  gcc-c++
@@ -23,7 +26,7 @@ Requires:       hicolor-icon-theme
 Requires:       desktop-file-utils
 
 %description
-AI Workspace is a resource-conscious, multi-provider AI desktop application
+Multai is a resource-conscious, multi-provider AI desktop application
 for Fedora Linux with KDE Plasma. It embeds provider websites in a native
 Qt 6 Widgets window with comprehensive browser lifecycle management,
 including automatic tab freezing, hibernation, and memory-pressure response.
@@ -36,7 +39,7 @@ Gemini, Anthropic Claude, Perplexity, ChatGPT, and Kimi.
 
 %build
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=%{_prefix} -DBUILD_TESTS=OFF
-cmake --build build --target ai-workspace
+cmake --build build --target multai
 
 %install
 DESTDIR=%{buildroot} cmake --install build
@@ -46,10 +49,21 @@ DESTDIR=%{buildroot} cmake --install build
 %doc README.md
 %{_bindir}/%{name}
 %{_datadir}/applications/%{name}.desktop
-%{_datadir}/icons/hicolor/*/apps/ai_workspace.png
-%{_datadir}/icons/hicolor/scalable/apps/ai_workspace.svg
+%{_datadir}/icons/hicolor/*/apps/multai.png
+%{_datadir}/icons/hicolor/scalable/apps/multai.svg
 
 %changelog
+* Sun Nov 15 2026 Multai <noreply@localhost> - 0.5.0-1
+- Rebrand the application from AI Workspace to Multai
+- Rename the executable, package, desktop entry, icon and Qt identity to multai
+- Replace the Sooyah artwork with a new Multai chat-bubble icon generated from one
+  canonical SVG source at every PNG size
+- Migrate existing QSettings, profiles, WebEngine storage and cache from the legacy
+  ai-workspace locations without overwriting existing Multai data
+- Keep the legacy data in place for rollback; migration is one-time and idempotent
+- Preserve the hyphen-free KDE icon name so Kora cannot redirect the lookup
+- Bump version to 0.5.0
+
 * Sat Nov 14 2026 AI Workspace <noreply@localhost> - 0.4.5-1
 - Fix KDE icon resolution root cause: KIconLoader strips hyphen-separated suffixes
   inside each theme before consulting hicolor. With the active Kora theme,

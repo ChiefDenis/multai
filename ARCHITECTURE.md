@@ -1,4 +1,4 @@
-# AI Workspace - Architecture Design
+# Multai - Architecture Design
 
 ## Document Information
 
@@ -263,6 +263,17 @@ The application follows a layered architecture with clear separation of concerns
   - Serialize/deserialize for persistence
 - **Key Signals/Slots**:
   - None (data class)
+
+#### 2.4.4 DataMigration
+- **Purpose**: One-time migration from the legacy AI Workspace identity
+- **Responsibilities**:
+  - Resolve legacy and Multai config, data, and cache roots
+  - Copy each legacy root into a verified staging directory
+  - Rename legacy inner names (`AI Workspace.conf`, `AI Workspace/`)
+  - Move staged data into place without overwriting an existing Multai root
+  - Leave legacy data untouched for rollback
+- **Key Signals/Slots**:
+  - None (called once from the `Application` constructor before settings access)
 
 ## 3. Data Flow
 
@@ -664,6 +675,8 @@ src/
 ├── core/
 │   ├── Application.cpp
 │   ├── Application.h
+│   ├── DataMigration.cpp
+│   ├── DataMigration.h
 │   ├── SettingsManager.cpp
 │   └── SettingsManager.h
 ├── ui/
@@ -1048,7 +1061,7 @@ All 7 test executables pass (`ctest --test-dir build --output-on-failure`).
 ### 15.2 Installation
 
 - Install to /usr/bin or /usr/local/bin
-- Create profile directory in ~/.config/ai-workspace
+- Create profile directory in ~/.config/multai/Multai/profiles
 - Register desktop file
 - Install icons to standard locations
 

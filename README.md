@@ -1,10 +1,10 @@
-# AI Workspace
+# Multai
 
 A resource-conscious, multi-provider AI desktop application for Fedora Linux with KDE Plasma.
 
 ## Overview
 
-AI Workspace is a native Qt 6 application that embeds multiple AI provider websites in a single desktop window with intelligent browser lifecycle management. The application is designed to minimise resource usage while maintaining responsiveness through automatic tab freezing and hibernation.
+Multai is a native Qt 6 application that embeds multiple AI provider websites in a single desktop window with intelligent browser lifecycle management. The application is designed to minimise resource usage while maintaining responsiveness through automatic tab freezing and hibernation.
 
 ### Key Features
 
@@ -83,7 +83,7 @@ Qt6::WebEngineWidgets and every test target that touches profiles links it too.
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd ai-workspace
+cd multai
 
 # Configure the build
 cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
@@ -99,10 +99,10 @@ sudo cmake --install build
 
 ```bash
 # From build directory
-./build/ai-workspace
+./build/multai
 
 # Or if installed
-ai-workspace
+multai
 ```
 
 #### Running Tests
@@ -174,30 +174,31 @@ ctest --test-dir build --output-on-failure
 - ChatGPT: https://chatgpt.com/
 - Kimi: https://kimi.ai/
 
-**Tests** (26 test executables, all passing):
+**Tests** (28 test executables, all passing):
 - Unit (12): test_providerregistry, test_settingsmanager, test_lifecycle,
   test_lifecyclemanager, test_memorymonitor, test_tabstore, test_profilemanager,
   test_recovery, test_ui_polish, test_settingsdialog, test_sidebar,
   test_browserworkspace
-- Integration (11): test_lifecycle_integration, test_profile_isolation,
+- Integration (13): test_lifecycle_integration, test_profile_isolation,
   test_persistence, test_browser_integration, test_auto_default_profile,
   test_empty_state, test_sidebar_resize, test_empty_state_ui, test_ui_regression,
-  test_visual_corrections, test_session_restore
+  test_visual_corrections, test_session_restore, test_provider_logos,
+  test_migration
 - Performance (3): test_memory_usage, test_tab_timings, test_profile_growth
 
-**Version**: 0.4.5
+**Version**: 0.5.0
 
 **Packaging**:
-- RPM spec: `ai-workspace.spec` (Fedora)
-- Desktop entry: `ai-workspace.desktop`
-- Application icon: `icons/hicolor/*/apps/ai_workspace.png` and `icons/hicolor/scalable/apps/ai_workspace.svg`
+- RPM spec: `multai.spec` (Fedora)
+- Desktop entry: `multai.desktop`
+- Application icon: `icons/hicolor/*/apps/multai.png` and `icons/hicolor/scalable/apps/multai.svg`
 - The icon name deliberately contains no `-`: KDE's KIconLoader strips hyphen-separated suffixes per theme, which can resolve a hyphenated name to an unrelated mimetype icon.
 
 
 Once packaged, installation will be:
 
 ```bash
-sudo dnf install ai-workspace
+sudo dnf install multai
 ```
 
 ## Configuration
@@ -207,7 +208,7 @@ sudo dnf install ai-workspace
 Settings are stored in Qt's standard settings location:
 
 ```
-~/.config/ai-workspace/ai-workspace.conf
+~/.config/multai/Multai.conf
 ```
 
 ### Profile Storage
@@ -215,10 +216,38 @@ Settings are stored in Qt's standard settings location:
 Browser profiles are stored in:
 
 ```
-~/.config/ai-workspace/profiles/
+~/.config/multai/Multai/profiles/
 ```
 
 Each profile is stored in a separate subdirectory with user-only permissions (0700).
+
+### Migrating from AI Workspace (0.4.x)
+
+On first launch, Multai performs a one-time migration from the legacy application
+identity. The legacy data is copied, verified, and then left in place for rollback.
+
+| Data | Legacy AI Workspace location | Multai location |
+|------|------------------------------|-----------------|
+| Settings | `~/.config/ai-workspace/AI Workspace.conf` | `~/.config/multai/Multai.conf` |
+| Profiles | `~/.config/ai-workspace/AI Workspace/profiles/` | `~/.config/multai/Multai/profiles/` |
+| WebEngine data | `~/.local/share/ai-workspace/AI Workspace/` | `~/.local/share/multai/Multai/` |
+| Cache | `~/.cache/ai-workspace/AI Workspace/` | `~/.cache/multai/Multai/` |
+
+Migration rules:
+
+- Each root is copied into a sibling staging directory, verified by file count and
+  size, and moved into place with an atomic rename.
+- An existing Multai root is never overwritten. Migration for that root is skipped.
+- The operation is idempotent: once the Multai root exists, later launches do not
+  copy again.
+- An interrupted migration leaves only a `.migrating` staging directory, which is
+  discarded and rebuilt on the next launch.
+- A `.migration-complete` marker is written inside each migrated root.
+- The legacy directory remains untouched. Keep it until you have confirmed that
+  accounts, tabs, and preferences are intact, then remove it manually.
+
+The repository directory is still named `ai-workspace` so existing checkouts keep
+working; that directory name is not part of the installed product identity.
 
 ### Lifecycle Settings
 
@@ -295,7 +324,7 @@ These are restored when the application is launched.
 **Solutions**:
 1. Verify Qt 6.10.3 or later is installed: `rpm -qa | grep qt6-qtbase`
 2. Verify qt6-qtwebengine is installed: `rpm -qa | grep qt6-qtwebengine`
-3. Check for missing libraries: `ldd build/ai-workspace`
+3. Check for missing libraries: `ldd build/multai`
 4. Run from terminal to see error messages
 
 ### Provider Won't Load
@@ -324,7 +353,7 @@ These are restored when the application is launched.
 **Problem**: Login sessions are lost after restart
 
 **Solutions**:
-1. Check profile directory permissions: `ls -la ~/.config/ai-workspace/profiles/`
+1. Check profile directory permissions: `ls -la ~/.config/multai/Multai/profiles/`
 2. Ensure directory has user-only permissions (0700)
 3. Check disk space: `df -h`
 4. Check application logs for errors
@@ -430,9 +459,10 @@ See [docs/PERFORMANCE.md](docs/PERFORMANCE.md) for detailed performance criteria
 ### Data Storage
 
 All data is stored locally on your system:
-- Configuration: `~/.config/ai-workspace/`
-- Profiles: `~/.config/ai-workspace/profiles/`
-- Database (if used): `~/.config/ai-workspace/ai-workspace.db`
+- Configuration: `~/.config/multai/Multai.conf`
+- Profiles: `~/.config/multai/Multai/profiles/`
+- WebEngine data: `~/.local/share/multai/Multai/`
+- Cache: `~/.cache/multai/Multai/`
 
 No data is transmitted to external servers except by the provider websites themselves.
 

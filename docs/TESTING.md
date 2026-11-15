@@ -9,7 +9,7 @@
 
 ## Overview
 
-This document describes the testing strategy for the AI Workspace project, including unit tests, integration tests, performance tests, and manual testing procedures.
+This document describes the testing strategy for the Multai project, including unit tests, integration tests, performance tests, and manual testing procedures.
 
 ## Provider Logos and Chrome-Free Workspace (0.4.0)
 
@@ -1376,6 +1376,52 @@ For real-world measurements in a graphical session:
 4. Run performance tests
 4. Generate coverage report
 5. Fail build if tests fail
+
+## Multai Rebrand and Migration Verification (0.5.0)
+
+**Identity and version**:
+
+- `multai --version` must print exactly `Multai 0.5.0`.
+- CMake project version `0.5.0` generates `MULTAI_VERSION`; the About dialog, runtime
+  version and RPM metadata must agree.
+- The desktop file is `multai.desktop` with `Exec=multai`, `Icon=multai` and
+  `StartupWMClass=multai`.
+- The icon name is `multai` (hyphen-free), installed at 16/24/32/48/64/128/256 and as
+  a scalable SVG. All sizes are rendered from `icons/hicolor/scalable/apps/multai.svg`.
+- `tests/test_ui_regression.cpp` verifies the compiled resource, window icon, desktop
+  entry, CMake installation rules, RPM spec paths, icon sizes and artwork.
+
+**Migration tests** (`tests/test_migration.cpp`):
+
+- Copies representative legacy config, profile, hidden, WebEngine data and cache trees.
+- Renames `AI Workspace.conf` to `Multai.conf` and `AI Workspace/` to `Multai/`.
+- Verifies file-map and size equality before the staging directory is moved into place.
+- Verifies the legacy tree remains for rollback.
+- Verifies a second run does not overwrite migrated data.
+- Verifies an existing Multai root is preserved and migration is skipped.
+- Verifies stale `.migrating` directories are discarded and rebuilt.
+- Verifies config, data and cache roots migrate independently.
+
+```bash
+ctest --test-dir build -R test_migration --output-on-failure
+```
+
+**Recorded result**: `test_migration` passed 8/8 test functions in 0.09 s. The full
+serial CTest run passed **28/28 tests in 99.56 s** on the Fedora 43 Qt 6.10.3 build
+(real Wayland session). A parallel run exposed pre-existing WebEngine timing
+contention in `test_session_restore`, which passes 12/12 when run alone.
+
+**Packaging checks**:
+
+```bash
+rpm -qip dist/multai-0.5.0-1.fc43.x86_64.rpm
+rpm -qlp dist/multai-0.5.0-1.fc43.x86_64.rpm
+rpm -qlp dist/multai-0.5.0-1.fc43.x86_64.rpm | grep -E 'multai|desktop|icons'
+multai --version
+```
+
+The RPM must obsolete `ai-workspace < 0.5.0` so the old package and its desktop entry
+are removed rather than left alongside Multai.
 
 ## Test Reporting
 

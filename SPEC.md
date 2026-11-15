@@ -1,4 +1,4 @@
-# AI Workspace - Technical Specification
+# Multai - Technical Specification
 
 ## Document Information
 
@@ -6,6 +6,7 @@
 - **Date**: 2026-10-10
 - **Status**: Initial Draft
 - **Target Platform**: Fedora Linux 43 with KDE Plasma
+- **Product identity**: Multai 0.5.0 (`multai` executable, package, desktop ID and icon name)
 
 ## 1. Project Overview
 
@@ -482,6 +483,16 @@ Use a Libadwaita-inspired visual language:
 ## 8. Configuration and Persistence
 
 ### 8.1 Configuration Storage
+
+- **Identity**: QSettings organization `multai`, application `Multai`
+- **Settings file**: `~/.config/multai/Multai.conf`
+- **Profiles**: `~/.config/multai/Multai/profiles/`
+- **WebEngine data**: `~/.local/share/multai/Multai/`
+- **Cache**: `~/.cache/multai/Multai/`
+- **Migration**: On first launch after 0.5.0, copy legacy `ai-workspace` roots into
+  the corresponding `multai` roots through a verified staging directory. Never
+  overwrite an existing Multai root, never delete the legacy data, and skip the
+  copy once the Multai root exists.
 
 - **Simple preferences**: Use QSettings for:
   - User preferences (theme, delays, thresholds)

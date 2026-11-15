@@ -4,7 +4,7 @@ qt_add_executable(state-launcher
 )
 
 target_link_libraries(state-launcher PRIVATE
-  ai-workspace-lib
+  multai-lib
   Qt6::Core
   Qt6::Widgets
   Qt6::WebEngineWidgets

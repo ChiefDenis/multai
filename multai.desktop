@@ -1,12 +1,12 @@
 [Desktop Entry]
-Name=AI Workspace
+Name=Multai
 GenericName=AI Desktop Application
 Comment=Multi-provider AI desktop application with browser lifecycle management
-Exec=ai-workspace
-Icon=ai_workspace
+Exec=multai
+Icon=multai
 Terminal=false
 Type=Application
 Categories=Network;WebBrowser;Office;
 StartupNotify=true
-StartupWMClass=ai-workspace
-Keywords=ai;chat;llm;deepseek;qwen;gemini;claude;copilot;perplexity;kimi;
+StartupWMClass=multai
+Keywords=ai;chat;llm;multai;deepseek;qwen;gemini;claude;copilot;perplexity;kimi;

@@ -1,4 +1,4 @@
-# AI Workspace - Agent Working Protocol
+# Multai - Agent Working Protocol
 
 ## Project Overview
 
@@ -280,7 +280,7 @@ The following areas require investigation and measurement:
 ## Project Directory Structure
 
 ```
-ai-workspace/
+ai-workspace/              # repository directory name is retained
 ├── AGENTS.md              # This file
 ├── SPEC.md                # Complete requirements
 ├── ARCHITECTURE.md        # System design
@@ -307,6 +307,6 @@ ai-workspace/
 
 ## Current Status
 
-**Initialisation Phase**: Environment inspected, Qt 6.10.3 verified available, project structure created.
+**Current Status**: Multai 0.5.0 rebrand, migration, build, 28/28 tests and RPM packaging complete; installed-system migration and KDE identity verification pending.
 
-**Next Stage**: Create SPEC.md with complete requirements including 9 providers and browser lifecycle architecture.
+**Next Stage**: Install the RPM over `ai-workspace-0.4.5` and verify migration plus launcher/taskbar/window/switcher identity.

@@ -2,7 +2,7 @@
 
 SettingsManager::SettingsManager(QObject* parent)
   : QObject(parent)
-  , m_settings("ai-workspace", "AI Workspace") {
+  , m_settings("multai", "Multai") {
 }
 
 SettingsManager* SettingsManager::instance() {

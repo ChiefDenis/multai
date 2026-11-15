@@ -27,9 +27,9 @@
 
 namespace {
 
-QString sourceDir() { return QStringLiteral(AI_WORKSPACE_SOURCE_DIR); }
+QString sourceDir() { return QStringLiteral(MULTAI_SOURCE_DIR); }
 
-QString desktopFilePath() { return sourceDir() + QStringLiteral("/ai-workspace.desktop"); }
+QString desktopFilePath() { return sourceDir() + QStringLiteral("/multai.desktop"); }
 
 bool readTextFile(const QString& path, QString* content) {
   QFile file(path);
@@ -47,9 +47,9 @@ QString desktopIconName() {
   return {};
 }
 
-bool isSooyahOrange(const QColor& color) {
-  return color.red() >= 200 && color.green() >= 80 && color.green() <= 180 &&
-         color.blue() <= 140;
+bool isMultaiMark(const QColor& color) {
+  return color.red() >= 180 && color.green() >= 40 && color.green() <= 170 &&
+         color.blue() <= 150;
 }
 
 bool isIllustratorBrown(const QColor& color) {
@@ -254,7 +254,7 @@ void TestUIRegression::testApplicationIconSet() {
   QIcon icon(QString::fromLatin1(AppIdentity::kIconResource));
   QVERIFY(!icon.isNull());
   const QColor center = iconCenterColor(icon, 256);
-  QVERIFY2(isSooyahOrange(center), qPrintable(QStringLiteral("resource center=%1,%2,%3")
+  QVERIFY2(isMultaiMark(center), qPrintable(QStringLiteral("resource center=%1,%2,%3")
                                                   .arg(center.red())
                                                   .arg(center.green())
                                                   .arg(center.blue())));
@@ -268,13 +268,13 @@ void TestUIRegression::testMainWindowIconSet() {
 
   QVERIFY(!window.windowIcon().isNull());
   const QColor center = iconCenterColor(window.windowIcon(), 64);
-  QVERIFY2(isSooyahOrange(center),
+  QVERIFY2(isMultaiMark(center),
            qPrintable(QStringLiteral("window icon center=%1,%2,%3")
                           .arg(center.red())
                           .arg(center.green())
                           .arg(center.blue())));
   QVERIFY2(!isIllustratorBrown(center),
-           "window icon resolved to the Adobe Illustrator mimetype icon instead of the Sooyah artwork");
+           "window icon resolved to the Adobe Illustrator mimetype icon instead of the Multai artwork");
 }
 
 void TestUIRegression::testDesktopFileHasStartupWMClass() {
@@ -287,28 +287,28 @@ void TestUIRegression::testDesktopFileHasStartupWMClass() {
 
 void TestUIRegression::testRuntimeVersion() {
   // Test the compile-time version macro matches expected
-  QCOMPARE(QString(AI_WORKSPACE_VERSION), QString("0.4.5"));
+  QCOMPARE(QString(MULTAI_VERSION), QString("0.5.0"));
   // Test that the version header was generated correctly
-  QVERIFY(!QString(AI_WORKSPACE_VERSION).isEmpty());
+  QVERIFY(!QString(MULTAI_VERSION).isEmpty());
 }
 
 void TestUIRegression::testAboutDialogVersion() {
   // Test the string formatting that onAbout() uses
-  QString version = AI_WORKSPACE_VERSION;
-  QString aboutText = QString("<b>AI Workspace %1</b><br><br>"
+  QString version = MULTAI_VERSION;
+  QString aboutText = QString("<b>Multai %1</b><br><br>"
                               "A resource-conscious, multi-provider AI desktop application.<br>"
                               "Provider web interfaces are embedded with Qt WebEngine.<br><br>"
                               "<a href=\"https://github.com/ChiefDenis/\">GitHub</a>")
                           .arg(version);
   
-  QVERIFY(aboutText.contains("AI Workspace 0.4.5"));
-  QVERIFY(aboutText.contains("<b>AI Workspace 0.4.5</b>"));
+  QVERIFY(aboutText.contains("Multai 0.5.0"));
+  QVERIFY(aboutText.contains("<b>Multai 0.5.0</b>"));
 }
 
 void TestUIRegression::testAboutDialogDeveloperLink() {
   // Test the string formatting that onAbout() uses
-  QString version = AI_WORKSPACE_VERSION;
-  QString aboutText = QString("<b>AI Workspace %1</b><br><br>"
+  QString version = MULTAI_VERSION;
+  QString aboutText = QString("<b>Multai %1</b><br><br>"
                               "A resource-conscious, multi-provider AI desktop application.<br>"
                               "Provider web interfaces are embedded with Qt WebEngine.<br><br>"
                               "<a href=\"https://github.com/ChiefDenis/\">GitHub</a>")
@@ -316,7 +316,7 @@ void TestUIRegression::testAboutDialogDeveloperLink() {
   
   QVERIFY(aboutText.contains("https://github.com/ChiefDenis/"));
   QVERIFY(aboutText.contains("GitHub"));
-  QVERIFY(aboutText.contains("AI Workspace 0.4.5"));
+  QVERIFY(aboutText.contains("Multai 0.5.0"));
 }
 
 void TestUIRegression::testCollapsedRailShowsOpenTabs() {
@@ -474,7 +474,7 @@ void TestUIRegression::testIconResourceValidity() {
   }
   QVERIFY(nonTransparent > 0);
   const QColor center = image.pixelColor(image.width() / 2, image.height() / 2);
-  QVERIFY2(isSooyahOrange(center), "compiled resource does not contain the Sooyah artwork");
+  QVERIFY2(isMultaiMark(center), "compiled resource does not contain the Multai artwork");
 }
 
 void TestUIRegression::testDesktopFileIconValue() {
@@ -488,20 +488,20 @@ void TestUIRegression::testDesktopFileIconValue() {
 }
 
 void TestUIRegression::testQtDesktopFileIdentity() {
-  QCOMPARE(QString(AI_WORKSPACE_VERSION), QString("0.4.5"));
-  QVERIFY(!QString(AI_WORKSPACE_VERSION).isEmpty());
+  QCOMPARE(QString(MULTAI_VERSION), QString("0.5.0"));
+  QVERIFY(!QString(MULTAI_VERSION).isEmpty());
 
-  QCOMPARE(AI_WORKSPACE_VERSION_MAJOR, 0);
-  QCOMPARE(AI_WORKSPACE_VERSION_MINOR, 4);
-  QCOMPARE(AI_WORKSPACE_VERSION_PATCH, 5);
-  QString tweak = QString(AI_WORKSPACE_VERSION_TWEAK);
+  QCOMPARE(MULTAI_VERSION_MAJOR, 0);
+  QCOMPARE(MULTAI_VERSION_MINOR, 5);
+  QCOMPARE(MULTAI_VERSION_PATCH, 0);
+  QString tweak = QString(MULTAI_VERSION_TWEAK);
   QVERIFY(tweak == "0" || tweak.isEmpty());
 }
 
 void TestUIRegression::testIconThemeResolution() {
   // In a KDE session QIcon::fromTheme uses KIconLoader, which is where the
   // hyphen fallback used to redirect the lookup to the "ai" mimetype icon.
-  // When the icon is installed, it must resolve to the Sooyah artwork.
+  // When the icon is installed, it must resolve to the Multai artwork.
   const QString iconName = QString::fromLatin1(AppIdentity::kIconName);
   QVERIFY(!iconName.contains('-'));
 
@@ -513,7 +513,7 @@ void TestUIRegression::testIconThemeResolution() {
   QVERIFY2(themeIcon.name() != QStringLiteral("ai"),
            "theme lookup fell back to the Adobe Illustrator mimetype icon");
   const QColor center = iconCenterColor(themeIcon, 64);
-  QVERIFY2(isSooyahOrange(center), qPrintable(QStringLiteral("theme icon center=%1,%2,%3")
+  QVERIFY2(isMultaiMark(center), qPrintable(QStringLiteral("theme icon center=%1,%2,%3")
                                                   .arg(center.red())
                                                   .arg(center.green())
                                                   .arg(center.blue())));
@@ -579,9 +579,11 @@ void TestUIRegression::testPackagingInstallsCanonicalIcon() {
            "CMake does not install the canonical scalable icon");
   QVERIFY2(!cmake.contains(QStringLiteral("icons/hicolor/256x256/apps/ai-workspace.png")),
            "CMake still installs the legacy hyphenated icon name");
+  QVERIFY2(!cmake.contains(QStringLiteral("icons/hicolor/256x256/apps/ai_workspace.png")),
+           "CMake still installs the legacy icon name");
 
   QString spec;
-  QVERIFY(readTextFile(sourceDir() + QStringLiteral("/ai-workspace.spec"), &spec));
+  QVERIFY(readTextFile(sourceDir() + QStringLiteral("/multai.spec"), &spec));
   QVERIFY2(spec.contains(QStringLiteral("apps/%1.png").arg(iconName)),
            "RPM spec does not package the canonical application icon");
   QVERIFY2(spec.contains(QStringLiteral("scalable/apps/%1.svg").arg(iconName)),
@@ -631,7 +633,7 @@ void TestUIRegression::testInstalledIconIsOutsideBuildDirectory() {
   }
   if (installed.isEmpty()) QSKIP("canonical icon is not installed on this system");
 
-  QVERIFY2(!installed.contains(QStringLiteral(AI_WORKSPACE_SOURCE_DIR)),
+  QVERIFY2(!installed.contains(QStringLiteral(MULTAI_SOURCE_DIR)),
            "installed icon still points into the build/source tree");
   QVERIFY2(!installed.contains(QStringLiteral("/build")), "installed icon points into a build directory");
   QVERIFY2(installed.startsWith(QStringLiteral("/usr/share/")) ||
@@ -641,7 +643,7 @@ void TestUIRegression::testInstalledIconIsOutsideBuildDirectory() {
   QImage image(installed);
   QVERIFY(!image.isNull());
   const QColor center = image.pixelColor(image.width() / 2, image.height() / 2);
-  QVERIFY2(isSooyahOrange(center), "installed icon is not the Sooyah artwork");
+  QVERIFY2(isMultaiMark(center), "installed icon is not the Multai artwork");
 }
 
 QTEST_MAIN(TestUIRegression)
