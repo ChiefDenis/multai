@@ -4,7 +4,7 @@
 
 - **Purpose**: Authoritative progress ledger for the Multai project
 - **Status**: Active
-- **Last Updated**: 2026-11-15
+- **Last Updated**: 2026-11-24
 - **Current Stage**: Release 0.5.0 - complete
 
 ## Progress Summary
@@ -2019,8 +2019,8 @@ theme, on both Wayland and XWayland. Root cause fixed.
 ## Release 0.5.0: Complete Rebrand to Multai (2026-11-15)
 
 **Version**: 0.5.0
-**Status**: Build, 28/28 tests, package, staged install and real user-data migration
-complete; installed package replacement and KDE visual verification pending.
+**Status**: ✅ Complete — build, 28/28 tests, package, staged install, real user-data
+migration, installed package replacement and KDE visual verification.
 
 ### Identity changes
 
@@ -2126,3 +2126,12 @@ hint).
 - Real user data migrated with all three `.migration-complete` markers; 9 profiles
   are present under `~/.config/multai/Multai/profiles/`, and the legacy
   `~/.config/ai-workspace` tree (197 MB) remains for rollback.
+
+### Re-verification (2026-11-24)
+
+- Fresh Debug configure and build in `/tmp/opencode/report-build` succeeded on
+  `5a3ddca`; `multai --version` printed `Multai 0.5.0`.
+- Full serial CTest run: **28/28 passed, 0 failed** (87.95 s; 13 integration,
+  3 performance, 12 unit).
+- No code changes were made in this pass; the local `build/` directory still holds
+  a stale 0.4.x tree and is not used for verification.
