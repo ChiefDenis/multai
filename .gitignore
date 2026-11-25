@@ -66,6 +66,7 @@ _deps/
 # OS
 .DS_Store
 Thumbs.db
+.gitignore
 
 # Temporary files
 *.tmp
@@ -85,7 +86,6 @@ dist/
 AI_PROGRESS.md
 AGENTS.md
 SPEC.md
-README.md
 ARCHITECTURE.md
 MISTAKES.md
 docs/
