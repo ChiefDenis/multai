@@ -81,5 +81,17 @@ Thumbs.db
 dist/
 *.rpm
 
+# Project documentation (generated or tracked separately)
+AI_PROGRESS.md
+AGENTS.md
+SPEC.md
+README.md
+ARCHITECTURE.md
+MISTAKES.md
+docs/
+
+# Temporary build directory
+tmp_build/
+
 # Visual QA screenshots
 artifacts/

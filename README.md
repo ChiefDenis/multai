@@ -129,7 +129,6 @@ ctest --test-dir build --output-on-failure
 
 ## Current Implementation Status
 
-### Stages 1-7 (Complete)
 
 **Implemented components**:
 - CMake build system linking Qt6::Core, Widgets and WebEngineWidgets
@@ -221,35 +220,6 @@ Browser profiles are stored in:
 
 Each profile is stored in a separate subdirectory with user-only permissions (0700).
 
-### Migrating from AI Workspace (0.4.x)
-
-On first launch, Multai performs a one-time migration from the legacy application
-identity. The legacy data is copied, verified, and then left in place for rollback.
-
-| Data | Legacy AI Workspace location | Multai location |
-|------|------------------------------|-----------------|
-| Settings | `~/.config/ai-workspace/AI Workspace.conf` | `~/.config/multai/Multai.conf` |
-| Profiles | `~/.config/ai-workspace/AI Workspace/profiles/` | `~/.config/multai/Multai/profiles/` |
-| WebEngine data | `~/.local/share/ai-workspace/AI Workspace/` | `~/.local/share/multai/Multai/` |
-| Cache | `~/.cache/ai-workspace/AI Workspace/` | `~/.cache/multai/Multai/` |
-
-Migration rules:
-
-- Each root is copied into a sibling staging directory, verified by file count and
-  size, and moved into place with an atomic rename.
-- An existing Multai entry is never overwritten. If a Multai root already exists,
-  only missing legacy files and settings keys are merged into it; existing Multai
-  values always win.
-- The operation is idempotent: once a root contains `.migration-complete`, later
-  launches do not copy or merge into it again.
-- An interrupted migration leaves only a `.migrating` staging directory, which is
-  discarded and rebuilt on the next launch.
-- A `.migration-complete` marker is written inside each migrated root.
-- The legacy directory remains untouched. Keep it until you have confirmed that
-  accounts, tabs, and preferences are intact, then remove it manually.
-
-The repository directory is still named `ai-workspace` so existing checkouts keep
-working; that directory name is not part of the installed product identity.
 
 ### Lifecycle Settings
 
@@ -432,8 +402,6 @@ See [docs/TESTING.md](docs/TESTING.md) for detailed testing procedures.
 | Profile growth per week | < 50 MB |
 | Cache growth per week | < 100 MB |
 
-See [docs/PERFORMANCE.md](docs/PERFORMANCE.md) for detailed performance criteria and measurement approach.
-
 ## Privacy and Security
 
 ### Data Protection
@@ -495,15 +463,6 @@ The application does not circumvent these restrictions. If a provider blocks emb
 - **Cache limits**: Cache grows over time and must be manually cleaned
 - **Renderer processes**: Each profile may spawn renderer processes
 
-## Documentation
-
-- [AGENTS.md](AGENTS.md) - Project rules and working protocol
-- [SPEC.md](SPEC.md) - Complete technical specification
-- [ARCHITECTURE.md](ARCHITECTURE.md) - System architecture and design
-- [AI_PROGRESS.md](AI_PROGRESS.md) - Progress ledger and implementation status
-- [docs/TESTING.md](docs/TESTING.md) - Testing strategy and procedures
-- [docs/PERFORMANCE.md](docs/PERFORMANCE.md) - Performance criteria and measurement
-- [docs/DECISIONS.md](docs/DECISIONS.md) - Technical decisions and rationale
 
 ## Development
 
@@ -551,39 +510,3 @@ This project is licensed under the GNU General Public License v3.0 or later
 - Fedora Project
 - KDE Plasma Desktop
 - All AI providers whose services are embedded
-
-## Support
-
-For issues, questions, or contributions:
-
-1. Check the troubleshooting section in this README
-2. Check the documentation in the `docs/` directory
-3. Review [AGENTS.md](AGENTS.md) for working protocol
-4. Review [AI_PROGRESS.md](AI_PROGRESS.md) for known issues
-
-## Version History
-
-### 0.1.0 (In Development)
-
-- Initial project structure and documentation
-- Stage 1: application skeleton, provider catalogue and settings
-- Stages 2-6: provider icons, multi-account profiles, browser embedding,
-  lifecycle state machine, lifecycle automation and memory-pressure response
-- 7 unit tests passing; build and offscreen runtime smoke test verified
-
-## Future Plans
-
-- [x] Stage 1: Project Foundation
-- [x] Stage 2: Provider System
-- [x] Stage 3: Profile Management
-- [x] Stage 4: Basic Browser Integration
-- [x] Stage 5: Lifecycle State Machine
-- [x] Stage 6: Lifecycle Automation
-- [ ] Stage 7: Recovery and Error Handling (crash detection and bounded reload done;
-      error UI and manual retry outstanding)
-- [ ] Stage 8: UI Polish (themes, icons and tooltips done; full pass outstanding)
-- [ ] Stage 9: Testing and Performance (unit tests done; integration and measurement
-      outstanding)
-- [ ] Stage 10: Documentation and Packaging
-
-See [AI_PROGRESS.md](AI_PROGRESS.md) for detailed implementation status.
